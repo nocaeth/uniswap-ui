@@ -22,8 +22,8 @@ import { useEvent } from 'utilities/src/react/hooks'
 import { FeatureFlagSelector } from '~/components/FeatureFlagModal/FeatureFlagSelector'
 import { buildFlagGroups } from '~/components/FeatureFlagModal/flagGroups'
 import { usePinnedExperiments, usePinnedFeatureFlags, usePinnedFlagGroups } from '~/dev/usePinnedFeatureFlags'
+import { useExternallyConnectableExtensionId } from '~/hooks/useExternallyConnectableExtensionId'
 import { useModalState } from '~/hooks/useModalState'
-import { useExternallyConnectableExtensionId } from '~/pages/ExtensionPasskeyAuthPopUp/useExternallyConnectableExtensionId'
 import { EllipsisTamaguiStyle } from '~/theme/components/styles'
 
 const CenteredRowProps: FlexProps = {

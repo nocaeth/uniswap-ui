@@ -3,7 +3,6 @@ import '~/sideEffects'
 import { getDeviceId } from '@amplitude/analytics-browser'
 import { ApolloProvider } from '@apollo/client'
 import { datadogRum } from '@datadog/browser-rum'
-import { PrivyProvider } from '@privy-io/react-auth'
 import { ApiInit, getEntryGatewayUrl, provideSessionService } from '@universe/api'
 import { ComplianceClientProvider } from '@universe/compliance'
 import { isDevEnv, isTestEnv, localDevDatadogEnabled } from '@universe/environment'
@@ -29,7 +28,7 @@ import {
   createTurnstileSolver,
 } from '@universe/sessions'
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v7'
-import type { PropsWithChildren, ReactNode } from 'react'
+import type { PropsWithChildren } from 'react'
 import { lazy, StrictMode, Suspense, useEffect, useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Helmet, HelmetProvider } from 'react-helmet-async/lib/index'
@@ -53,14 +52,13 @@ import { apolloClient } from '~/appGraphql/data/apollo/client'
 import { TransactionWatcherProvider } from '~/appGraphql/data/apollo/TransactionWatcherProvider'
 import { QueryClientPersistProvider } from '~/components/PersistQueryClient'
 import { createWeb3Provider, WalletCapabilitiesEffects } from '~/components/Web3Provider/createWeb3Provider'
-import { getConfig, getPrivyConfig } from '~/config'
+import { getConfig } from '~/config'
 import { wagmiConfig } from '~/connection/wagmiConfig'
 import { AccountsStoreDevTool } from '~/features/accounts/store/devtools'
 import { WebAccountsStoreProvider } from '~/features/accounts/store/provider'
 import { ConnectWalletMutationProvider } from '~/features/wallet/connection/hooks/useConnectWalletMutation'
 import { ExternalWalletProvider } from '~/features/wallet/providers/ExternalWalletProvider'
 import { useDeferredComponent } from '~/hooks/useDeferredComponent'
-import { isPrivyConfigured } from '~/hooks/useMaybePrivy'
 import { LanguageProvider } from '~/i18n/LanguageProvider'
 import { BlockNumberProvider } from '~/lib/hooks/useBlockNumber'
 import { WebNotificationServiceManager } from '~/notification-service/WebNotificationService'
@@ -228,18 +226,6 @@ function StatsigProvider({ children }: PropsWithChildren) {
   )
 }
 
-function MaybePrivyProvider({ children }: { children: ReactNode }) {
-  if (!isPrivyConfigured()) {
-    return <>{children}</>
-  }
-  const { appId, clientId } = getPrivyConfig(false)
-  return (
-    <PrivyProvider appId={appId} clientId={clientId} config={{ loginMethods: ['email', 'google', 'apple'] }}>
-      {children}
-    </PrivyProvider>
-  )
-}
-
 // Gated by `__DEV__` (Vite build-time constant) so Rollup DCE's the `import('agentation')`
 // call in production builds and no chunk is emitted.
 const AgentationLazy = __DEV__ ? lazy(() => import('agentation').then((m) => ({ default: m.Agentation }))) : null
@@ -258,9 +244,8 @@ const RootApp = (): JSX.Element => {
               <ComplianceClientProvider>
                 <NuqsAdapter>
                   <Router>
-                    <MaybePrivyProvider>
-                      <I18nextProvider i18n={i18n}>
-                        <LanguageProvider>
+                    <I18nextProvider i18n={i18n}>
+                      <LanguageProvider>
                           <Web3Provider>
                             <StatsigProvider>
                               <WalletCapabilitiesEffects />
@@ -301,7 +286,6 @@ const RootApp = (): JSX.Element => {
                           </Web3Provider>
                         </LanguageProvider>
                       </I18nextProvider>
-                    </MaybePrivyProvider>
                   </Router>
                 </NuqsAdapter>
               </ComplianceClientProvider>

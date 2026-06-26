@@ -91,38 +91,6 @@ const DataApiOutageModal = createLazy(() =>
   import('~/components/DataApiOutageModal').then((module) => ({ default: module.DataApiOutageModal })),
 )
 
-const AddBackupLoginModal = createLazy(() =>
-  import('~/components/Passkey/AddBackupLoginModal').then((module) => ({ default: module.AddBackupLoginModal })),
-)
-
-const AddPasskeyModal = createLazy(() =>
-  import('~/components/Passkey/AddPasskeyModal').then((module) => ({ default: module.AddPasskeyModal })),
-)
-const RecoverWalletModal = createLazy(() =>
-  import('~/components/Passkey/RecoverWalletModal').then((module) => ({ default: module.RecoverWalletModal })),
-)
-
-const RemovePasskeyModal = createLazy(() =>
-  import('~/components/Passkey/RemovePasskeyModal').then((module) => ({ default: module.RemovePasskeyModal })),
-)
-
-const RemoveBackupLoginModal = createLazy(() =>
-  import('~/components/Passkey/RemoveBackupLoginModal').then((module) => ({
-    default: module.RemoveBackupLoginModal,
-  })),
-)
-
-const UnitagRateLimitSpeedbumpModal = createLazy(() =>
-  import('~/components/UnitagRateLimitSpeedbump/UnitagRateLimitSpeedbumpModal').then((module) => ({
-    default: module.UnitagRateLimitSpeedbumpModal,
-  })),
-)
-
-const UnsupportedBrowserModal = createLazy(() =>
-  import('~/components/Passkey/UnsupportedBrowserModal').then((module) => ({
-    default: module.UnsupportedBrowserModal,
-  })),
-)
 function ModalLoadingFallback(): null {
   return null
 }
@@ -258,34 +226,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.DataApiOutage]: {
     component: DataApiOutageModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.DataApiOutage,
-  },
-  [ModalName.AddBackupLogin]: {
-    component: AddBackupLoginModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.AddBackupLogin,
-  },
-  [ModalName.AddPasskey]: {
-    component: AddPasskeyModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.AddPasskey,
-  },
-  [ModalName.RecoverWallet]: {
-    component: RecoverWalletModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.RecoverWallet,
-  },
-  [ModalName.DeletePasskey]: {
-    component: RemovePasskeyModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.DeletePasskey,
-  },
-  [ModalName.RemoveBackupLogin]: {
-    component: RemoveBackupLoginModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.RemoveBackupLogin,
-  },
-  [ModalName.UnitagRateLimitSpeedbump]: {
-    component: UnitagRateLimitSpeedbumpModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.UnitagRateLimitSpeedbump,
-  },
-  [ModalName.UnsupportedBrowser]: {
-    component: UnsupportedBrowserModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.UnsupportedBrowser,
   },
 } as const
 

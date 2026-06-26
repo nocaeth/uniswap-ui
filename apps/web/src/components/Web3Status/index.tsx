@@ -1,12 +1,10 @@
-import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { atom, useAtom } from 'jotai'
 import { forwardRef, RefObject, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnimatePresence, Button, ButtonProps, Flex, Popover, Text } from 'ui/src'
-import { Unitag } from 'ui/src/components/icons/Unitag'
+import { AnimatePresence, Button, ButtonProps, Flex, Text } from 'ui/src'
 import { breakpoints } from 'ui/src/theme'
 import { useActiveAddresses, useConnectionStatus } from 'uniswap/src/features/accounts/store/hooks'
-import { ElementName, InterfaceEventName, ModalName } from 'uniswap/src/features/telemetry/constants'
+import { ElementName, InterfaceEventName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { TestID } from 'uniswap/src/test/fixtures/testIDs'
@@ -15,13 +13,9 @@ import { usePendingActivity } from '~/components/AccountDrawer/MiniPortfolio/Act
 import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
 import { Portal } from '~/components/Popups/Portal'
 import { StatusIcon } from '~/components/StatusIcon'
-import { RecentlyConnectedModal } from '~/components/Web3Status/RecentlyConnectedModal'
 import { useAccountIdentifier } from '~/components/Web3Status/useAccountIdentifier'
 import { useShowPendingAfterDelay } from '~/components/Web3Status/useShowPendingAfterDelay'
-import { useHasInjectedWallets } from '~/features/wallet/connection/hooks/useOrderedWalletConnectors'
-import { useModalState } from '~/hooks/useModalState'
 import { deprecatedStyled } from '~/lib/deprecated-styled'
-import { useEmbeddedWalletState } from '~/state/embeddedWallet/store'
 import { isIFramed } from '~/utils/isIFramed'
 
 const TextStyled = deprecatedStyled.span<{ marginRight?: number }>`
@@ -71,10 +65,6 @@ const ExistingUserCTAButton = forwardRef<HTMLDivElement, { onPress: () => void }
   ref,
 ) {
   const { t } = useTranslation()
-  const isEmbeddedWalletEnabled = useFeatureFlag(FeatureFlags.EmbeddedWallet)
-  const hasInjectedWallets = useHasInjectedWallets()
-  const { walletAddress: embeddedWalletAddress } = useEmbeddedWalletState()
-  const showGetStarted = isEmbeddedWalletEnabled && !hasInjectedWallets && !embeddedWalletAddress
 
   return (
     <Button
@@ -87,7 +77,7 @@ const ExistingUserCTAButton = forwardRef<HTMLDivElement, { onPress: () => void }
       ref={ref}
       onPress={onPress}
     >
-      {showGetStarted ? t('common.getStarted') : t('common.connect.button')}
+      {t('common.connect.button')}
     </Button>
   )
 })
@@ -113,7 +103,7 @@ function Web3StatusInner() {
   }, [accountDrawer])
 
   const { hasPendingActivity, pendingActivityCount, hasL1PendingActivity } = usePendingActivity()
-  const { accountIdentifier, hasUnitag } = useAccountIdentifier()
+  const { accountIdentifier } = useAccountIdentifier()
   const showLoadingState = useShowPendingAfterDelay({
     hasPendingActivity,
     hasL1PendingActivity,
@@ -124,14 +114,7 @@ function Web3StatusInner() {
     return (
       <Web3StatusGeneric loading onPress={handleWalletDropdownClick} ref={ref}>
         <AddressAndChevronContainer $loading={true}>
-          <Text variant="body2" marginRight={hasUnitag ? '$spacing8' : undefined}>
-            {accountIdentifier}
-          </Text>
-          {hasUnitag ? (
-            <Flex pt="$spacing2">
-              <Unitag size={18} />
-            </Flex>
-          ) : undefined}
+          <Text variant="body2">{accountIdentifier}</Text>
         </AddressAndChevronContainer>
       </Web3StatusGeneric>
     )
@@ -164,10 +147,7 @@ function Web3StatusInner() {
                 icon={<StatusIcon size={24} showMiniIcons={false} />}
               >
                 <AddressAndChevronContainer>
-                  <Text variant="body2" marginRight={hasUnitag ? '$spacing8' : undefined}>
-                    {accountIdentifier}
-                  </Text>
-                  {hasUnitag && <Unitag size={18} />}
+                  <Text variant="body2">{accountIdentifier}</Text>
                 </AddressAndChevronContainer>
               </Web3StatusGeneric>
             </Flex>
@@ -192,21 +172,9 @@ function Web3StatusInner() {
 }
 
 export function Web3Status() {
-  const { isOpen: recentlyConnectedModalIsOpen } = useModalState(ModalName.RecentlyConnectedModal)
   return (
     <>
-      <Popover
-        placement="bottom"
-        stayInFrame
-        allowFlip
-        open={recentlyConnectedModalIsOpen}
-        offset={{ mainAxis: 8, crossAxis: -4 }}
-      >
-        <Popover.Trigger>
-          <Web3StatusInner />
-        </Popover.Trigger>
-        <RecentlyConnectedModal />
-      </Popover>
+      <Web3StatusInner />
       <Portal>
         <PortfolioDrawer />
       </Portal>

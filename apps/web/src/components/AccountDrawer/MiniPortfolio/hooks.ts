@@ -4,7 +4,6 @@ import { useCallback, useMemo } from 'react'
 import { InterfaceEventName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import { useEvent } from 'utilities/src/react/hooks'
-import { useEmbeddedWalletLoginViewStore } from '~/state/embeddedWallet/loginViewStore'
 
 const accountDrawerOpenAtom = atom(false)
 const showMoonpayTextAtom = atom(false)
@@ -12,8 +11,6 @@ const showMoonpayTextAtom = atom(false)
 export function useAccountDrawer() {
   const [isOpen, updateAccountDrawerOpen] = useAtom(accountDrawerOpenAtom)
   const setShowMoonpayTextInDrawer = useSetShowMoonpayText()
-  const setShowEmbeddedLoginView = useEmbeddedWalletLoginViewStore((s) => s.setShowLoginView)
-  const setPasskeySignInPending = useEmbeddedWalletLoginViewStore((s) => s.setPasskeySignInPending)
 
   const open = useEvent(() => {
     sendAnalyticsEvent(InterfaceEventName.MiniPortfolioToggled, { type: 'open' })
@@ -23,8 +20,6 @@ export function useAccountDrawer() {
   const close = useEvent(() => {
     sendAnalyticsEvent(InterfaceEventName.MiniPortfolioToggled, { type: 'close' })
     setShowMoonpayTextInDrawer(false)
-    setShowEmbeddedLoginView(false)
-    setPasskeySignInPending(false)
     updateAccountDrawerOpen(false)
   })
 

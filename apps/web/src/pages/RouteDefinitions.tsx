@@ -3,7 +3,6 @@ import { lazy, ReactNode, Suspense, useMemo } from 'react'
 import { matchPath, Navigate, useLocation } from 'react-router'
 import { CHROME_EXTENSION_UNINSTALL_URL_PATH } from 'uniswap/src/constants/urls'
 import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defaults'
-import { EXTENSION_PASSKEY_AUTH_PATH } from 'uniswap/src/features/passkey/constants'
 import i18n from 'uniswap/src/i18n'
 import { getExploreDescription, getExploreTitle } from '~/pages/getExploreTitle'
 import {
@@ -38,8 +37,6 @@ const PositionPage = lazy(() => import('~/pages/Positions/PositionPage'))
 const V2PositionPage = lazy(() => import('~/pages/Positions/V2PositionPage'))
 const PoolDetails = lazy(() => import('~/pages/PoolDetails'))
 const TokenDetails = lazy(() => import('~/pages/TokenDetails/TokenDetailsPage'))
-const ExtensionPasskeyAuthPopUp = lazy(() => import('~/pages/ExtensionPasskeyAuthPopUp'))
-const PasskeyManagement = lazy(() => import('~/pages/PasskeyManagement'))
 const ExtensionUninstall = lazy(() => import('~/pages/ExtensionUninstall/ExtensionUninstall'))
 const BetaPage = lazy(() => import('~/pages/Beta'))
 
@@ -87,7 +84,6 @@ const StaticTitlesAndDescriptions = {
   MigrateDescription: i18n.t('title.easilyRemove'),
   MigrateDescriptionV4: i18n.t('title.easilyRemoveV4'),
   AddLiquidityDescription: i18n.t('title.earnFees'),
-  PasskeyManagementTitle: i18n.t('title.managePasskeys'),
 }
 
 export interface RouteDefinition {
@@ -312,17 +308,6 @@ export const routes: RouteDefinition[] = [
     getElement: () => <LegacyPositionPageRedirects />,
     getTitle: () => i18n.t('title.removePoolLiquidity'),
     getDescription: () => i18n.t('title.removev3Liquidity'),
-  }),
-  createRouteDefinition({
-    path: EXTENSION_PASSKEY_AUTH_PATH,
-    getElement: () => <ExtensionPasskeyAuthPopUp />,
-    getTitle: () => i18n.t('title.extensionPasskeyLogIn'),
-  }),
-  createRouteDefinition({
-    path: '/manage/passkey/:walletAddress',
-    getElement: () => <PasskeyManagement />,
-    getTitle: () => StaticTitlesAndDescriptions.PasskeyManagementTitle,
-    enabled: (args) => args.isEmbeddedWalletEnabled ?? false,
   }),
   // Uniswap Extension Uninstall Page
   createRouteDefinition({

@@ -1,9 +1,7 @@
-import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useTranslation } from 'react-i18next'
 import { Flex, Image, SpinningLoader, Text, useSporeColors } from 'ui/src'
 import { BINANCE_WALLET_ICON } from 'ui/src/assets'
 import { Chevron } from 'ui/src/components/icons/Chevron'
-import { Passkey } from 'ui/src/components/icons/Passkey'
 import { WalletFilled } from 'ui/src/components/icons/WalletFilled'
 import { UseSporeColorsReturn } from 'ui/src/hooks/useSporeColors'
 import { iconSizes } from 'ui/src/theme'
@@ -32,14 +30,6 @@ function RecentBadge() {
   )
 }
 
-function EmbeddedWalletIcon() {
-  return (
-    <Flex p="$spacing6" backgroundColor="$accent2" borderRadius="$rounded8">
-      <Passkey color="$accent1" size="$icon.20" />
-    </Flex>
-  )
-}
-
 function BinanceWalletIcon({ iconSize }: { iconSize: number }) {
   return <Image height={iconSize} source={BINANCE_WALLET_ICON} width={iconSize} borderRadius="$rounded8" />
 }
@@ -58,18 +48,14 @@ function OtherWalletsIcon() {
  */
 function getIcon({
   wallet,
-  isEmbeddedWalletEnabled,
   themeColors,
 }: {
   wallet: ExternalWallet
-  isEmbeddedWalletEnabled: boolean
   themeColors: UseSporeColorsReturn
 }) {
-  const iconSize = isEmbeddedWalletEnabled ? iconSizes.icon32 : iconSizes.icon40
+  const iconSize = iconSizes.icon40
 
-  if (wallet.id === CONNECTION_PROVIDER_IDS.EMBEDDED_WALLET_CONNECTOR_ID) {
-    return <EmbeddedWalletIcon />
-  } else if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID) {
+  if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID) {
     return <UniswapBrandedIcon size={iconSize} />
   } else if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_EXTENSION_RDNS) {
     return <UniswapBrandedIcon size={iconSize} withChromeBadge />
@@ -95,8 +81,6 @@ function getIcon({
 function getConnectorText({ wallet, t }: { wallet: ExternalWallet; t: ReturnType<typeof useTranslation>['t'] }) {
   if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID) {
     return t('common.uniswapMobile')
-  } else if (wallet.id === CONNECTION_PROVIDER_IDS.EMBEDDED_WALLET_CONNECTOR_ID) {
-    return t('account.passkey.log.in.title')
   } else {
     return wallet.name
   }
@@ -131,7 +115,6 @@ export function WalletConnectorOption({
   rightSideDetail?: JSX.Element | null
 }) {
   const { t } = useTranslation()
-  const isEmbeddedWalletEnabled = useFeatureFlag(FeatureFlags.EmbeddedWallet)
 
   const { connectWallet, pendingWallet } = useConnectWallet()
 
@@ -141,7 +124,7 @@ export function WalletConnectorOption({
   const isRecent = Boolean(recentConnectorId && wallet.id === recentConnectorId)
 
   const themeColors = useSporeColors()
-  const icon = getIcon({ wallet, isEmbeddedWalletEnabled, themeColors })
+  const icon = getIcon({ wallet, themeColors })
   const text = getConnectorText({ wallet, t })
   const isDetected = useIsInjectedWallet(wallet.id)
   // TODO(WEB-4173): Remove isIFrame check when we can update wagmi to version >= 2.9.4
@@ -214,8 +197,6 @@ function WalletConnectorOptionBase({
     wallet_type: string
   }
 }) {
-  const isEmbeddedWalletEnabled = useFeatureFlag(FeatureFlags.EmbeddedWallet)
-
   return (
     <Trace
       logPress
@@ -231,7 +212,7 @@ function WalletConnectorOptionBase({
         justifyContent="space-between"
         position="relative"
         px="$spacing12"
-        py={isEmbeddedWalletEnabled ? '$spacing12' : '$spacing18'}
+        py="$spacing18"
         cursor={isDisabled ? 'auto' : 'pointer'}
         hoverStyle={{ backgroundColor: isDisabled ? '$surface2' : '$surface2Hovered' }}
         opacity={isDisabled && !isPendingConnection ? 0.5 : 1}

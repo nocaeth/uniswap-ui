@@ -27,8 +27,6 @@ const defaultProps = {
   onClose: noop,
   openLanguageSettings: noop,
   openLocalCurrencySettings: noop,
-  openPasskeySettings: noop,
-  openRecoveryPhraseSettings: noop,
   openPortfolioBalanceSettings: noop,
   openStorageSettings: noop,
   openNetworkCostSettings: noop,
@@ -45,7 +43,7 @@ describe('SettingsMenu', () => {
     expect(container).toMatchSnapshot()
   })
 
-  it('renders for embedded wallet user (Login Methods + Log out visible)', () => {
+  it('renders for embedded wallet user (Log out visible)', () => {
     mocked(useIsEmbeddedWallet).mockReturnValue(true)
     const { container } = render(<SettingsMenu {...defaultProps} />)
     expect(container).toMatchSnapshot()
