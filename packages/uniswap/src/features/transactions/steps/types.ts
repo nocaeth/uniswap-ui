@@ -23,8 +23,6 @@ import type {
 import type { UniswapXSwapSteps } from 'uniswap/src/features/transactions/swap/steps/uniswapxSteps'
 import type { SetCurrentStepFn } from 'uniswap/src/features/transactions/swap/types/swapCallback'
 import type { BridgeTrade, ChainedActionTrade, ClassicTrade } from 'uniswap/src/features/transactions/swap/types/trade'
-import type { ToucanBidTransactionStep } from 'uniswap/src/features/transactions/toucan/steps/submitBid'
-import type { ToucanWithdrawBidAndClaimTokensTransactionStep } from 'uniswap/src/features/transactions/toucan/steps/withdrawBidAndClaimTokens'
 import type { TransactionTypeInfo } from 'uniswap/src/features/transactions/types/transactionDetails'
 import type { ValidatedTransactionRequest } from 'uniswap/src/features/transactions/types/transactionRequests'
 
@@ -54,8 +52,6 @@ export enum TransactionStepType {
   MigratePositionTransactionWalletCall = 'MigratePositionTransactionWalletCall',
   CollectFeesTransactionStep = 'CollectFeesTransaction',
   CollectLpIncentiveRewardsTransactionStep = 'CollectLpIncentiveRewardsTransactionStep',
-  ToucanBidTransactionStep = 'ToucanBidTransactionStep',
-  ToucanWithdrawBidAndClaimTokensTransactionStep = 'ToucanWithdrawBidAndClaimTokensTransactionStep',
 }
 
 // TODO: add v4 lp flow
@@ -70,8 +66,6 @@ export type TransactionStep =
   | CollectLpIncentiveRewardsSteps
   | WrapTransactionStep
   | WrapTransactionStepWalletCall
-  | ToucanBidTransactionStep
-  | ToucanWithdrawBidAndClaimTokensTransactionStep
 export type OnChainTransactionStep = TransactionStep & OnChainTransactionFields
 export type OnChainTransactionStepWalletCall = TransactionStep & OnChainTransactionFieldsWalletCall
 export type SignatureTransactionStep = TransactionStep & SignTypedDataStepFields

@@ -92,8 +92,6 @@ const StaticTitlesAndDescriptions = {
   MigrateDescriptionV4: i18n.t('title.easilyRemoveV4'),
   AddLiquidityDescription: i18n.t('title.earnFees'),
   PasskeyManagementTitle: i18n.t('title.managePasskeys'),
-  ToucanAuctionDescription: i18n.t('title.bidOnTokensInAuctions'),
-  ToucanLaunchAuctionDescription: i18n.t('title.launchTokenAuction'),
 }
 
 export interface RouteDefinition {

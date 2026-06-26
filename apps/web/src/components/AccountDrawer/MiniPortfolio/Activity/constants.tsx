@@ -54,16 +54,6 @@ const getTransactionTitleTable = (): {
     [TransactionStatus.Success]: i18n.t('common.sent'),
     [TransactionStatus.Failed]: i18n.t('common.send.failed'),
   },
-  [TransactionType.ToucanBid]: {
-    [TransactionStatus.Pending]: i18n.t('transaction.status.submitBid.pending'),
-    [TransactionStatus.Success]: i18n.t('transaction.status.submitBid.success'),
-    [TransactionStatus.Failed]: i18n.t('transaction.status.submitBid.failed'),
-  },
-  [TransactionType.ToucanWithdrawBidAndClaimTokens]: {
-    [TransactionStatus.Pending]: i18n.t('transaction.status.withdrawBid.pending'),
-    [TransactionStatus.Success]: i18n.t('transaction.status.withdrawBid.success'),
-    [TransactionStatus.Failed]: i18n.t('transaction.status.withdrawBid.failed'),
-  },
   [TransactionType.Receive]: {
     [TransactionStatus.Pending]: i18n.t('transaction.status.receive.pending'),
     [TransactionStatus.Success]: i18n.t('common.received'),
@@ -184,26 +174,6 @@ const getTransactionTitleTable = (): {
     [TransactionStatus.Success]: i18n.t('transaction.status.swap.success'),
     [TransactionStatus.Failed]: i18n.t('transaction.status.plan.interruptedShort'),
   },
-  [TransactionType.AuctionBid]: {
-    [TransactionStatus.Pending]: i18n.t('transaction.status.submitBid.pending'),
-    [TransactionStatus.Success]: i18n.t('transaction.status.submitBid.success'),
-    [TransactionStatus.Failed]: i18n.t('transaction.status.submitBid.failed'),
-  },
-  [TransactionType.AuctionClaimed]: {
-    [TransactionStatus.Pending]: i18n.t('common.claiming'),
-    [TransactionStatus.Success]: i18n.t('common.claimed'),
-    [TransactionStatus.Failed]: i18n.t('common.claim.failed'),
-  },
-  [TransactionType.AuctionExited]: {
-    [TransactionStatus.Pending]: i18n.t('transaction.status.withdrawBid.pending'),
-    [TransactionStatus.Success]: i18n.t('transaction.status.withdrawBid.success'),
-    [TransactionStatus.Failed]: i18n.t('transaction.status.withdrawBid.failed'),
-  },
-  [TransactionType.AuctionLaunch]: {
-    [TransactionStatus.Pending]: i18n.t('toucan.createAuction.transaction.pending'),
-    [TransactionStatus.Success]: i18n.t('toucan.createAuction.transaction.success'),
-    [TransactionStatus.Failed]: i18n.t('toucan.createAuction.transaction.failed'),
-  },
   [TransactionType.Withdraw]: {
     [TransactionStatus.Pending]: i18n.t('transaction.status.withdraw.pending'),
     [TransactionStatus.Success]: i18n.t('transaction.status.withdraw.success'),
@@ -259,8 +229,6 @@ export const getCancelledTransactionTitleTable = (): { [key in TransactionType]:
   [TransactionType.ClaimUni]: i18n.t('transaction.status.claim.canceled'),
   [TransactionType.LPIncentivesClaimRewards]: i18n.t('pool.incentives.collectRewardsCanceled'),
   [TransactionType.Send]: i18n.t('transaction.status.send.canceled'),
-  [TransactionType.ToucanBid]: i18n.t('transaction.status.submitBid.canceled'),
-  [TransactionType.ToucanWithdrawBidAndClaimTokens]: i18n.t('transaction.status.withdrawBid.canceled'),
   [TransactionType.MigrateLiquidityV2ToV3]: i18n.t('transaction.status.migrateLiquidity.canceled'),
   [TransactionType.LiquidityIncrease]: i18n.t('common.add.liquidity.canceled'),
   [TransactionType.LiquidityDecrease]: i18n.t('common.remove.liquidity.canceled'),
@@ -286,10 +254,6 @@ export const getCancelledTransactionTitleTable = (): { [key in TransactionType]:
   [TransactionType.CreatePosition]: i18n.t('pool.createdPosition.canceled'),
   [TransactionType.UniswapXOrder]: i18n.t('transaction.status.swap.canceled'),
   [TransactionType.RemoveDelegation]: i18n.t('transaction.status.removeDelegation.canceled'),
-  [TransactionType.AuctionBid]: i18n.t('transaction.status.submitBid.canceled'),
-  [TransactionType.AuctionClaimed]: i18n.t('transaction.status.claim.canceled'),
-  [TransactionType.AuctionExited]: i18n.t('transaction.status.withdrawBid.canceled'),
-  [TransactionType.AuctionLaunch]: i18n.t('toucan.createAuction.transaction.canceled'),
   [TransactionType.Withdraw]: i18n.t('transaction.status.withdraw.canceled'),
 })
 

@@ -112,7 +112,7 @@ export function getTransactionTypeFilterOptions(t: AppTFunction): Record<string,
 export function getTransactionTypesForFilter(filterType: string): TransactionType[] | 'all' {
   switch (filterType) {
     case ActivityFilterType.Sends:
-      return [TransactionType.Send, TransactionType.Deposit, TransactionType.ToucanBid]
+      return [TransactionType.Send, TransactionType.Deposit]
     case ActivityFilterType.Receives:
       return [TransactionType.Receive]
     case ActivityFilterType.Swaps:

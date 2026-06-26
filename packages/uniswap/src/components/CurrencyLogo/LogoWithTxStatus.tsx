@@ -99,7 +99,6 @@ export function LogoWithTxStatus(props: LogoWithTxStatusProps): JSX.Element {
         Icon = Approve
         break
       case TransactionType.Send:
-      case TransactionType.ToucanBid:
       case TransactionType.OffRampSale:
         Icon = ArrowUpInCircle
         break

@@ -3,12 +3,6 @@ import { GraphQLApi } from '@universe/api'
 interface TokenData {
   symbol: string
 }
-interface AuctionData {
-  tokenName: string
-  tokenSymbol: string
-  tokenLogoUrl?: string
-  currencySymbol?: string
-}
 interface PoolData {
   token0Symbol?: string
   token1Symbol?: string
@@ -27,7 +21,6 @@ export interface Data {
   description?: string
   name?: string
   ogImage?: string
-  auctionData?: AuctionData
   poolData?: PoolData
   tokenData?: TokenData
   positionStatus?: PositionStatus

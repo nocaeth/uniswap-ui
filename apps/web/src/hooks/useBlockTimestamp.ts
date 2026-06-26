@@ -64,8 +64,8 @@ export function useBlockTimestamp({
 
   const result = isPastBlock ? pastBlock?.timestamp : estimatedFutureTimestamp
 
-  // Reset cached timestamp when target blockNumber changes (e.g., navigating between auctions)
-  // This prevents stale cached values from a previous auction being used
+  // Reset cached timestamp when target blockNumber changes (e.g., navigating between pages)
+  // This prevents stale cached values from a previous target block being used
   if (cachedForBlockRef.current !== blockNumber) {
     previousTimestampRef.current = undefined
     cachedForBlockRef.current = blockNumber

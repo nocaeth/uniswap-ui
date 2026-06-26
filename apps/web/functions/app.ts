@@ -1,5 +1,4 @@
 import { Environment } from '@universe/config'
-import { auctionImageHandler } from 'functions/api/image/auctions'
 import { poolImageHandler } from 'functions/api/image/pools'
 import { positionImageHandler } from 'functions/api/image/positions'
 import { tokenImageHandler } from 'functions/api/image/tokens'
@@ -99,8 +98,6 @@ export function createApp({ fetchSpaHtml, getEntryGatewayUrl, getWebSocketUrl, g
   app.get('/api/image/tokens/:networkName/:tokenAddress', cacheControl(604800), tokenImageHandler)
 
   app.get('/api/image/pools/:networkName/:poolAddress', cacheControl(604800), poolImageHandler)
-
-  app.get('/api/image/auctions/:chainName/:auctionAddress', cacheControl(604800), auctionImageHandler)
 
   app.get('/api/image/positions/:version/:chainName/:identifier', cacheControl(604800), positionImageHandler)
 

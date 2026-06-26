@@ -7,7 +7,7 @@ type HeaderLayoutMedia = Partial<Pick<MediaQueryState, 'sm' | 'md'>>
 
 /**
  * Resolves header logo size from sticky collapsible header state and viewport.
- * Used by token/pool/auction headers and skeletons for consistent sizing.
+ * Used by token/pool headers and skeletons for consistent sizing.
  */
 export function getHeaderLogoSize({ isCompact, media }: { isCompact: boolean; media: HeaderLayoutMedia }): number {
   // if small breakpoint, return fixed small size

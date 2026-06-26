@@ -98,12 +98,6 @@ export const createUniverseTransaction = ({
     case TransactionType.Approve:
     case TransactionType.ClaimUni:
     case TransactionType.LPIncentivesClaimRewards:
-    case TransactionType.ToucanBid:
-    case TransactionType.ToucanWithdrawBidAndClaimTokens:
-    case TransactionType.AuctionBid:
-    case TransactionType.AuctionClaimed:
-    case TransactionType.AuctionExited:
-    case TransactionType.AuctionLaunch:
     case TransactionType.Permit2Approve:
       return { ...baseTransaction, ...info } as UniswapTransactionDetails
     // NFT and other transaction types that don't need special mapping

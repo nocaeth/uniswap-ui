@@ -245,8 +245,8 @@ describe('urls', () => {
     it('builds an article URL without a section', async () => {
       mockEnvironmentAndPlatform(envConfigs.webProd)
       const { createHelpArticleUrl } = await import('./urls')
-      expect(createHelpArticleUrl('46569604134157-Launching-a-Continuous-Clearing-Auction')).toBe(
-        'https://support.uniswap.org/hc/en-us/articles/46569604134157-Launching-a-Continuous-Clearing-Auction?product_link=web',
+      expect(createHelpArticleUrl('12345-Example-Article')).toBe(
+        'https://support.uniswap.org/hc/en-us/articles/12345-Example-Article?product_link=web',
       )
     })
 
@@ -254,11 +254,11 @@ describe('urls', () => {
       mockEnvironmentAndPlatform(envConfigs.webProd)
       const { createHelpArticleUrl } = await import('./urls')
       expect(
-        createHelpArticleUrl('46569604134157-Launching-a-Continuous-Clearing-Auction', {
-          section: 'set-your-auction-details',
+        createHelpArticleUrl('12345-Example-Article', {
+          section: 'example-section',
         }),
       ).toBe(
-        'https://support.uniswap.org/hc/en-us/articles/46569604134157-Launching-a-Continuous-Clearing-Auction?product_link=web#set-your-auction-details',
+        'https://support.uniswap.org/hc/en-us/articles/12345-Example-Article?product_link=web#example-section',
       )
     })
 
@@ -267,10 +267,10 @@ describe('urls', () => {
       const { createHelpArticleUrl } = await import('./urls')
       expect(
         createHelpArticleUrl('123', {
-          section: 'configure-the-liquidity-pool-your-auction-will-seed-into-at-the-end',
+          section: 'example-section',
         }),
       ).toBe(
-        'https://support.uniswap.org/hc/en-us/articles/123?product_link=mobileApp#configure-the-liquidity-pool-your-auction-will-seed-into-at-the-end',
+        'https://support.uniswap.org/hc/en-us/articles/123?product_link=mobileApp#example-section',
       )
     })
   })
