@@ -167,7 +167,6 @@ export function TDPSwapComponent() {
             initialOutputCurrency={initialOutputCurrency}
             onCurrencyChange={handleCurrencyChange}
             tokenColor={tokenColor}
-            tdpCurrency={swapCurrency}
           />
         </UniswapContext.Provider>
       </div>

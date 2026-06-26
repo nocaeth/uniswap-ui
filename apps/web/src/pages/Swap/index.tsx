@@ -13,9 +13,7 @@ import { useUniswapContext } from 'uniswap/src/contexts/UniswapContext'
 import { useIsModeMismatch } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
-import { RampDirection } from 'uniswap/src/features/fiatOnRamp/types'
 import { ShowGetStartedProvider } from 'uniswap/src/features/passkey/ShowGetStartedContext'
-import { WebFORNudgeProvider } from 'uniswap/src/features/providers/webForNudgeProvider'
 import { InterfaceEventName, InterfacePageName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import Trace from 'uniswap/src/features/telemetry/Trace'
@@ -37,7 +35,6 @@ import type { CurrencyState } from '~/features/Swap/state/types'
 import { useSwapAndLimitContext } from '~/features/Swap/state/useSwapContext'
 import { PAGE_WRAPPER_MAX_WIDTH, PageWrapper, SwapModuleWrapper } from '~/features/Swap/styled'
 import { useHasInjectedWallets } from '~/features/wallet/connection/hooks/useOrderedWalletConnectors'
-import { useDeferredComponent } from '~/hooks/useDeferredComponent'
 import { PageType, useIsPage } from '~/hooks/useIsPage'
 import { SlideoutChartCard } from '~/pages/Swap/Swap/SlideoutChartCard/SlideoutChartCard'
 import { useInitialCurrencyState } from '~/pages/Swap/Swap/state/hooks'
@@ -82,17 +79,15 @@ export function SwapPage() {
   return (
     <Trace logImpression page={InterfacePageName.SwapPage}>
       <PageWrapper>
-        <WebFORNudgeProvider>
-          <Swap
-            initialInputChainId={initialInputChainId}
-            initialInputCurrency={initialInputCurrency}
-            initialOutputCurrency={initialOutputCurrency}
-            initialOutputChainId={initialOutputChainId}
-            initialTypedValue={initialTypedValue}
-            initialIndependentField={initialField}
-            syncTabToUrl={true}
-          />
-        </WebFORNudgeProvider>
+        <Swap
+          initialInputChainId={initialInputChainId}
+          initialInputCurrency={initialInputCurrency}
+          initialOutputCurrency={initialOutputCurrency}
+          initialOutputChainId={initialOutputChainId}
+          initialTypedValue={initialTypedValue}
+          initialIndependentField={initialField}
+          syncTabToUrl={true}
+        />
       </PageWrapper>
     </Trace>
   )
@@ -118,7 +113,6 @@ export function Swap({
   syncTabToUrl,
   swapRedirectCallback,
   tokenColor,
-  tdpCurrency,
 }: {
   initialInputChainId?: UniverseChainId
   onCurrencyChange?: (selected: CurrencyState) => void
@@ -133,8 +127,6 @@ export function Swap({
   swapRedirectCallback?: SwapRedirectFn
   tokenColor?: string
   passkeyAuthStatus?: PasskeyAuthStatus
-  /** When Swap is embedded in Token Details Page, pass the TDP token currency for Buy/Sell prefill */
-  tdpCurrency?: Currency
 }) {
   const { isSwapTokenSelectorOpen, swapOutputChainId } = useUniswapContext()
   const media = useMedia()
@@ -185,7 +177,6 @@ export function Swap({
                     onCurrencyChange={onCurrencyChange}
                     prefilledState={prefilledState}
                     tokenColor={tokenColor}
-                    tdpCurrency={tdpCurrency}
                   />
                 </Flex>
               </SwapFormStoreContextProvider>
@@ -220,27 +211,21 @@ function isChartEligibleTab(tab: SwapTab): boolean {
 function UniversalSwapFlow({
   hideHeader = false,
   hideFooter = false,
-  disableTokenInputs = false,
   syncTabToUrl = true,
   prefilledState,
   onCurrencyChange,
   swapRedirectCallback,
   tokenColor,
-  tdpCurrency,
 }: {
   hideHeader?: boolean
   hideFooter?: boolean
   syncTabToUrl?: boolean
-  disableTokenInputs?: boolean
   prefilledState?: SwapFormState
   onCurrencyChange?: (selected: CurrencyState, isBridgePair?: boolean) => void
   swapRedirectCallback?: SwapRedirectFn
   tokenColor?: string
-  /** When Swap is embedded in TDP, the TDP token currency for Buy/Sell prefill */
-  tdpCurrency?: Currency
 }) {
   const { currentTab, setCurrentTab } = useSwapAndLimitContext()
-  const tdpCurrencyAsset = currencyToAsset(tdpCurrency)
   const isDataLivelinessEnabled = useFeatureFlag(FeatureFlags.DataLivelinessUI)
   const [showChart, setShowChart] = useState(false)
   const [tabsRowHeight, setTabsRowHeight] = useState(0)
@@ -257,17 +242,6 @@ function UniversalSwapFlow({
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { t } = useTranslation()
-
-  const LimitFormWrapper = useDeferredComponent(() =>
-    import('~/pages/Swap/Limit/LimitForm').then((module) => ({
-      default: module.LimitFormWrapper,
-    })),
-  )
-  const BuyForm = useDeferredComponent(() =>
-    import('~/pages/Swap/Buy/BuyForm').then((module) => ({
-      default: module.BuyForm,
-    })),
-  )
 
   useEffect(() => {
     const tab = PATHNAME_TO_TAB[pathname] ?? SwapTab.Swap
@@ -376,21 +350,6 @@ function UniversalSwapFlow({
             swapRedirectCallback={swapRedirectCallback}
             tokenColor={tokenColor}
             onCurrencyPanelsLayout={isDataLivelinessEnabled ? onCurrencyPanelsLayout : undefined}
-          />
-        )}
-        {currentTab === SwapTab.Limit && LimitFormWrapper && <LimitFormWrapper onCurrencyChange={onCurrencyChange} />}
-        {currentTab === SwapTab.Buy && BuyForm && (
-          <BuyForm
-            rampDirection={RampDirection.ON_RAMP}
-            disabled={disableTokenInputs}
-            initialCurrency={tdpCurrencyAsset ?? prefilledState?.output}
-          />
-        )}
-        {currentTab === SwapTab.Sell && BuyForm && (
-          <BuyForm
-            rampDirection={RampDirection.OFF_RAMP}
-            disabled={disableTokenInputs}
-            initialCurrency={tdpCurrencyAsset ?? prefilledState?.output}
           />
         )}
       </SwapModuleWrapper>

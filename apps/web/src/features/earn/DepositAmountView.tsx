@@ -23,7 +23,7 @@ import {
 } from '~/components/NumericalInput/LargeAmountInput'
 import { DepositTokenSelector } from '~/features/earn/DepositTokenSelector'
 import { EarnAmountViewHeader } from '~/features/earn/EarnAmountViewHeader'
-import { PredefinedAmount } from '~/pages/Swap/Buy/PredefinedAmount'
+import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 
 const CHAR_WIDTH = 45
 const MAX_FONT_SIZE = 70

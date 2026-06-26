@@ -18,7 +18,7 @@ import {
   useRemoveLiquidityModalContext,
 } from '~/pages/RemoveLiquidity/RemoveLiquidityModalContext'
 import { useRemoveLiquidityTxContext } from '~/pages/RemoveLiquidity/RemoveLiquidityTxContext'
-import { PredefinedAmount } from '~/pages/Swap/Buy/PredefinedAmount'
+import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 
 const isValidPercentageInput = (value: string): boolean => {
   const numValue = Number(value)

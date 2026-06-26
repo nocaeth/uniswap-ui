@@ -1,4 +1,4 @@
-import { PredefinedAmount } from '~/pages/Swap/Buy/PredefinedAmount'
+import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 import { render, screen } from '~/test-utils/render'
 
 describe('PredefinedAmount', () => {

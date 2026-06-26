@@ -63,10 +63,6 @@ const ReceiveCryptoModal = createLazy(() =>
   import('~/components/ReceiveCryptoModal').then((module) => ({ default: module.ReceiveCryptoModal })),
 )
 
-const SendModal = createLazy(() =>
-  import('~/pages/Swap/Send/SendFormModal').then((module) => ({ default: module.SendFormModal })),
-)
-
 const BridgedAssetModal = createLazy(() =>
   import('uniswap/src/components/BridgedAsset/BridgedAssetModal').then((module) => ({
     default: module.BridgedAssetModal,
@@ -242,10 +238,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.ReceiveCryptoModal]: {
     component: ReceiveCryptoModal,
     shouldMount: () => true,
-  },
-  [ModalName.Send]: {
-    component: SendModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.Send,
   },
   [ModalName.BridgedAsset]: {
     component: BridgedAssetModal,
