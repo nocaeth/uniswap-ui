@@ -13,8 +13,7 @@ import {
   getPositionPageDescription,
   getPositionPageTitle,
 } from '~/pages/getPositionPageTitle'
-// High-traffic pages (index and /swap) should not be lazy-loaded.
-import { Landing } from '~/pages/Landing'
+// High-traffic page (/swap) should not be lazy-loaded.
 import { SwapPage } from '~/pages/Swap'
 import { isBrowserRouterEnabled } from '~/utils/env'
 
@@ -123,10 +122,15 @@ function createRouteDefinition(route: Partial<RouteDefinition>): RouteDefinition
 export const routes: RouteDefinition[] = [
   createRouteDefinition({
     path: '/',
-    getTitle: () => StaticTitlesAndDescriptions.UniswapTitle,
+    getTitle: () => StaticTitlesAndDescriptions.SwapTitle,
     getDescription: () => StaticTitlesAndDescriptions.SwapDescription,
+    // Gnosis-only build: no landing page. Go straight to swap (preserving any deep-link hash).
     getElement: (args) => {
-      return args.browserRouterEnabled && args.hash ? <Navigate to={args.hash.replace('#', '')} replace /> : <Landing />
+      return args.browserRouterEnabled && args.hash ? (
+        <Navigate to={args.hash.replace('#', '')} replace />
+      ) : (
+        <Navigate to="/swap" replace />
+      )
     },
   }),
   createRouteDefinition({
@@ -345,7 +349,7 @@ export const routes: RouteDefinition[] = [
     getTitle: () => StaticTitlesAndDescriptions.PasskeyManagementTitle,
     enabled: (args) => args.isEmbeddedWalletEnabled ?? false,
   }),
-  // Portfolio Pages
+  // Portfolio Pages (no nav entry — reachable only via "view address" links)
   createRouteDefinition({
     path: '/portfolio',
     getElement: () => <Portfolio />,

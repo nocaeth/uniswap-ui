@@ -5,14 +5,8 @@ import { CoinConvert } from 'ui/src/components/icons/CoinConvert'
 import { Compass } from 'ui/src/components/icons/Compass'
 import { Pools } from 'ui/src/components/icons/Pools'
 import { SwapDotted } from 'ui/src/components/icons/SwapDotted'
-import { Wallet } from 'ui/src/components/icons/Wallet'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
 import { MenuItem } from '~/components/NavBar/CompanyMenu/Content'
-import { PageType } from '~/hooks/useIsPage'
-import { usePortfolioRoutes } from '~/pages/Portfolio/Header/hooks/usePortfolioRoutes'
-import { PortfolioTab } from '~/pages/Portfolio/types'
-import { buildPortfolioUrl } from '~/pages/Portfolio/utils/portfolioUrls'
-import { EntryPointKind, resolveEntryPoint } from '~/utils/createPositionEntryPoint'
 
 export type TabsSection = {
   title: string
@@ -30,13 +24,8 @@ export type TabsItem = MenuItem & {
 
 export const useTabsContent = (): TabsSection[] => {
   const { t } = useTranslation()
-  const { pathname, search, state } = useLocation()
-  const { chainId: portfolioChainId, isExternalWallet } = usePortfolioRoutes()
-  const isPortfolioDefiTabEnabled = useFeatureFlag(FeatureFlags.PortfolioDefiTab)
-  const portfolioPoolsBalancesEnabled = useFeatureFlag(FeatureFlags.PortfolioPoolsBalances)
+  const { pathname } = useLocation()
   const isAddLiquidityRevamp = useFeatureFlag(FeatureFlags.AddLiquidityRevamp)
-  const entryPoint = resolveEntryPoint({ search, state })
-  const isPortfolioPoolsEntryPointActive = entryPoint.kind === EntryPointKind.PortfolioPools
 
   return [
     {
@@ -85,8 +74,7 @@ export const useTabsContent = (): TabsSection[] => {
     {
       title: t('common.pool'),
       href: '/positions',
-      isActive:
-        !isPortfolioPoolsEntryPointActive && (pathname.startsWith('/positions') || pathname.startsWith('/liquidity')),
+      isActive: pathname.startsWith('/positions') || pathname.startsWith('/liquidity'),
       icon: <Pools color="$accent1" size="$icon.20" />,
       elementName: ElementName.NavbarPoolTab,
       items: [
@@ -101,71 +89,6 @@ export const useTabsContent = (): TabsSection[] => {
           href: isAddLiquidityRevamp ? '/positions/add' : '/positions/create',
           internal: true,
           elementName: ElementName.NavbarPoolDropdownCreatePosition,
-        },
-      ],
-    },
-    {
-      title: t('common.portfolio'),
-      href: buildPortfolioUrl({
-        tab: PortfolioTab.Overview,
-        chainId: portfolioChainId,
-      }),
-      isActive: (pathname.startsWith(PageType.PORTFOLIO) && !isExternalWallet) || isPortfolioPoolsEntryPointActive,
-      icon: <Wallet color="$accent1" size="$icon.20" />,
-      elementName: ElementName.NavbarPortfolioTab,
-      items: [
-        {
-          label: t('portfolio.overview.title'),
-          href: buildPortfolioUrl({
-            tab: PortfolioTab.Overview,
-            chainId: portfolioChainId,
-          }),
-          internal: true,
-          elementName: ElementName.NavbarPortfolioDropdownOverview,
-        },
-        {
-          label: t('common.tokens'),
-          href: buildPortfolioUrl({
-            tab: PortfolioTab.Tokens,
-            chainId: portfolioChainId,
-          }),
-          internal: true,
-          elementName: ElementName.NavbarPortfolioDropdownTokens,
-        },
-        ...(portfolioPoolsBalancesEnabled
-          ? [
-              {
-                label: t('common.pools'),
-                href: buildPortfolioUrl({
-                  tab: PortfolioTab.Pools,
-                  chainId: portfolioChainId,
-                }),
-                internal: true,
-                elementName: ElementName.NavbarPortfolioDropdownPools,
-              },
-            ]
-          : []),
-        ...(isPortfolioDefiTabEnabled
-          ? [
-              {
-                label: t('portfolio.defi.title'),
-                href: buildPortfolioUrl({
-                  tab: PortfolioTab.Defi,
-                  chainId: portfolioChainId,
-                }),
-                internal: true,
-                elementName: ElementName.NavbarPortfolioDropdownDefi,
-              },
-            ]
-          : []),
-        {
-          label: t('common.activity'),
-          href: buildPortfolioUrl({
-            tab: PortfolioTab.Activity,
-            chainId: portfolioChainId,
-          }),
-          internal: true,
-          elementName: ElementName.NavbarPortfolioDropdownActivity,
         },
       ],
     },
