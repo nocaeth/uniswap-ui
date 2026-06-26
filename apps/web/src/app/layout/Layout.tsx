@@ -2,6 +2,7 @@ import { breakpoints } from 'ui/src/theme'
 import { Body } from '~/app/layout/Body'
 import { GRID_AREAS } from '~/app/layout/gridAreas'
 import { Header } from '~/app/layout/Header'
+import { OWL_FOUNTAIN_EVENT, OwlEffects } from '~/components/OwlEffects/OwlEffects'
 import { deprecatedStyled } from '~/lib/deprecated-styled'
 
 const AppContainer = deprecatedStyled.div`
@@ -32,6 +33,14 @@ const AppBody = deprecatedStyled.div`
   }
 `
 
+const OwlFooter = deprecatedStyled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 16px 0 28px;
+`
+
 export function AppLayout() {
   return (
     <AppContainer>
@@ -39,6 +48,18 @@ export function AppLayout() {
       <AppBody>
         <Body />
       </AppBody>
+      <OwlFooter>
+        <button
+          type="button"
+          className="owl-btn"
+          aria-label="Release the owls"
+          title="Release the owls"
+          onClick={() => window.dispatchEvent(new Event(OWL_FOUNTAIN_EVENT))}
+        >
+          🦉
+        </button>
+      </OwlFooter>
+      <OwlEffects />
     </AppContainer>
   )
 }
