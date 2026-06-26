@@ -57,6 +57,25 @@ export function cspMetaTagPlugin(mode?: string): Plugin {
         }
       }
 
+      // Self-hosted Gnosis deployments repoint the data/GraphQL layer at a custom
+      // host (the analytics adapter) via these overrides. Allow their origins in
+      // connect-src for ALL modes (dev reads .env.local; the Docker build passes
+      // them as process.env) so the browser can reach the adapter.
+      for (const overrideKey of ['API_BASE_URL_V2_OVERRIDE', 'GRAPHQL_URL_OVERRIDE']) {
+        const overrideValue = process.env[overrideKey] ?? getLocalEnvUrl(overrideKey)
+        if (!overrideValue) {
+          continue
+        }
+        try {
+          const origin = new URL(overrideValue).origin
+          if (!baseCSP.connectSrc.includes(origin)) {
+            baseCSP.connectSrc.push(origin)
+          }
+        } catch {
+          // ignore malformed override URLs
+        }
+      }
+
       // Transform the CSP content using the directive map
       const cspContent = Object.entries(baseCSP)
         .map(([key, values]) => {

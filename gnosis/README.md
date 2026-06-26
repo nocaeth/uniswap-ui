@@ -28,9 +28,8 @@ prices) does not serve Gnosis — so those pieces are replaced with self-hosted 
 | Dir            | Purpose |
 |----------------|---------|
 | `contracts/`   | Deploy the two missing contracts: **Permit2** (canonical) and **UniversalRouter**. |
-| `envio/`       | Envio HyperIndex indexer for Uniswap V3 on Gnosis (powers analytics). |
-| `adapter/`     | Service exposing Uniswap's Data API + GraphQL shapes on top of Envio. |
-| `docker-compose.yml` + `web.Dockerfile` | Run web + indexer + adapter together. |
+| `adapter/`     | Analytics service: backfills Gnosis V3 into SQLite via Envio HyperSync, then serves Uniswap's Data API (ConnectRPC) + GraphQL on top of it. |
+| `docker-compose.yml` + `web.Dockerfile` | Run web + analytics indexer + adapter together. |
 | `.env.gnosis.example` | All required env vars. |
 
 ### Swap routing (implemented)
@@ -43,17 +42,21 @@ is validated against live Gnosis (QuoterV2 + computePoolAddress). **Set
 `REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS`** after deploying UniversalRouter.
 
 ### Analytics (implemented)
-- Envio indexer: `gnosis/envio/` (config + schema + handlers skeleton).
-- Adapter service: `gnosis/adapter/` — implements the **ExploreStats ConnectRPC**
-  service (the Explore token + pool tables) on top of Envio, plus a GraphQL
-  endpoint for detail/charts. The protobuf mapping is validated against the
-  generated `@uniswap/client-explore` message classes.
+- Indexer: `gnosis/adapter/src/backfill.ts` reads Gnosis V3 (factory, pools,
+  swaps/mints/burns) directly over **Envio HyperSync** and writes a SQLite store
+  (`data/analytics.db`) — tokens/pools snapshots, daily/hourly rollups, recent
+  tx feed, with USD pricing (V3 spot from `sqrtPriceX96`, stables ≈ $1).
+- Adapter service: `gnosis/adapter/` — implements the **ExploreStats / ProtocolStats
+  ConnectRPC** services (Explore token + pool tables) and a **GraphQL** endpoint
+  (token/pool detail + charts + transactions) on top of that SQLite store. The
+  protobuf mapping is validated against the generated `@uniswap/client-explore`
+  message classes; the GraphQL endpoint loads the upstream schema SDL so the Apollo
+  cache works unchanged.
 - App side: set `API_BASE_URL_V2_OVERRIDE` / `GRAPHQL_URL_OVERRIDE` to the adapter;
   Gnosis rows are tagged `chain: 'GNOSIS'` and mapped via `fromGraphQLChain`.
 
-Remaining for analytics: flesh out the Envio handlers (USD pricing, rollups) and
-expand the adapter's GraphQL resolvers to cover all token/pool **detail** operations
-(the Explore landing tables already work via ConnectRPC).
+Refresh the data with `docker compose run --rm indexer` (or `bun run backfill` in
+`gnosis/adapter`). Widen the window with `INDEX_DAYS` for longer charts.
 
 ## Local dev
 

@@ -1,54 +1,38 @@
 # Self-hosted Gnosis-only Uniswap UI stack.
 #
-#   web      -> the built interface (this repo, apps/web)
-#   envio    -> Uniswap V3 Gnosis indexer (gnosis/envio) + its Postgres
-#   adapter  -> analytics adapter exposing Uniswap's Data API + GraphQL shapes
-#               on top of Envio, so the UI's Explore pages work unchanged
+#   indexer  -> one-shot backfill: reads Gnosis via Envio HyperSync and writes the
+#               analytics SQLite DB to a shared volume, then exits.
+#   adapter  -> long-running service exposing Uniswap's Data API (ConnectRPC) +
+#               GraphQL on top of that SQLite DB, so the UI's Explore/detail pages
+#               work unchanged. Starts only after the indexer has populated the DB.
+#   web      -> the built interface (this repo, apps/web), served by nginx.
 #
 # Copy .env.gnosis.example -> .env and fill values before `docker compose up`.
+# Refresh analytics later with: `docker compose run --rm indexer`.
 services:
-  envio-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: envio
-      POSTGRES_PASSWORD: envio
-      POSTGRES_DB: envio
-    volumes:
-      - envio-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U envio']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  envio:
-    # Built from the Envio project in gnosis/envio (run `envio init`/`envio codegen`
-    # there first; Envio generates its own Dockerfile, or use the envio CLI image).
+  indexer:
     build:
-      context: ./envio
-    depends_on:
-      envio-db:
-        condition: service_healthy
+      context: ./adapter
+    command: ['bun', 'src/backfill.ts']
     environment:
-      ENVIO_PG_HOST: envio-db
-      ENVIO_PG_PORT: '5432'
-      ENVIO_PG_USER: envio
-      ENVIO_PG_PASSWORD: envio
-      ENVIO_PG_DATABASE: envio
-      ENVIO_GNOSIS_RPC_URL: ${ENVIO_GNOSIS_RPC_URL}
-    ports:
-      - '8080:8080' # Envio's Hasura GraphQL (raw entity API)
+      # HyperSync auth token (free tier rate-limits without one). In .zshrc as ENVIO_API_TOKEN.
+      ENVIO_API_TOKEN: ${ENVIO_API_TOKEN}
+      RPC_GNOSIS: ${RPC_GNOSIS:-https://rpc.gnosischain.com}
+      # Optional indexing windows (defaults: 30d rollups / 7d tx feed).
+      INDEX_DAYS: ${INDEX_DAYS:-30}
+      TX_DAYS: ${TX_DAYS:-7}
+    volumes:
+      - analytics-data:/data
+    restart: 'no'
 
   adapter:
-    # Translates the UI's Uniswap Data API (ConnectRPC) + GraphQL contract into
-    # queries against Envio. See gnosis/adapter/README.md for the endpoints to
-    # implement. Replace `build.context` once the adapter service is written.
     build:
       context: ./adapter
     depends_on:
-      - envio
-    environment:
-      ENVIO_GRAPHQL_URL: http://envio:8080/v1/graphql
+      indexer:
+        condition: service_completed_successfully
+    volumes:
+      - analytics-data:/data
     ports:
       - '8081:8081'
 
@@ -56,14 +40,18 @@ services:
     build:
       context: ..
       dockerfile: gnosis/web.Dockerfile
+      # Vite bakes env at build time, so the override values must be build args
+      # (passing them as runtime `environment:` has no effect on a static bundle).
+      args:
+        API_BASE_URL_V2_OVERRIDE: ${API_BASE_URL_V2_OVERRIDE}
+        GRAPHQL_URL_OVERRIDE: ${GRAPHQL_URL_OVERRIDE}
+        REACT_APP_WALLET_CONNECT_PROJECT_ID: ${REACT_APP_WALLET_CONNECT_PROJECT_ID}
+        REACT_APP_GNOSIS_RPC_URL: ${REACT_APP_GNOSIS_RPC_URL}
+        REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS: ${REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS}
     depends_on:
       - adapter
-    environment:
-      REACT_APP_WALLET_CONNECT_PROJECT_ID: ${REACT_APP_WALLET_CONNECT_PROJECT_ID}
-      API_BASE_URL_V2_OVERRIDE: ${API_BASE_URL_V2_OVERRIDE}
-      GRAPHQL_URL_OVERRIDE: ${GRAPHQL_URL_OVERRIDE}
     ports:
       - '3000:80'
 
 volumes:
-  envio-pgdata:
+  analytics-data:

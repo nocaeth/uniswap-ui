@@ -1,0 +1,32 @@
+# Build context for the web image. Takes precedence over the repo-root
+# .dockerignore (which is scoped to other images and excludes apps/web).
+# NOTE: keep apps/web AND .git — vite.config.mts runs `git rev-parse HEAD` at
+# config load, so the build fails without the git metadata.
+
+# Dependencies (reinstalled in the image)
+**/node_modules
+
+# Build outputs (rebuilt in the image)
+**/build
+**/dist
+**/.vercel
+**/.nx
+**/.turbo
+**/*.tsbuildinfo
+
+# Apps not needed to build the web bundle
+apps/mobile
+apps/extension
+apps/cli
+
+# Local-only env overrides (deployment values come via build args)
+**/.env.local
+**/.env.*.local
+
+# Tests / tooling noise
+**/coverage
+**/__mocks__
+**/.storybook
+**/storybook-static
+**/.DS_Store
+*.log
