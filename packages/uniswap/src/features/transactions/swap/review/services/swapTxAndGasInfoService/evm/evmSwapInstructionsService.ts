@@ -23,8 +23,8 @@ import {
   createLegacyEVMSwapRepository,
 } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/evm/evmSwapRepository'
 import type { PresignPermitFn } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/evm/hooks'
-import { createGnosisEVMSwapRepository } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/gnosisSwapRepository'
 import { createPrepareSwapRequestParams } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/utils'
+import { createGnosisEVMSwapRepository } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/gnosisSwapRepository'
 import { ApprovalAction } from 'uniswap/src/features/transactions/swap/types/trade'
 import { tradingApiToUniverseChainId } from 'uniswap/src/features/transactions/swap/utils/tradingApi'
 

@@ -1,5 +1,6 @@
 import { Token } from '@uniswap/sdk-core'
 import { GraphQLApi, TradingApi } from '@universe/api'
+import { SwapConfigKey } from '@universe/gating'
 import { GNOSIS_LOGO } from 'ui/src/assets'
 import { CHAIN_ID_TO_URL_PARAM } from 'uniswap/src/features/chains/chainUrlParam'
 import { DEFAULT_NATIVE_ADDRESS_LEGACY, DEFAULT_RETRY_OPTIONS } from 'uniswap/src/features/chains/evm/rpc'
@@ -13,7 +14,6 @@ import {
 } from 'uniswap/src/features/chains/types'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
-import { SwapConfigKey } from '@universe/gating'
 import { gnosis } from 'wagmi/chains'
 
 // Wrapped native (WXDAI) doubles as the most liquid USD stablecoin on Gnosis, so it

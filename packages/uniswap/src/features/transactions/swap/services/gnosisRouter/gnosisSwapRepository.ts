@@ -3,12 +3,12 @@ import { Percent, TradeType } from '@uniswap/sdk-core'
 import { RouterTradeAdapter, SwapRouter } from '@uniswap/universal-router-sdk'
 import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { GNOSIS_UNIVERSAL_ROUTER_ADDRESS } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import type {
   EVMSwapRepository,
   SwapData,
   SwapRequestParams,
 } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/evm/evmSwapRepository'
+import { GNOSIS_UNIVERSAL_ROUTER_ADDRESS } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 
 const DEFAULT_SLIPPAGE_PERCENT = 0.5
 const DEADLINE_SECONDS = 60 * 30

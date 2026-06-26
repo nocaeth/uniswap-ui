@@ -4,7 +4,6 @@ import { PollingInterval } from 'uniswap/src/constants/misc'
 import { ALL_CHAIN_IDS } from 'uniswap/src/features/chains/chainInfo'
 import { GNOSIS_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/gnosis'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import {
   chainIdToHexadecimalString,
   fromGraphQLChain,
@@ -15,6 +14,7 @@ import {
   toSupportedChainId,
   toUniswapWebAppLink,
 } from 'uniswap/src/features/chains/utils'
+import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 
 describe(toSupportedChainId, () => {
   it('handles undefined input', () => {

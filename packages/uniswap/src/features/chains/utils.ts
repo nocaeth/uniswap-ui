@@ -293,9 +293,9 @@ export function getEnabledChains({
 
 function getDefaultChainId({
   platform,
-  isTestnetModeEnabled,
 }: {
   platform?: Platform
+  // Accepted for call-site compatibility; ignored in the Gnosis-only deployment.
   isTestnetModeEnabled: boolean
 }): UniverseChainId {
   if (platform === Platform.SVM) {
