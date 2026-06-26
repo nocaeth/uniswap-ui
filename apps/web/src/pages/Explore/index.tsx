@@ -23,7 +23,6 @@ import {
   EXPLORE_STICKY_SCROLL_OFFSET_PX,
   EXPLORE_TOKEN_SECTION_ID,
 } from '~/pages/Explore/categories/useExploreCategory'
-import { ExploreAssetShelfSection, ExploreCategoryTablesOrPage } from '~/pages/Explore/ExploreAssetsIntegration'
 import { ExploreStatsSection } from '~/pages/Explore/ExploreStatsSection'
 import { TableNetworkFilter } from '~/pages/Explore/NetworkFilter'
 import { ProtocolFilter } from '~/pages/Explore/ProtocolFilter'
@@ -130,15 +129,9 @@ const Explore = ({ initialTab }: { initialTab?: ExploreTab }) => {
     return key
   }, [initialTab, Pages])
 
-  // Gnosis-only: RWA Explore surfaces (table + carousel) are gated by these flags, which
-  // are off by default in this deployment (no Statsig gate enables them on Gnosis).
-  const isExploreTableEnabled = useFeatureFlag(FeatureFlags.RWAUXExplore)
-  const isExploreCarouselEnabled = useFeatureFlag(FeatureFlags.RWAUXExploreCarousel)
-
   // scroll to tab navbar on initial page mount only
-  // skip when the asset shelf is shown — the shelf is the hero content and shouldn't be scrolled past
   useEffect(() => {
-    if (tabNavRef.current && initialTab && !(isExploreCarouselEnabled && initialTab === ExploreTab.Tokens)) {
+    if (tabNavRef.current && initialTab) {
       const offsetTop = tabNavRef.current.getBoundingClientRect().top + window.scrollY
       window.scrollTo({ top: offsetTop - EXPLORE_STICKY_SCROLL_OFFSET_PX, behavior: 'smooth' })
     }
@@ -180,8 +173,6 @@ const Explore = ({ initialTab }: { initialTab?: ExploreTab }) => {
   const { isTestnetModeEnabled } = useEnabledChains()
   const isEarnEnabled = useFeatureFlag(FeatureFlags.Earn)
   const showEarnSection = isEarnEnabled && !isTestnetModeEnabled
-  const showAssetShelf = isExploreCarouselEnabled
-  const showExploreCategoryTables = isExploreTableEnabled && currentKey === ExploreTab.Tokens
 
   useEffect(() => {
     // We only support the Tokens tab on Solana; redirect if the current tab is not the Tokens tab on Solana.
@@ -222,13 +213,12 @@ const Explore = ({ initialTab }: { initialTab?: ExploreTab }) => {
                 <EarnVaultsSection />
               </Flex>
             )}
-            {showAssetShelf && <ExploreAssetShelfSection />}
             <Flex
               ref={tabNavRef}
               id={EXPLORE_TOKEN_SECTION_ID}
               row
               maxWidth={MAX_WIDTH_MEDIA_BREAKPOINT}
-              mt={showAssetShelf ? '$none' : isSolanaChain ? 36 : showEarnSection ? '$spacing40' : 80}
+              mt={isSolanaChain ? 36 : showEarnSection ? '$spacing40' : 80}
               mx="auto"
               mb="$spacing4"
               $md={{
@@ -291,31 +281,29 @@ const Explore = ({ initialTab }: { initialTab?: ExploreTab }) => {
                   )
                 })}
               </Flex>
-              {!showExploreCategoryTables && (
-                <Flex row gap="$spacing8" justifyContent="flex-start" $md={{ width: '100%' }}>
-                  {currentKey === ExploreTab.Pools && (
-                    <Flex row>
-                      <Button
-                        size="small"
-                        icon={<Plus />}
-                        onPress={() =>
-                          navigate(isAddLiquidityRevampEnabled ? '/positions/add' : '/positions/create', {
-                            state: { entryPoint: '/explore/pools' },
-                          })
-                        }
-                      >
-                        {media.sm ? t('common.new') : t('pool.newPosition.title')}
-                      </Button>
-                    </Flex>
-                  )}
-                  <TableNetworkFilter />
-                  {currentKey === ExploreTab.Tokens && <VolumeTimeFrameSelector />}
-                  {currentKey === ExploreTab.Pools && <ProtocolFilter />}
-                  <SearchBar tab={currentKey} />
-                </Flex>
-              )}
+              <Flex row gap="$spacing8" justifyContent="flex-start" $md={{ width: '100%' }}>
+                {currentKey === ExploreTab.Pools && (
+                  <Flex row>
+                    <Button
+                      size="small"
+                      icon={<Plus />}
+                      onPress={() =>
+                        navigate(isAddLiquidityRevampEnabled ? '/positions/add' : '/positions/create', {
+                          state: { entryPoint: '/explore/pools' },
+                        })
+                      }
+                    >
+                      {media.sm ? t('common.new') : t('pool.newPosition.title')}
+                    </Button>
+                  </Flex>
+                )}
+                <TableNetworkFilter />
+                {currentKey === ExploreTab.Tokens && <VolumeTimeFrameSelector />}
+                {currentKey === ExploreTab.Pools && <ProtocolFilter />}
+                <SearchBar tab={currentKey} />
+              </Flex>
             </Flex>
-            <ExploreCategoryTablesOrPage showExploreCategoryTables={showExploreCategoryTables} page={<Page />} />
+            <Page />
           </Flex>
         </ExploreTablesFilterStoreContextProvider>
       </ExploreContextProvider>
