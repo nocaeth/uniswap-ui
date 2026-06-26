@@ -40,10 +40,13 @@ export const GNOSIS_CHAIN_INFO = {
   platform: Platform.EVM,
   assetRepoNetworkName: 'xdai',
   backendChain: {
-    // Uniswap's GraphQL backend does not support Gnosis. Analytics is served by our
-    // self-hosted Envio adapter, so this value is inert (backendSupported: false).
+    // Uniswap's hosted backend does not serve Gnosis; our self-hosted adapter does
+    // (ExploreStats/DataApi over API_BASE_URL_V2_OVERRIDE + GraphQL via
+    // GRAPHQL_URL_OVERRIDE). Mark it supported so NetworkFilter renders Gnosis as a
+    // selectable network rather than a disabled "Beta" entry (isBackendSupportedChainId
+    // is the only consumer of this flag).
     chain: GraphQLApi.Chain.Ethereum as GqlChainId,
-    backendSupported: false,
+    backendSupported: true,
     nativeTokenBackendAddress: undefined,
   },
   blockPerMainnetEpochForChainId: 1,

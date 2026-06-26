@@ -465,6 +465,14 @@ export async function buildGnosisDecreasePosition(params: DecreasePositionReques
 
   const { fee0, fee1 } = await computeUncollectedFees(poolMeta.address, onChain, pool.tickCurrent)
 
+  // Honor the unwrap preference: when the user asked for native xDAI
+  // (withdrawAsWeth === false) and a side is WXDAI (== WETH9[100]), use the native
+  // currency so the v3 SDK appends unwrapWETH9 and the recipient receives xDAI.
+  const wantNative = params.withdrawAsWeth === false
+  const isWxdai = (token: Token): boolean => token.address.toLowerCase() === WXDAI_ADDRESS.toLowerCase()
+  const owed0 = wantNative && isWxdai(pool.token0) ? nativeOnChain(GNOSIS_CHAIN_ID) : pool.token0
+  const owed1 = wantNative && isWxdai(pool.token1) ? nativeOnChain(GNOSIS_CHAIN_ID) : pool.token1
+
   const { calldata, value } = NonfungiblePositionManager.removeCallParameters(position, {
     tokenId: params.nftTokenId,
     liquidityPercentage: new Percent(params.liquidityPercentageToDecrease, 100),
@@ -472,8 +480,8 @@ export async function buildGnosisDecreasePosition(params: DecreasePositionReques
     deadline: toDeadline(params.deadline),
     burnToken: false,
     collectOptions: {
-      expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(pool.token0, fee0),
-      expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(pool.token1, fee1),
+      expectedCurrencyOwed0: CurrencyAmount.fromRawAmount(owed0, fee0),
+      expectedCurrencyOwed1: CurrencyAmount.fromRawAmount(owed1, fee1),
       recipient: params.walletAddress,
     },
   })
