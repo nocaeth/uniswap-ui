@@ -4,13 +4,17 @@
 #                                          runtime-configurable; fully reusable)
 #   ghcr.io/<owner>/uniswap-ui-web      -> the static interface (nginx). Vite bakes
 #                                          env at BUILD time, so this image targets a
-#                                          single deployment. Its override values are
-#                                          read from repo Variables/Secrets below.
+#                                          single deployment.
 #
-# Configure once (Repo Settings -> Secrets and variables -> Actions):
-#   Variables: API_BASE_URL_V2_OVERRIDE, GRAPHQL_URL_OVERRIDE,
-#              REACT_APP_GNOSIS_RPC_URL, REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS
-#   Secrets:   REACT_APP_WALLET_CONNECT_PROJECT_ID
+# The public production values live in apps/web/.env.production (committed) — a static
+# frontend exposes everything it's built with, so NONE of this is secret. CI needs no
+# config to build a working image EXCEPT the analytics adapter host, which is the only
+# deployment-specific unknown. Set it once, either by editing apps/web/.env.production
+# or as repo Variables (Settings -> Secrets and variables -> Actions -> Variables):
+#   API_BASE_URL_V2_OVERRIDE, GRAPHQL_URL_OVERRIDE
+# Optional Variable overrides (else the .env.production defaults are used):
+#   REACT_APP_GNOSIS_RPC_URL, REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
+#   REACT_APP_WALLET_CONNECT_PROJECT_ID
 # Unset values fall back to the committed defaults (empty args are skipped at build).
 name: Publish images (GHCR)
 
@@ -61,7 +65,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref_name == 'gnosis-only-ui' || github.ref_name == github.event.repository.default_branch }}
 
       - name: Build and push adapter
         uses: docker/build-push-action@v6
@@ -104,7 +108,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref_name == 'gnosis-only-ui' || github.ref_name == github.event.repository.default_branch }}
 
       - name: Build and push web
         uses: docker/build-push-action@v6
@@ -121,4 +125,4 @@ jobs:
             GRAPHQL_URL_OVERRIDE=${{ vars.GRAPHQL_URL_OVERRIDE }}
             REACT_APP_GNOSIS_RPC_URL=${{ vars.REACT_APP_GNOSIS_RPC_URL }}
             REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS=${{ vars.REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS }}
-            REACT_APP_WALLET_CONNECT_PROJECT_ID=${{ secrets.REACT_APP_WALLET_CONNECT_PROJECT_ID }}
+            REACT_APP_WALLET_CONNECT_PROJECT_ID=${{ vars.REACT_APP_WALLET_CONNECT_PROJECT_ID }}
