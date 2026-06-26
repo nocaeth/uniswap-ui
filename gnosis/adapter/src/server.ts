@@ -1,14 +1,22 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { connectNodeAdapter } from '@connectrpc/connect-node'
+import type { ConnectRouter } from '@connectrpc/connect'
 import { createYoga } from 'graphql-yoga'
+import { registerDataApiRoutes } from './dataApiService.js'
 import { registerExploreRoutes } from './exploreService.js'
 import { schema } from './graphql.js'
 
 const PORT = Number(process.env.PORT ?? 8081)
 
-// ConnectRPC (ExploreStats etc.) — the app reaches this at API_BASE_URL_V2_OVERRIDE.
-// Connect routes by service typeName, so it is mounted at the root.
-const connectHandler = connectNodeAdapter({ routes: registerExploreRoutes })
+// ConnectRPC (ExploreStats + DataApiService positions) — the app reaches this at
+// API_BASE_URL_V2_OVERRIDE. Connect routes by service typeName, so all services
+// are mounted at the root.
+const connectHandler = connectNodeAdapter({
+  routes: (router: ConnectRouter) => {
+    registerExploreRoutes(router)
+    registerDataApiRoutes(router)
+  },
+})
 
 // GraphQL (token/pool detail + charts) — the app reaches this at GRAPHQL_URL_OVERRIDE
 // (point it at `<base>/v1/graphql`).

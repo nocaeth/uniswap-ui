@@ -29,6 +29,14 @@ import type {
 import type { PoolListCursor } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v2/types_pb'
 import { type UseQueryApiHelperHookArgs } from '@universe/api'
 import {
+  buildGnosisCheckApproval,
+  buildGnosisClaimFees,
+  buildGnosisCreatePosition,
+  buildGnosisDecreasePosition,
+  buildGnosisIncreasePosition,
+  isGnosisLiquidityChain,
+} from 'uniswap/src/data/apiClients/liquidityService/gnosis/buildGnosisLiquidityCalldata'
+import {
   V1LiquidityServiceClient,
   V2LiquidityServiceClient,
 } from 'uniswap/src/data/apiClients/liquidityService/LiquidityServiceClient'
@@ -62,6 +70,9 @@ function getCheckLPApprovalQueryOptions(
       if (!params) {
         throw new Error('params required')
       }
+      if (isGnosisLiquidityChain(Number(params.chainId))) {
+        return buildGnosisCheckApproval(params)
+      }
       return client.checkLPApproval(params)
     },
     ...rest,
@@ -77,6 +88,9 @@ function getClaimFeesQueryOptions(
     queryFn: async () => {
       if (!params) {
         throw new Error('params required')
+      }
+      if (isGnosisLiquidityChain(Number(params.chainId))) {
+        return buildGnosisClaimFees(params)
       }
       return client.claimFees(params)
     },
@@ -158,6 +172,9 @@ function getCreatePositionQueryOptions(
       if (!params) {
         throw new Error('params required')
       }
+      if (isGnosisLiquidityChain(Number(params.chainId))) {
+        return buildGnosisCreatePosition(params)
+      }
       return client.createPosition(params)
     },
     ...rest,
@@ -174,6 +191,9 @@ function getDecreasePositionQueryOptions(
       if (!params) {
         throw new Error('params required')
       }
+      if (isGnosisLiquidityChain(Number(params.chainId))) {
+        return buildGnosisDecreasePosition(params)
+      }
       return client.decreasePosition(params)
     },
     ...rest,
@@ -189,6 +209,9 @@ function getIncreasePositionQueryOptions(
     queryFn: async () => {
       if (!params) {
         throw new Error('params required')
+      }
+      if (isGnosisLiquidityChain(Number(params.chainId))) {
+        return buildGnosisIncreasePosition(params)
       }
       return client.increasePosition(params)
     },
