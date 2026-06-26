@@ -52,7 +52,7 @@ export const RecentTransactionsTable = memo(function RecentTransactions() {
     TransactionType.REMOVE,
     TransactionType.ADD,
   ])
-  const chainInfo = getChainInfo(useChainIdFromUrlParam() ?? UniverseChainId.Mainnet)
+  const chainInfo = getChainInfo(useChainIdFromUrlParam() ?? UniverseChainId.Gnosis)
   const { t } = useTranslation()
   const { transactions, loading, loadMore, errorV2, errorV3 } = useAllTransactions(chainInfo.backendChain.chain, filter)
 

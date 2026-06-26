@@ -357,7 +357,7 @@ export function PositionsHeader({
                   hoverStyle={{ backgroundColor: '$surface2' }}
                 >
                   <NetworkFilter
-                    includeAllNetworks
+                    includeAllNetworks={false}
                     selectedChain={selectedChain}
                     onPressChain={onChainChange}
                     chainIds={chains}

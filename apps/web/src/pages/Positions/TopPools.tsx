@@ -1,5 +1,4 @@
 import { ExploreStatsResponse } from '@uniswap/client-explore/dist/uniswap/explore/v1/service_pb'
-import { ALL_NETWORKS_ARG } from '@universe/api'
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useTranslation } from 'react-i18next'
 import { Flex, useMedia } from 'ui/src'
@@ -27,7 +26,8 @@ function TopPoolsContent({ chainId }: { chainId: UniverseChainId | null }): JSX.
     isLoading: exploreStatsLoading,
     error: exploreStatsError,
   } = useExploreStatsQuery<ExploreStatsResponse>({
-    input: { chainId: chainId ? chainId.toString() : ALL_NETWORKS_ARG },
+    // GNOSIS-ONLY: never query all networks; fall back to Gnosis instead of ALL_NETWORKS_ARG.
+    input: { chainId: chainId ? chainId.toString() : UniverseChainId.Gnosis.toString() },
   })
 
   const { topPools, topBoostedPools } = useTopPoolsLegacy({

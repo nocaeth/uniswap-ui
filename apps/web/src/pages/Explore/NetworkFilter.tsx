@@ -38,7 +38,7 @@ export function TableNetworkFilter({ networks }: { networks?: UniverseChainId[] 
 
   return (
     <NetworkFilter
-      showMultichainOption={tabName !== ExploreTab.Transactions}
+      showMultichainOption={false}
       position={media.lg ? 'left' : 'right'}
       onPress={onNetworkPress}
       currentChainId={currentChainId}
