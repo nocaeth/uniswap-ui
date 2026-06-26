@@ -26,19 +26,6 @@ For instructions per application or package, see the README published for each a
 
 For instructions on the best way to contribute, please review our [Contributing guide](CONTRIBUTING.md)!
 
-## Socials / Contact
-
-- X (Formerly Twitter): [@Uniswap](https://x.com/Uniswap)
-- Reddit: [/r/Uniswap](https://www.reddit.com/r/Uniswap/)
-- Email: [contact@uniswap.org](mailto:contact@uniswap.org)
-- Discord: [Uniswap](https://discord.com/invite/uniswap)
-- LinkedIn: [Uniswap Labs](https://www.linkedin.com/company/uniswaporg)
-
-## Uniswap Links
-
-- Website: [uniswap.org](https://uniswap.org/)
-- Docs: [uniswap.org/docs/](https://docs.uniswap.org/)
-
 ## Whitepapers
 
 - [V4](https://uniswap.org/whitepaper-v4.pdf)

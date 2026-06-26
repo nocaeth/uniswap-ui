@@ -1,7 +1,6 @@
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { lazy, ReactNode, Suspense, useMemo } from 'react'
-import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router'
-import { WRAPPED_PATH } from 'uniswap/src/components/banners/shared/utils'
+import { matchPath, Navigate, useLocation } from 'react-router'
 import { CHROME_EXTENSION_UNINSTALL_URL_PATH } from 'uniswap/src/constants/urls'
 import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defaults'
 import { EXTENSION_PASSKEY_AUTH_PATH } from 'uniswap/src/features/passkey/constants'
@@ -45,7 +44,6 @@ const PasskeyManagement = lazy(() => import('~/pages/PasskeyManagement'))
 const ExtensionUninstall = lazy(() => import('~/pages/ExtensionUninstall/ExtensionUninstall'))
 const Portfolio = lazy(() => import('~/pages/Portfolio/Portfolio'))
 const BetaPage = lazy(() => import('~/pages/Beta'))
-const Wrapped = lazy(() => import('~/pages/Wrapped'))
 
 interface RouterConfig {
   browserRouterEnabled?: boolean
@@ -182,25 +180,6 @@ export const routes: RouteDefinition[] = [
         <PoolDetails />
       </Suspense>
     ),
-  }),
-  createRouteDefinition({
-    path: '/vote/*',
-    getTitle: () => i18n.t('title.voteOnGov'),
-    getDescription: () => i18n.t('title.uniToken'),
-    getElement: () => {
-      return (
-        <Routes>
-          <Route
-            path="*"
-            Component={() => {
-              window.location.href = 'https://vote.uniswapfoundation.org'
-              return null
-            }}
-            // oxlint-disable-next-line react/self-closing-comp -- biome-parity: oxlint is stricter here
-          ></Route>
-        </Routes>
-      )
-    },
   }),
   createRouteDefinition({
     path: '/create-proposal',
@@ -370,13 +349,6 @@ export const routes: RouteDefinition[] = [
     path: CHROME_EXTENSION_UNINSTALL_URL_PATH,
     getElement: () => <ExtensionUninstall />,
     getTitle: () => i18n.t('title.extension.uninstall'),
-  }),
-  // Uniswap Wrapped
-  createRouteDefinition({
-    path: WRAPPED_PATH,
-    getElement: () => <Wrapped />,
-    getTitle: () => 'Uniswap Wrapped',
-    enabled: (args) => args.isWrappedEnabled ?? false,
   }),
   createRouteDefinition({
     path: '/preview',
