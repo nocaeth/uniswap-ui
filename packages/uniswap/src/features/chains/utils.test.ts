@@ -2,7 +2,9 @@ import { BigNumber } from '@ethersproject/bignumber'
 import { GraphQLApi } from '@universe/api'
 import { PollingInterval } from 'uniswap/src/constants/misc'
 import { ALL_CHAIN_IDS } from 'uniswap/src/features/chains/chainInfo'
+import { GNOSIS_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/gnosis'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import {
   chainIdToHexadecimalString,
   fromGraphQLChain,
@@ -118,120 +120,53 @@ describe('hexadecimalStringToInt', () => {
   })
 })
 
-describe('getEnabledChains', () => {
-  it('returns all mainnet chains', () => {
+// Gnosis-only deployment: getEnabledChains always returns just Gnosis and defaults
+// to it, regardless of feature flags or testnet mode (see getEnabledChains in utils.ts).
+describe('getEnabledChains (Gnosis-only)', () => {
+  it('returns only Gnosis for mainnet mode', () => {
     expect(getEnabledChains({ isTestnetModeEnabled: false, featureFlaggedChainIds: ALL_CHAIN_IDS })).toEqual({
-      chains: [
-        UniverseChainId.Mainnet,
-        UniverseChainId.Unichain,
-        UniverseChainId.Monad,
-        UniverseChainId.Solana,
-        UniverseChainId.Polygon,
-        UniverseChainId.ArbitrumOne,
-        UniverseChainId.Optimism,
-        UniverseChainId.Base,
-        UniverseChainId.Bnb,
-        UniverseChainId.Blast,
-        UniverseChainId.Avalanche,
-        UniverseChainId.Celo,
-        UniverseChainId.WorldChain,
-        UniverseChainId.Linea,
-        UniverseChainId.MegaETH,
-        UniverseChainId.Robinhood,
-        UniverseChainId.Arc,
-        UniverseChainId.Soneium,
-        UniverseChainId.Tempo,
-        UniverseChainId.XLayer,
-        UniverseChainId.Zora,
-        UniverseChainId.Zksync,
-      ],
-      gqlChains: [
-        GraphQLApi.Chain.Ethereum,
-        GraphQLApi.Chain.Unichain,
-        GraphQLApi.Chain.Monad,
-        GraphQLApi.Chain.Solana,
-        GraphQLApi.Chain.Polygon,
-        GraphQLApi.Chain.Arbitrum,
-        GraphQLApi.Chain.Optimism,
-        GraphQLApi.Chain.Base,
-        GraphQLApi.Chain.Bnb,
-        GraphQLApi.Chain.Blast,
-        GraphQLApi.Chain.Avalanche,
-        GraphQLApi.Chain.Celo,
-        GraphQLApi.Chain.Worldchain,
-        GraphQLApi.Chain.Linea,
-        GraphQLApi.Chain.Megaeth,
-        GraphQLApi.Chain.Robinhood,
-        GraphQLApi.Chain.Arc,
-        GraphQLApi.Chain.Soneium,
-        GraphQLApi.Chain.Tempo,
-        GraphQLApi.Chain.Xlayer,
-        GraphQLApi.Chain.Zora,
-        GraphQLApi.Chain.Zksync,
-      ],
-      defaultChainId: UniverseChainId.Mainnet,
+      chains: [UniverseChainId.Gnosis],
+      gqlChains: [GNOSIS_CHAIN_INFO.backendChain.chain],
+      defaultChainId: UniverseChainId.Gnosis,
       isTestnetModeEnabled: false,
     })
   })
 
-  it('returns feature flagged chains', () => {
+  it('ignores feature flags and still returns only Gnosis', () => {
     expect(
       getEnabledChains({
         isTestnetModeEnabled: false,
         featureFlaggedChainIds: [UniverseChainId.Mainnet, UniverseChainId.Polygon],
       }),
     ).toEqual({
-      chains: [UniverseChainId.Mainnet, UniverseChainId.Polygon],
-      gqlChains: [GraphQLApi.Chain.Ethereum, GraphQLApi.Chain.Polygon],
-      defaultChainId: UniverseChainId.Mainnet,
+      chains: [UniverseChainId.Gnosis],
+      gqlChains: [GNOSIS_CHAIN_INFO.backendChain.chain],
+      defaultChainId: UniverseChainId.Gnosis,
       isTestnetModeEnabled: false,
     })
   })
 
-  it('returns testnet chains', () => {
+  it('returns Gnosis even in testnet mode (no empty network set)', () => {
     expect(
       getEnabledChains({
         isTestnetModeEnabled: true,
         featureFlaggedChainIds: ALL_CHAIN_IDS,
       }),
     ).toEqual({
-      chains: [UniverseChainId.Sepolia, UniverseChainId.UnichainSepolia],
-      gqlChains: [GraphQLApi.Chain.EthereumSepolia, GraphQLApi.Chain.AstrochainSepolia],
-      defaultChainId: UniverseChainId.Sepolia,
+      chains: [UniverseChainId.Gnosis],
+      gqlChains: [GNOSIS_CHAIN_INFO.backendChain.chain],
+      defaultChainId: UniverseChainId.Gnosis,
       isTestnetModeEnabled: true,
     })
   })
 
-  it('returns both mainnet and testnet chains when includeTestnets is true', () => {
+  it('restricts to the requested platform', () => {
     expect(
       getEnabledChains({
-        includeTestnets: true,
+        platform: Platform.SVM,
         isTestnetModeEnabled: false,
-        featureFlaggedChainIds: [
-          UniverseChainId.Mainnet,
-          UniverseChainId.Unichain,
-          UniverseChainId.Base,
-          UniverseChainId.Sepolia,
-          UniverseChainId.UnichainSepolia,
-        ],
-      }),
-    ).toEqual({
-      chains: [
-        UniverseChainId.Mainnet,
-        UniverseChainId.Unichain,
-        UniverseChainId.Base,
-        UniverseChainId.Sepolia,
-        UniverseChainId.UnichainSepolia,
-      ],
-      gqlChains: [
-        GraphQLApi.Chain.Ethereum,
-        GraphQLApi.Chain.Unichain,
-        GraphQLApi.Chain.Base,
-        GraphQLApi.Chain.EthereumSepolia,
-        GraphQLApi.Chain.AstrochainSepolia,
-      ],
-      defaultChainId: UniverseChainId.Mainnet,
-      isTestnetModeEnabled: false,
-    })
+        featureFlaggedChainIds: ALL_CHAIN_IDS,
+      }).chains,
+    ).toEqual([])
   })
 })

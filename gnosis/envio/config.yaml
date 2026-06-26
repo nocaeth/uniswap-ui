@@ -1,0 +1,31 @@
+# Envio HyperIndex config — Uniswap V3 on Gnosis Chain (100)
+# Indexes the V3 factory + pools so the analytics adapter can serve the UI's
+# Explore / token-detail / pool-detail data (Uniswap's gateway does not cover Gnosis).
+#
+# Docs: https://docs.envio.dev/docs/HyperIndex/configuration-file
+name: gnosis-uniswap-v3
+unordered_multichain_mode: true
+
+networks:
+  - id: 100
+    # UniswapV3Factory was deployed on Gnosis in April 2023. Set this to the exact
+    # factory-creation block to minimize backfill time (look it up on gnosisscan).
+    start_block: 27145342
+    contracts:
+      - name: Factory
+        address:
+          - 0xe32F7dD7e3f098D518ff19A22d5f028e076489B1
+        handler: src/EventHandlers.ts
+        events:
+          - event: PoolCreated(address indexed token0, address indexed token1, uint24 indexed fee, int24 tickSpacing, address pool)
+
+      # Pools are registered dynamically by the Factory handler (factory pattern),
+      # so no static addresses are listed here.
+      - name: Pool
+        handler: src/EventHandlers.ts
+        events:
+          - event: Initialize(uint160 sqrtPriceX96, int24 tick)
+          - event: Mint(address sender, address indexed owner, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount, uint256 amount0, uint256 amount1)
+          - event: Burn(address indexed owner, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount, uint256 amount0, uint256 amount1)
+          - event: Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)
+          - event: Collect(address indexed owner, address recipient, int24 indexed tickLower, int24 indexed tickUpper, uint128 amount0, uint128 amount1)

@@ -253,19 +253,20 @@ export function getEnabledChains({
   featureFlaggedChainIds: UniverseChainId[]
   includeTestnets?: boolean
 }): EnabledChainsInfo {
+  // Gnosis-only deployment: Gnosis Chain is the sole user-selectable network.
+  // Other chain definitions are kept in the codebase but never enabled in the UI.
+  // Testnet mode and feature flags are intentionally bypassed so the network set
+  // is never empty (Gnosis mainnet is always available).
+  void includeTestnets
+  void isTestnetModeEnabled
+  void featureFlaggedChainIds
   const enabledChainInfos = ORDERED_CHAINS.filter((chainInfo) => {
+    if (chainInfo.id !== UniverseChainId.Gnosis) {
+      return false
+    }
+
     // Filter by platform
     if (platform !== undefined && platform !== chainInfo.platform) {
-      return false
-    }
-
-    // Filter by testnet mode
-    if (!includeTestnets && isTestnetModeEnabled !== isTestnetChain(chainInfo.id)) {
-      return false
-    }
-
-    // Filter by feature flags
-    if (!featureFlaggedChainIds.includes(chainInfo.id)) {
       return false
     }
 
@@ -298,7 +299,8 @@ function getDefaultChainId({
     return UniverseChainId.Solana
   }
 
-  return isTestnetModeEnabled ? UniverseChainId.Sepolia : UniverseChainId.Mainnet
+  // Gnosis-only deployment: Gnosis Chain is always the default network.
+  return UniverseChainId.Gnosis
 }
 
 /** Returns all stablecoins for a given chainId. */

@@ -283,6 +283,7 @@
     "@manypkg/get-packages@1.1.3": "patches/@manypkg%2Fget-packages@1.1.3.patch",
     "@ethersproject/providers@5.7.2": "patches/@ethersproject%2Fproviders@5.7.2.patch",
     "nx@22.5.4": "patches/nx@22.5.4.patch",
-    "@expo/metro-config@54.0.9": "patches/@expo%2Fmetro-config@54.0.9.patch"
+    "@expo/metro-config@54.0.9": "patches/@expo%2Fmetro-config@54.0.9.patch",
+    "@uniswap/sdk-core@7.17.0": "patches/@uniswap%2Fsdk-core@7.17.0.patch"
   }
 }

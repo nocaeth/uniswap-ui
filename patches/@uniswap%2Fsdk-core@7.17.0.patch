@@ -1,0 +1,93 @@
+diff --git a/dist/cjs/src/addresses.js b/dist/cjs/src/addresses.js
+index 2cea00af8250c1d9dd55d1113b9301e4f29e1adb..1bcefe3420538067c93586b3e844fc2651570fc4 100644
+--- a/dist/cjs/src/addresses.js
++++ b/dist/cjs/src/addresses.js
+@@ -121,6 +121,15 @@ const POLYGON_ADDRESSES = {
+     v4QuoterAddress: '0xb3d5c3dfc3a7aebff71895a7191796bffc2c81b9',
+ };
+ // celo v3 and v4 addresses
++const GNOSIS_ADDRESSES = {
++    v3CoreFactoryAddress: '0xe32F7dD7e3f098D518ff19A22d5f028e076489B1',
++    multicallAddress: '0x4dfa9a980efE4802E969AC33968E3d6E59B8a19e',
++    quoterAddress: '0x7E9cB3499A6cee3baBe5c8a3D328EA7FD36578f4',
++    v3MigratorAddress: '0x16dd75c567a07082452aB56fD1E673987289E6Ef',
++    nonfungiblePositionManagerAddress: '0xAE8fbE656a77519a7490054274910129c9244FA3',
++    tickLensAddress: '0x8fe3D346B53dCA838B228e0e53aCdBED5DEC70Dc',
++    swapRouter02Address: '0xc6D25285D5C5b62b7ca26D6092751A145D50e9Be',
++};
+ const CELO_ADDRESSES = {
+     v3CoreFactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc',
+     multicallAddress: '0x633987602DE5C4F337e3DbF265303A1080324204',
+@@ -476,6 +485,7 @@ exports.CHAIN_TO_ADDRESSES_MAP = {
+     [chains_1.ChainId.GOERLI]: GOERLI_ADDRESSES,
+     [chains_1.ChainId.CELO]: CELO_ADDRESSES,
+     [chains_1.ChainId.CELO_ALFAJORES]: CELO_ADDRESSES,
++    [chains_1.ChainId.GNOSIS]: GNOSIS_ADDRESSES,
+     [chains_1.ChainId.BNB]: BNB_ADDRESSES,
+     [chains_1.ChainId.OPTIMISM_GOERLI]: OPTIMISM_GOERLI_ADDRESSES,
+     [chains_1.ChainId.OPTIMISM_SEPOLIA]: OPTIMISM_SEPOLIA_ADDRESSES,
+diff --git a/dist/cjs/src/chains.js b/dist/cjs/src/chains.js
+index f889498ebaeed8d20346ce67d50179d096eaca75..0d4e3a74e2eacd8f630bec336fa8fe06b7ded81a 100644
+--- a/dist/cjs/src/chains.js
++++ b/dist/cjs/src/chains.js
+@@ -108,6 +108,7 @@ exports.SUPPORTED_CHAINS = [
+     ChainId.SEPOLIA,
+     ChainId.CELO_ALFAJORES,
+     ChainId.CELO,
++    ChainId.GNOSIS,
+     ChainId.BNB,
+     ChainId.AVALANCHE,
+     ChainId.BASE,
+diff --git a/dist/esm/src/addresses.js b/dist/esm/src/addresses.js
+index e3a0ef83c84384686ba12fc151a07480c23eba89..efffa9dc24ec13f24702907781c9ed7984d344bb 100644
+--- a/dist/esm/src/addresses.js
++++ b/dist/esm/src/addresses.js
+@@ -118,6 +118,15 @@ const POLYGON_ADDRESSES = {
+     v4QuoterAddress: '0xb3d5c3dfc3a7aebff71895a7191796bffc2c81b9',
+ };
+ // celo v3 and v4 addresses
++const GNOSIS_ADDRESSES = {
++    v3CoreFactoryAddress: '0xe32F7dD7e3f098D518ff19A22d5f028e076489B1',
++    multicallAddress: '0x4dfa9a980efE4802E969AC33968E3d6E59B8a19e',
++    quoterAddress: '0x7E9cB3499A6cee3baBe5c8a3D328EA7FD36578f4',
++    v3MigratorAddress: '0x16dd75c567a07082452aB56fD1E673987289E6Ef',
++    nonfungiblePositionManagerAddress: '0xAE8fbE656a77519a7490054274910129c9244FA3',
++    tickLensAddress: '0x8fe3D346B53dCA838B228e0e53aCdBED5DEC70Dc',
++    swapRouter02Address: '0xc6D25285D5C5b62b7ca26D6092751A145D50e9Be',
++};
+ const CELO_ADDRESSES = {
+     v3CoreFactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc',
+     multicallAddress: '0x633987602DE5C4F337e3DbF265303A1080324204',
+@@ -473,6 +482,7 @@ export const CHAIN_TO_ADDRESSES_MAP = {
+     [ChainId.GOERLI]: GOERLI_ADDRESSES,
+     [ChainId.CELO]: CELO_ADDRESSES,
+     [ChainId.CELO_ALFAJORES]: CELO_ADDRESSES,
++    [ChainId.GNOSIS]: GNOSIS_ADDRESSES,
+     [ChainId.BNB]: BNB_ADDRESSES,
+     [ChainId.OPTIMISM_GOERLI]: OPTIMISM_GOERLI_ADDRESSES,
+     [ChainId.OPTIMISM_SEPOLIA]: OPTIMISM_SEPOLIA_ADDRESSES,
+diff --git a/dist/esm/src/chains.js b/dist/esm/src/chains.js
+index 45f4c706cc50184f0d1c44a0234bb38e66df803f..c2a9804dd2933c3d8212c0f4fdee20d8439d8e74 100644
+--- a/dist/esm/src/chains.js
++++ b/dist/esm/src/chains.js
+@@ -103,6 +103,7 @@ export const SUPPORTED_CHAINS = [
+     ChainId.SEPOLIA,
+     ChainId.CELO_ALFAJORES,
+     ChainId.CELO,
++    ChainId.GNOSIS,
+     ChainId.BNB,
+     ChainId.AVALANCHE,
+     ChainId.BASE,
+diff --git a/dist/types/src/chains.d.ts b/dist/types/src/chains.d.ts
+index 977f095b008693a862abe1fca942c64b66da1208..fd1c052118837d6338ab682a2c527513d88a6cc9 100644
+--- a/dist/types/src/chains.d.ts
++++ b/dist/types/src/chains.d.ts
+@@ -61,7 +61,7 @@ export declare function getAverageBlockTimeSecs(chainId: number): number;
+  * Throws if the chain is not registered in AVERAGE_BLOCK_TIMES_SECONDS.
+  */
+ export declare function secondsToBlocks(seconds: number, chainId: number): number;
+-export declare const SUPPORTED_CHAINS: readonly [ChainId.MAINNET, ChainId.OPTIMISM, ChainId.OPTIMISM_GOERLI, ChainId.OPTIMISM_SEPOLIA, ChainId.ARBITRUM_ONE, ChainId.ARBITRUM_GOERLI, ChainId.ARBITRUM_SEPOLIA, ChainId.POLYGON, ChainId.POLYGON_MUMBAI, ChainId.GOERLI, ChainId.SEPOLIA, ChainId.CELO_ALFAJORES, ChainId.CELO, ChainId.BNB, ChainId.AVALANCHE, ChainId.BASE, ChainId.BASE_GOERLI, ChainId.BASE_SEPOLIA, ChainId.ZORA, ChainId.ZORA_SEPOLIA, ChainId.ROOTSTOCK, ChainId.BLAST, ChainId.ZKSYNC, ChainId.WORLDCHAIN, ChainId.UNICHAIN_SEPOLIA, ChainId.UNICHAIN, ChainId.MONAD_TESTNET, ChainId.SONEIUM, ChainId.MONAD, ChainId.XLAYER, ChainId.LINEA, ChainId.TEMPO, ChainId.MEGAETH, ChainId.ARC, ChainId.ROBINHOOD];
++export declare const SUPPORTED_CHAINS: readonly [ChainId.MAINNET, ChainId.OPTIMISM, ChainId.OPTIMISM_GOERLI, ChainId.OPTIMISM_SEPOLIA, ChainId.ARBITRUM_ONE, ChainId.ARBITRUM_GOERLI, ChainId.ARBITRUM_SEPOLIA, ChainId.POLYGON, ChainId.POLYGON_MUMBAI, ChainId.GOERLI, ChainId.SEPOLIA, ChainId.CELO_ALFAJORES, ChainId.CELO, ChainId.GNOSIS, ChainId.BNB, ChainId.AVALANCHE, ChainId.BASE, ChainId.BASE_GOERLI, ChainId.BASE_SEPOLIA, ChainId.ZORA, ChainId.ZORA_SEPOLIA, ChainId.ROOTSTOCK, ChainId.BLAST, ChainId.ZKSYNC, ChainId.WORLDCHAIN, ChainId.UNICHAIN_SEPOLIA, ChainId.UNICHAIN, ChainId.MONAD_TESTNET, ChainId.SONEIUM, ChainId.MONAD, ChainId.XLAYER, ChainId.LINEA, ChainId.TEMPO, ChainId.MEGAETH, ChainId.ARC, ChainId.ROBINHOOD];
+ export type SupportedChainsType = (typeof SUPPORTED_CHAINS)[number];
+ export declare enum NativeCurrencyName {
+     ETHER = "ETH",

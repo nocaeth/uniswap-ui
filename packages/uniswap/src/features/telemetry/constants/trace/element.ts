@@ -70,6 +70,7 @@ export enum ElementName {
   ChainArc = 'chain-arc',
   ChainCelo = 'chain-celo',
   ChainEthereum = 'chain-ethereum',
+  ChainGnosis = 'chain-gnosis',
   ChainLinea = 'chain-linea',
   ChainMegaETH = 'chain-megaeth',
   ChainMonad = 'chain-monad',

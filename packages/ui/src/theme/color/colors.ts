@@ -138,6 +138,10 @@ export const networkColors = {
     light: '#222222',
     dark: '#FCFF52',
   },
+  gnosis: {
+    light: '#133629',
+    dark: '#3e6957',
+  },
   monad: {
     light: '#735BF8',
     dark: '#836EF9',
@@ -360,6 +364,7 @@ export const colorsLight = {
   chain_81457: networkColors.blast.light,
   chain_56: networkColors.bnb.light,
   chain_42220: networkColors.celo.light,
+  chain_100: networkColors.gnosis.light,
   chain_43114: networkColors.avalanche.light,
   chain_324: networkColors.zksync.light,
   chain_480: networkColors.worldchain.light,
@@ -456,6 +461,7 @@ export const colorsDark = {
   chain_81457: networkColors.blast.dark,
   chain_56: networkColors.bnb.dark,
   chain_42220: networkColors.celo.dark,
+  chain_100: networkColors.gnosis.dark,
   chain_43114: networkColors.avalanche.dark,
   chain_324: networkColors.zksync.dark,
   chain_480: networkColors.worldchain.dark,
