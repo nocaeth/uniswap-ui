@@ -252,8 +252,10 @@ function CreatePositionContent({
   paramsProtocolVersion: ProtocolVersion | undefined
   autoSlippageTolerance: number
 }) {
-  // Gnosis-only: default to V3 (the only deployed protocol version).
-  const initialProtocolVersion = paramsProtocolVersion ?? ProtocolVersion.V3
+  // Gnosis-only: V3 is the only deployed protocol version. Coerce a missing or V4 URL param to V3
+  // so the "/positions/create/v4" route can never put the flow into an unsupported V4 state.
+  const initialProtocolVersion =
+    !paramsProtocolVersion || paramsProtocolVersion === ProtocolVersion.V4 ? ProtocolVersion.V3 : paramsProtocolVersion
 
   const [currencyInputs, setCurrencyInputs] = useState<{ tokenA: Maybe<Currency>; tokenB: Maybe<Currency> }>({
     tokenA: initialInputs.tokenA,

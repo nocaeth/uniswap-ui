@@ -83,7 +83,7 @@ export function PositionsHeader({
   const shouldLeftAlignCreateButton = shouldStackControls
 
   const getCreatePositionHref = useCallback(
-    (protocolVersion: CreatePositionProtocolVersion = 'v4') =>
+    (protocolVersion: CreatePositionProtocolVersion = 'v3') =>
       buildCreatePositionHref({
         entryPoint: createPositionEntryPoint,
         isAddLiquidityRevampEnabled: isAddLiquidityRevamp,

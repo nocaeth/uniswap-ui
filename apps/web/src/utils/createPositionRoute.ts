@@ -10,7 +10,8 @@ export type CreatePositionProtocolVersion = 'v2' | 'v3' | 'v4'
 export function buildCreatePositionHref({
   entryPoint,
   isAddLiquidityRevampEnabled,
-  protocolVersion = 'v4',
+  // Gnosis-only: V3 is the only deployed protocol version (no V4 on Gnosis).
+  protocolVersion = 'v3',
 }: {
   entryPoint?: string
   isAddLiquidityRevampEnabled: boolean

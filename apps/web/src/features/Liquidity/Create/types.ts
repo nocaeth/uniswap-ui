@@ -44,7 +44,8 @@ export const DEFAULT_POSITION_STATE: PositionState = {
   fee: undefined,
   hook: undefined,
   userApprovedHook: undefined,
-  protocolVersion: ProtocolVersion.V4,
+  // Gnosis-only: V3 is the only deployed protocol version (no V4 on Gnosis).
+  protocolVersion: ProtocolVersion.V3,
 }
 
 type BaseCreatePositionInfo = {
