@@ -1,8 +1,8 @@
 import { ExploreStatsService } from '@uniswap/client-explore/dist/uniswap/explore/v1/service_connect.js'
 import type { ConnectRouter, ServiceImpl } from '@connectrpc/connect'
 import type { ServiceType } from '@bufbuild/protobuf'
-import { fetchProtocolStats, fetchTopPools, fetchTopTokens } from './envio.js'
-import { toExploreStatsResponse, toProtocolStatsResponse } from './mappers.js'
+import { fetchExploreStats, fetchProtocolStats } from './envio.js'
+import { toExploreStatsResponse, toProtocolStatsResponse, toTokenRankingsResponse } from './mappers.js'
 
 // @uniswap/client-explore ships CJS-compiled type decls, so under NodeNext the
 // ExploreStatsService value carries `@bufbuild/protobuf` types resolved in CJS
@@ -12,19 +12,23 @@ import { toExploreStatsResponse, toProtocolStatsResponse } from './mappers.js'
 const Service = ExploreStatsService as unknown as ServiceType
 
 /**
- * Implements Uniswap's ExploreStatsService (ConnectRPC) on top of the backfill
- * snapshot so the Explore token + pool tables work for Gnosis. Mounted at the
- * Data API v2 path, which the app reaches via API_BASE_URL_V2_OVERRIDE.
+ * Implements Uniswap's ExploreStatsService (ConnectRPC) on top of the SQLite
+ * analytics store so the Explore token + pool tables, the summary cards, and
+ * search/trending work for Gnosis. Mounted at the Data API v2 path, which the app
+ * reaches via API_BASE_URL_V2_OVERRIDE.
  */
 export function registerExploreRoutes(router: ConnectRouter): void {
   router.service(Service, {
-    async exploreStats() {
-      const [{ Token }, { Pool }] = await Promise.all([fetchTopTokens(), fetchTopPools()])
-      return toExploreStatsResponse(Token, Pool)
+    exploreStats() {
+      const { tokens, pools } = fetchExploreStats()
+      return toExploreStatsResponse(tokens, pools)
     },
-    async protocolStats() {
-      const { ProtocolStats } = await fetchProtocolStats()
-      return toProtocolStatsResponse(ProtocolStats[0])
+    protocolStats() {
+      return toProtocolStatsResponse(fetchProtocolStats())
+    },
+    tokenRankings() {
+      const { tokens } = fetchExploreStats()
+      return toTokenRankingsResponse(tokens)
     },
   } as unknown as ServiceImpl<ServiceType>)
 }
