@@ -306,9 +306,6 @@ describe('persistence migration integration (dehydrate → persist → restore �
       ['UnitagsApi', 'address', {}],
       ['UnitagsApi', 'username', {}],
       ['UnitagsApi', 'claim/eligibility', {}],
-      ['AuctionApi', 'getAuction', {}],
-      ['AuctionApi', 'getBids', {}],
-      ['AuctionApi', 'listTopAuctions', {}],
       ['OnchainENS', 'name', '0xabc'],
       ['PositionTokenURI', 1, 1, 3],
       ['DensityChartData', 'pool-1'],
@@ -327,7 +324,6 @@ describe('persistence migration integration (dehydrate → persist → restore �
     const dehydratedFirstKeys = new Set(dehydrated.queries.map((q) => q.queryKey[0]))
     expect(dehydratedFirstKeys.has('TokenPrice')).toBe(true)
     expect(dehydratedFirstKeys.has('GetPortfolio')).toBe(true)
-    expect(dehydratedFirstKeys.has('AuctionApi')).toBe(true)
   })
 
   it('getPortfolio outer wrapper preserves meta.persist through spread', () => {

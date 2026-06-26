@@ -60,7 +60,7 @@ interface FeeTierSearchModalProps {
   onSelectFee: (fee: FeeData) => void
   onSelectDynamicFee?: (fee: FeeData) => void
   createDescription?: string
-  /** Fired when the user opens the create-fee-tier popup. Used by the launch-auction flow for analytics. */
+  /** Fired when the user opens the create-fee-tier popup. */
   onCreateFeeTierClick?: () => void
   /** Fired when the user confirms a created fee tier, with the fee amount in hundredths of a bip. */
   onFeeTierCreated?: (feeAmount: number) => void

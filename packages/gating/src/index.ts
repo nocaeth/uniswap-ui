@@ -14,10 +14,8 @@ export type {
 } from '@universe/gating/src/configs'
 export {
   AllowedV4WethHookAddressesConfigKey,
-  AuctionFdvWarningConfigKey,
   BlockedAsyncSubmissionChainIdsConfigKey,
   ChainsConfigKey,
-  CreateAuctionConfigKey,
   DatadogIgnoredErrorsConfigKey,
   DatadogSessionSampleRateKey,
   DisableWalletSearchTermsConfigKey,
@@ -38,7 +36,6 @@ export {
   SwapConfigKey,
   SyncTransactionSubmissionChainIdsConfigKey,
   UwuLinkConfigKey,
-  VerifiedAuctionsConfigKey,
 } from '@universe/gating/src/configs'
 export { StatsigCustomAppValue } from '@universe/gating/src/constants'
 export type { ExperimentProperties } from '@universe/gating/src/experiments'

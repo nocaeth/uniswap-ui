@@ -5,7 +5,6 @@
 export enum ReactQueryCacheKey {
   AckNotification = 'AckNotification',
   ActivityScreenRefresh = 'ActivityScreenRefresh',
-  AuctionApi = 'AuctionApi',
   BalanceAndUnitags = 'BalanceAndUnitags',
   BlockaidJsonRpcScan = 'BlockaidJsonRpcScan',
   BlockaidTransactionScan = 'BlockaidTransactionScan',

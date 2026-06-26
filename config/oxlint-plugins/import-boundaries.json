@@ -1,15 +1,6 @@
 {
   "boundaries": [
     {
-      "id": "toucan-feature",
-      "mode": "importerAllowlist",
-      "importerInternalPathMarkers": ["/features/Toucan/"],
-      "allowedImporterPathMarkers": ["/pages/Explore/", "/features/Explore/state"],
-      "importPrefixes": ["~/features/Toucan/", "features/Toucan/"],
-      "bareModuleSources": ["~/features/Toucan", "features/Toucan"],
-      "message": "Toucan feature code may only be imported from pages/Explore/, features/explore/state, or from within features/Toucan/."
-    },
-    {
       "id": "liquidity-feature",
       "mode": "importerAllowlist",
       "importerInternalPathMarkers": ["/features/Liquidity/"],
@@ -57,12 +48,11 @@
         "/pages/Landing/",
         "/pages/PoolDetails/",
         "/pages/Positions/",
-        "/pages/TokenDetails/",
-        "/features/Toucan/"
+        "/pages/TokenDetails/"
       ],
       "importPrefixes": ["~/features/Explore/", "features/Explore/"],
       "bareModuleSources": ["~/features/Explore", "features/Explore"],
-      "message": "The Explore feature may only be imported from pages/AddLiquidity/, pages/Explore/, pages/Landing/, pages/PoolDetails/, pages/Positions/, pages/TokenDetails/, features/Toucan/ or from within features/Explore/."
+      "message": "The Explore feature may only be imported from pages/AddLiquidity/, pages/Explore/, pages/Landing/, pages/PoolDetails/, pages/Positions/, pages/TokenDetails/ or from within features/Explore/."
     },
     {
       "id": "web-state-import-denylist",

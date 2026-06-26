@@ -1068,7 +1068,6 @@ const DIRECT_VIEM_ETHERS_IMPORT_ALLOWLIST = new Set([
   'apps/web/src/features/accounts/store/updater.tsx',
   'apps/web/src/features/Swap/hooks/useSendCallback.ts',
   'apps/web/src/pages/Swap/Send/state/hooks.tsx',
-  'apps/web/src/features/Toucan/Auction/BidForm/BidReviewModal/useBidPermit2Flow.ts',
   'apps/web/src/hooks/useContract.ts',
   'apps/web/src/hooks/useEthersProvider.ts',
   'apps/web/src/hooks/useEthersSigner.ts',

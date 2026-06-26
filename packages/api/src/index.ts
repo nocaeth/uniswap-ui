@@ -122,20 +122,6 @@ export {
   type V1LiquidityServiceClient,
   type V2LiquidityServiceClient,
 } from '@universe/api/src/clients/liquidity/createLiquidityServiceClient'
-export {
-  createAuctionMutationClient,
-  type AuctionMutationClient,
-} from '@universe/api/src/clients/liquidity/createAuctionMutationClient'
-export {
-  createAuctionQueryClient,
-  type AuctionQueryClient,
-} from '@universe/api/src/clients/liquidity/createAuctionQueryClient'
-
-// Auction Service API
-export {
-  createAuctionServiceClient,
-  type AuctionServiceClient,
-} from '@universe/api/src/clients/auctions/createAuctionServiceClient'
 
 // X Verification Service API
 export {

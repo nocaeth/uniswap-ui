@@ -189,7 +189,7 @@ export function getDefaultFeeTiersForChainWithDynamicFeeTier({
 /**
  * Returns the chain's common/default fee tiers, each annotated with whether a pool already exists
  * (`created`). Unlike {@link getDefaultFeeTiersWithData}, this always returns the common tiers
- * (not the top-N by TVL) — used by flows that must require a brand-new pool (e.g. CCA auctions).
+ * (not the top-N by TVL) — used by flows that must require a brand-new pool.
  */
 export function getCommonFeeTiersWithData({
   chainId,

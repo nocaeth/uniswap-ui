@@ -5,7 +5,7 @@ import { GasEstimate, TradingApi } from '@universe/api'
 import { providers } from 'ethers/lib/ethers'
 import { AssetType } from 'uniswap/src/entities/assets'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import type { AuctionCreateAnalyticsProperties, SwapRouting } from 'uniswap/src/features/telemetry/types'
+import type { SwapRouting } from 'uniswap/src/features/telemetry/types'
 import { ValueType } from 'uniswap/src/features/tokens/getCurrencyAmount'
 import { CurrencyId } from 'uniswap/src/types/currency'
 import { DappRequestInfo, EthTransaction } from 'uniswap/src/types/walletConnect'
@@ -347,14 +347,7 @@ export enum TransactionType {
   ClaimUni = 'claim-uni',
   CreatePosition = 'create-position',
   LPIncentivesClaimRewards = 'lp-incentives-claim-rewards',
-  ToucanBid = 'toucan-bid',
-  ToucanWithdrawBidAndClaimTokens = 'toucan-withdraw-bid-and-claim-tokens',
   UniswapXOrder = 'uniswapx-order',
-
-  AuctionBid = 'auction-bid',
-  AuctionClaimed = 'auction-claimed',
-  AuctionExited = 'auction-exited',
-  AuctionLaunch = 'auction-launch',
 
   // Smart Wallet
   RemoveDelegation = 'remove-delegation',
@@ -687,106 +680,6 @@ export interface LpIncentivesClaimTransactionInfo extends BaseTransactionInfo {
   tokenAddress: string
 }
 
-export interface ToucanBidTransactionInfo extends BaseTransactionInfo {
-  type: TransactionType.ToucanBid
-  /**
-   * Raw bid token amount committed with the bid (denominated in bid token units)
-   */
-  amountRaw: string
-  /**
-   * Snapped Q96 max price submitted with the bid
-   */
-  maxPriceQ96: string
-  /**
-   * Address of the auction contract handling the bid
-   */
-  auctionContractAddress: string
-  /**
-   * Address of the bid token (zero address when bidding with native token)
-   */
-  bidTokenAddress: string
-  /**
-   * Address of the token being auctioned.
-   */
-  auctionTokenAddress?: string
-  /**
-   * Symbol of the token being auctioned.
-   */
-  auctionTokenSymbol?: string
-  /**
-   * Identifier returned from the Toucan auction service
-   */
-  requestId: string
-  dappInfo?: DappInfoTransactionDetails
-}
-
-export interface ToucanWithdrawBidAndClaimTokensTransactionInfo extends BaseTransactionInfo {
-  type: TransactionType.ToucanWithdrawBidAndClaimTokens
-  /**
-   * Address of the auction contract from which bid tokens are withdrawn and auction tokens are claimed
-   */
-  auctionContractAddress: string
-  /**
-   * Address of the auction token being claimed (optional)
-   */
-  auctionTokenAddress?: string
-  /**
-   * Raw amount of auction tokens claimed (optional)
-   */
-  auctionTokenAmountRaw?: string
-  /**
-   * Address of the bid token being withdrawn (optional)
-   */
-  bidTokenAddress?: string
-  /**
-   * Raw amount of bid tokens withdrawn (optional)
-   */
-  bidTokenAmountRaw?: string
-}
-
-export interface AuctionBidTransactionInfo extends BaseTransactionInfo {
-  type: TransactionType.AuctionBid
-  auctionContractAddress: string
-  bidTokenAddress: string
-  amountRaw: string
-  dappInfo?: DappInfoTransactionDetails
-}
-
-export interface AuctionClaimedTransactionInfo extends BaseTransactionInfo {
-  type: TransactionType.AuctionClaimed
-  auctionContractAddress: string
-  tokenAddress: string
-  amountRaw: string
-  dappInfo?: DappInfoTransactionDetails
-}
-
-export interface AuctionExitedTransactionInfo extends BaseTransactionInfo {
-  type: TransactionType.AuctionExited
-  auctionContractAddress: string
-  tokenAddress: string
-  amountRaw: string
-  dappInfo?: DappInfoTransactionDetails
-}
-
-export interface AuctionLaunchTransactionInfo extends BaseTransactionInfo {
-  type: TransactionType.AuctionLaunch
-  requestId: string
-  predictedAuctionAddress: string
-  predictedTokenAddress: string
-  // The launched token isn't indexed at submit time, so activity UIs can't resolve its
-  // metadata from the predicted address — carry the form's display fields instead.
-  tokenName?: string
-  tokenSymbol?: string
-  tokenLogoUrl?: string
-  dappInfo?: DappInfoTransactionDetails
-  /**
-   * Snapshot of the `Auction Create Submitted` analytics properties, persisted so the activity
-   * updater can fire `Auction Create Completed` with identical values once the launch confirms —
-   * even if the create-auction flow has unmounted by then.
-   */
-  analytics?: AuctionCreateAnalyticsProperties
-}
-
 export interface MigrateV2LiquidityToV3TransactionInfo extends BaseTransactionInfo {
   type: TransactionType.MigrateLiquidityV2ToV3
   baseCurrencyId: string
@@ -842,12 +735,6 @@ export type TransactionTypeInfo =
   | MigrateV2LiquidityToV3TransactionInfo
   | MigrateV3LiquidityToV4TransactionInfo
   | LpIncentivesClaimTransactionInfo
-  | ToucanBidTransactionInfo
-  | ToucanWithdrawBidAndClaimTokensTransactionInfo
-  | AuctionBidTransactionInfo
-  | AuctionClaimedTransactionInfo
-  | AuctionExitedTransactionInfo
-  | AuctionLaunchTransactionInfo
 
 /**
  * Typeguard to check if a `TransactionTypeInfo` has a specific attribute.

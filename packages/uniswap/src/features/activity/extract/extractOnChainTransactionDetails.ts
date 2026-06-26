@@ -5,7 +5,6 @@ import {
 } from '@uniswap/client-data-api/dist/data/v1/types_pb'
 import { TradingApi } from '@universe/api'
 import { parseApproveTransaction } from 'uniswap/src/features/activity/parse/parseApproveTransaction'
-import { parseAuctionTransaction } from 'uniswap/src/features/activity/parse/parseAuctionTransaction'
 import { parseBridgeTransaction } from 'uniswap/src/features/activity/parse/parseBridgingTransaction'
 import {
   buildExecuteTransactionDetails,
@@ -82,12 +81,6 @@ function parseRestOnChainTransactionTypeInfo(transaction: OnChainTransaction): T
     case OnChainTransactionLabel.INCREASE_LIQUIDITY:
     case OnChainTransactionLabel.DECREASE_LIQUIDITY:
       return parseLiquidityTransaction(transaction)
-    case OnChainTransactionLabel.AUCTION_SUBMIT_BID:
-    case OnChainTransactionLabel.AUCTION_CLAIM_TOKENS:
-    case OnChainTransactionLabel.AUCTION_EXIT_BID:
-    case OnChainTransactionLabel.AUCTION_EXIT_PARTIALLY_FILLED_BID:
-    case OnChainTransactionLabel.AUCTION_CLAIM_TOKENS_BATCHED:
-      return parseAuctionTransaction(transaction)
     default:
       return undefined
   }
