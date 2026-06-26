@@ -118,14 +118,12 @@ export function useOnSelectTradeableAsset({
         })
       }
 
-      if (!isBridgePair) {
-        const newFilteredChainIds = { ...filteredChainIds }
-
-        newFilteredChainIds[CurrencyField.INPUT] = tradeableAsset.chainId
-        newFilteredChainIds[CurrencyField.OUTPUT] = tradeableAsset.chainId
-
-        newState.filteredChainIds = newFilteredChainIds
-      }
+      // GNOSIS-ONLY: always pin both input and output to the selected token's chain.
+      // Gnosis (100) is the only enabled chain, so cross-chain/bridge swaps are disabled.
+      const newFilteredChainIds = { ...filteredChainIds }
+      newFilteredChainIds[CurrencyField.INPUT] = tradeableAsset.chainId
+      newFilteredChainIds[CurrencyField.OUTPUT] = tradeableAsset.chainId
+      newState.filteredChainIds = newFilteredChainIds
 
       newState[field] = tradeableAsset
 
