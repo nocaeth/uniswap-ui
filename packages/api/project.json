@@ -73,9 +73,6 @@
         "{projectRoot}/src/**/*.graphql",
         "{projectRoot}/src/**/*.gql",
         "{projectRoot}/scripts/generate-graphql-types.ts",
-        "{workspaceRoot}/apps/mobile/src/**/*.graphql",
-        "{workspaceRoot}/apps/extension/src/**/*.graphql",
-        "{workspaceRoot}/packages/wallet/src/**/*.graphql",
         "{workspaceRoot}/packages/uniswap/src/**/*.graphql",
         "ciCacheBust"
       ],

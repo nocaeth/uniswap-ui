@@ -61,8 +61,7 @@
       "@universe/websocket/*": ["./packages/websocket/*"],
       "ui/*": ["./packages/ui/*"],
       "uniswap/*": ["./packages/uniswap/*"],
-      "utilities/*": ["./packages/utilities/*"],
-      "wallet/*": ["./packages/wallet/*"]
+      "utilities/*": ["./packages/utilities/*"]
     }
   }
 }

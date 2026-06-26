@@ -131,12 +131,6 @@ export const sharedRestrictedImportPaths = [
     message: 'Do not import env vars from react-native-dotenv. Use getConfig() instead.',
   },
   {
-    name: 'wallet/src/data/apollo/usePersistedApolloClient',
-    importNames: ['usePersistedApolloClient'],
-    message:
-      "This hook should only be used once at the top level where the React app is initialized. Use `import { useApolloClient } from '@apollo/client'` to get the default apollo client elsewhere.",
-  },
-  {
     name: 'expo-localization',
     message:
       'Avoid using due to issue with unsupported locales. Use utilities/src/device/locales.ts getDeviceLocales instead',
@@ -194,10 +188,6 @@ export const sharedRestrictedImportPaths = [
     message: 'Avoid importing directly from the uniswap/src barrel which causes circular imports.',
   },
   {
-    name: 'wallet/src',
-    message: 'Avoid importing directly from the wallet/src barrel which causes circular imports.',
-  },
-  {
     name: '@uniswap/sdk-core',
     importNames: ['ChainId'],
     message: "Don't use ChainId from @uniswap/sdk-core. Use the UniverseChainId from universe/uniswap.",
@@ -221,10 +211,6 @@ export const sharedRestrictedImportPaths = [
     name: 'uniswap/src/features/dataApi/balances/balancesRest',
     importNames: ['useRESTPortfolioTotalValue'],
     message: 'Use the wrapper hooks `usePortfolioTotalValue`, `useAccountListData` or `usePortfolioBalances` instead.',
-  },
-  {
-    name: 'wallet/src/components/ErrorBoundary/restart',
-    message: 'Use `wallet/src/components/ErrorBoundary/restartApp` instead.',
   },
 ] as const
 

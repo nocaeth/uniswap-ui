@@ -4,7 +4,7 @@ import { TransactionStatus } from 'uniswap/src/features/transactions/types/trans
 import { logger } from 'utilities/src/logger/logger'
 import { useEvent } from 'utilities/src/react/hooks'
 import { ONE_HOUR_MS } from 'utilities/src/time/time'
-import type { GetCallsStatusResult } from 'wallet/src/features/dappRequests/types'
+import type { GetCallsStatusResult } from '~/connection/walletCapabilities'
 import { useAccount } from '~/hooks/useAccount'
 import { useEthersWeb3Provider } from '~/hooks/useEthersProvider'
 import { ActivityUpdateTransactionType, OnActivityUpdate } from '~/state/activity/types'

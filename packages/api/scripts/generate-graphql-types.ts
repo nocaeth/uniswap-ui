@@ -37,13 +37,7 @@ const schemaDocumentNode = getCachedDocumentNodeFromSchema(schemaAst)
 // ---------------------------------------------------------------------------
 // 2. Load all document files (matching codegen.config.ts patterns)
 // ---------------------------------------------------------------------------
-const documentPatterns = [
-  'apps/mobile/src/**/*.graphql',
-  'apps/extension/src/**/*.graphql',
-  'packages/wallet/src/**/*.graphql',
-  'packages/uniswap/src/**/*.graphql',
-  'packages/api/src/**/*.graphql',
-]
+const documentPatterns = ['packages/uniswap/src/**/*.graphql', 'packages/api/src/**/*.graphql']
 
 const documentPaths: string[] = []
 for (const pattern of documentPatterns) {

@@ -11,9 +11,6 @@
       "path": "./packages/uniswap"
     },
     {
-      "path": "./packages/wallet"
-    },
-    {
       "path": "./packages/ui"
     },
     {
@@ -21,9 +18,6 @@
     },
     {
       "path": "./packages/api"
-    },
-    {
-      "path": "./apps/extension"
     },
     {
       "path": "./packages/config"
@@ -54,9 +48,6 @@
     },
     {
       "path": "./packages/prices"
-    },
-    {
-      "path": "./apps/mobile"
     },
     {
       "path": "./packages/privacy"

@@ -6,7 +6,9 @@ import { Eye } from 'ui/src/components/icons/Eye'
 import { EyeSlash } from 'ui/src/components/icons/EyeSlash'
 import { FileListLock } from 'ui/src/components/icons/FileListLock'
 import { GraduationCap } from 'ui/src/components/icons/GraduationCap'
-import { MNEMONIC_LENGTH_EW } from 'wallet/src/constants/accounts'
+
+// Embedded wallet (passkey-backed) mnemonic length (BIP-39 24 words).
+const MNEMONIC_LENGTH_EW = 24
 
 function PlaceholderBars({ rowCount }: { rowCount: number }) {
   const perColumn = Math.ceil(rowCount / 2)
