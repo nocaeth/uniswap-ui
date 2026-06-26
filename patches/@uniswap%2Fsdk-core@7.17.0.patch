@@ -91,3 +91,27 @@ index 977f095b008693a862abe1fca942c64b66da1208..fd1c052118837d6338ab682a2c527513
  export type SupportedChainsType = (typeof SUPPORTED_CHAINS)[number];
  export declare enum NativeCurrencyName {
      ETHER = "ETH",
+diff --git a/dist/cjs/src/entities/weth9.js b/dist/cjs/src/entities/weth9.js
+index 4943bb5e9..65f0bf719 100644
+--- a/dist/cjs/src/entities/weth9.js
++++ b/dist/cjs/src/entities/weth9.js
+@@ -7,6 +7,7 @@ const token_1 = require("./token");
+  */
+ exports.WETH9 = {
+     1: new token_1.Token(1, '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 18, 'WETH', 'Wrapped Ether'),
++    100: new token_1.Token(100, '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', 18, 'WXDAI', 'Wrapped XDAI'),
+     11155111: new token_1.Token(11155111, '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', 18, 'WETH', 'Wrapped Ether'),
+     3: new token_1.Token(3, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped Ether'),
+     4: new token_1.Token(4, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped Ether'),
+diff --git a/dist/esm/src/entities/weth9.js b/dist/esm/src/entities/weth9.js
+index efc66d16d..42bc291b4 100644
+--- a/dist/esm/src/entities/weth9.js
++++ b/dist/esm/src/entities/weth9.js
+@@ -4,6 +4,7 @@ import { Token } from './token';
+  */
+ export const WETH9 = {
+     1: new Token(1, '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 18, 'WETH', 'Wrapped Ether'),
++    100: new Token(100, '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', 18, 'WXDAI', 'Wrapped XDAI'),
+     11155111: new Token(11155111, '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', 18, 'WETH', 'Wrapped Ether'),
+     3: new Token(3, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped Ether'),
+     4: new Token(4, '0xc778417E063141139Fce010982780140Aa0cD5Ab', 18, 'WETH', 'Wrapped Ether'),

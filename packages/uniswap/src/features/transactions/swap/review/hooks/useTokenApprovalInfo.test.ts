@@ -35,6 +35,15 @@ vi.mock('@universe/gating', async (importOriginal) => {
 })
 vi.mock('uniswap/src/data/apiClients/tradingApi/useCheckApprovalQuery')
 const mockUseCheckApprovalQuery = useCheckApprovalQuery as Mock
+// These tests exercise the Trading API (non-Gnosis) path; stub the client-side Gnosis
+// approval hook so its react-query call doesn't require a QueryClientProvider.
+vi.mock('uniswap/src/features/transactions/swap/services/gnosisRouter/useGnosisApprovalInfo', () => ({
+  useGnosisApprovalInfo: vi.fn(() => ({
+    tokenApprovalInfo: { action: ApprovalAction.None, txRequest: null, cancelTxRequest: null },
+    approvalGasFeeResult: { value: '0', displayValue: '0', isLoading: false, error: null },
+    revokeGasFeeResult: { value: '0', displayValue: '0', isLoading: false, error: null },
+  })),
+}))
 
 describe('useTokenApprovalInfo', () => {
   const mockTokenIn = new Token(UniverseChainId.Mainnet, DAI.address, DAI.decimals, DAI.symbol, DAI.name)

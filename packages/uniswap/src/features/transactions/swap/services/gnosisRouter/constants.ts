@@ -26,6 +26,18 @@ export const GNOSIS_BASE_TOKENS: string[] = [GNOSIS_WXDAI, GNOSIS_USDCE]
 
 export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH]
 
+// Upper bound on candidate routes quoted per request. With Multicall3 every route is
+// quoted in a single eth_call, but we still cap to bound calldata size and decode work.
+export const GNOSIS_MAX_CANDIDATE_ROUTES = 40
+
+// Multicall3 is deployed at the same canonical address on Gnosis as everywhere else.
+export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11'
+
+// Time budgets (ms) before a quote attempt is aborted. Indicative (keystroke) quotes get a
+// tighter budget so a slow RPC can't stall typing; full quotes get more room.
+export const GNOSIS_QUOTE_TIMEOUT_MS = 8_000
+export const GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS = 4_000
+
 /**
  * UniversalRouter address on Gnosis. UniversalRouter has no canonical address, so
  * this MUST be set to the address you deployed (see gnosis/contracts/README.md).
