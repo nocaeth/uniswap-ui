@@ -13,7 +13,6 @@ import { useUniswapContext } from 'uniswap/src/contexts/UniswapContext'
 import { useIsModeMismatch } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
-import { ShowGetStartedProvider } from 'uniswap/src/features/passkey/ShowGetStartedContext'
 import { InterfaceEventName, InterfacePageName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import Trace from 'uniswap/src/features/telemetry/Trace'
@@ -34,13 +33,11 @@ import { SwapAndLimitContextProvider } from '~/features/Swap/state/SwapContext'
 import type { CurrencyState } from '~/features/Swap/state/types'
 import { useSwapAndLimitContext } from '~/features/Swap/state/useSwapContext'
 import { PAGE_WRAPPER_MAX_WIDTH, PageWrapper, SwapModuleWrapper } from '~/features/Swap/styled'
-import { useHasInjectedWallets } from '~/features/wallet/connection/hooks/useOrderedWalletConnectors'
 import { PageType, useIsPage } from '~/hooks/useIsPage'
 import { SlideoutChartCard } from '~/pages/Swap/Swap/SlideoutChartCard/SlideoutChartCard'
 import { useInitialCurrencyState } from '~/pages/Swap/Swap/state/hooks'
 import { SwapChartToggleButton } from '~/pages/Swap/Swap/SwapChartToggleButton'
 import { SwapForm, SwapFormSettingsButton } from '~/pages/Swap/Swap/SwapForm'
-import { useEmbeddedWalletState } from '~/state/embeddedWallet/store'
 import { MultichainContextProvider } from '~/state/multichain/MultichainContext'
 
 function wrapWithTokenHoverCard(element: JSX.Element, currencyInfo: CurrencyInfo): JSX.Element {
@@ -135,11 +132,6 @@ export function Swap({
   const isModeMismatch = useIsModeMismatch(initialInputChainId)
   const isSharedSwapDisabled = isModeMismatch && isExplorePage
 
-  const isEmbeddedWalletEnabled = useFeatureFlag(FeatureFlags.EmbeddedWallet)
-  const hasInjectedWallets = useHasInjectedWallets()
-  const { walletAddress: embeddedWalletAddress } = useEmbeddedWalletState()
-  const showGetStarted = isEmbeddedWalletEnabled && !hasInjectedWallets && !embeddedWalletAddress
-
   const input = currencyToAsset(initialInputCurrency)
   const output = currencyToAsset(initialOutputCurrency)
 
@@ -159,31 +151,29 @@ export function Swap({
 
   return (
     <TokenSelectorHoverConfigProvider wrapTokenRow={media.xl ? undefined : wrapWithTokenHoverCard}>
-      <ShowGetStartedProvider value={showGetStarted}>
-        <MultichainContextProvider initialChainId={initialInputChainId ?? UniverseChainId.Mainnet}>
-          <SwapTransactionSettingsStoreContextProvider>
-            <SwapAndLimitContextProvider
-              initialInputCurrency={initialInputCurrency}
-              initialOutputCurrency={initialOutputCurrency}
-            >
-              <SwapFormStoreContextProvider prefilledState={prefilledState} hideFooter={hideFooter}>
-                <Flex position="relative" gap="$spacing16" opacity={isSharedSwapDisabled ? 0.6 : 1}>
-                  {isSharedSwapDisabled && <DisabledSwapOverlay />}
-                  <UniversalSwapFlow
-                    hideHeader={hideHeader}
-                    hideFooter={hideFooter}
-                    syncTabToUrl={syncTabToUrl}
-                    swapRedirectCallback={swapRedirectCallback}
-                    onCurrencyChange={onCurrencyChange}
-                    prefilledState={prefilledState}
-                    tokenColor={tokenColor}
-                  />
-                </Flex>
-              </SwapFormStoreContextProvider>
-            </SwapAndLimitContextProvider>
-          </SwapTransactionSettingsStoreContextProvider>
-        </MultichainContextProvider>
-      </ShowGetStartedProvider>
+      <MultichainContextProvider initialChainId={initialInputChainId ?? UniverseChainId.Mainnet}>
+        <SwapTransactionSettingsStoreContextProvider>
+          <SwapAndLimitContextProvider
+            initialInputCurrency={initialInputCurrency}
+            initialOutputCurrency={initialOutputCurrency}
+          >
+            <SwapFormStoreContextProvider prefilledState={prefilledState} hideFooter={hideFooter}>
+              <Flex position="relative" gap="$spacing16" opacity={isSharedSwapDisabled ? 0.6 : 1}>
+                {isSharedSwapDisabled && <DisabledSwapOverlay />}
+                <UniversalSwapFlow
+                  hideHeader={hideHeader}
+                  hideFooter={hideFooter}
+                  syncTabToUrl={syncTabToUrl}
+                  swapRedirectCallback={swapRedirectCallback}
+                  onCurrencyChange={onCurrencyChange}
+                  prefilledState={prefilledState}
+                  tokenColor={tokenColor}
+                />
+              </Flex>
+            </SwapFormStoreContextProvider>
+          </SwapAndLimitContextProvider>
+        </SwapTransactionSettingsStoreContextProvider>
+      </MultichainContextProvider>
     </TokenSelectorHoverConfigProvider>
   )
 }

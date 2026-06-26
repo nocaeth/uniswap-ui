@@ -7,12 +7,10 @@ import { wagmiConfig } from '~/connection/wagmiConfig'
 import { uniswapWalletConnect } from '~/connection/walletConnect'
 import { ConnectionService } from '~/features/wallet/connection/services/IConnectionService'
 import { WalletConnectorMeta } from '~/features/wallet/connection/types/WalletConnectorMeta'
-import { useSignInWithPasskey } from '~/hooks/useSignInWithPasskey'
 import { persistHideMobileAppPromoBannerAtom } from '~/state/application/atoms'
 
 const APPLY_CUSTOM_CONNECTOR_META_MAP = {
   [CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID]: applyUniswapWalletConnectorMeta,
-  [CONNECTION_PROVIDER_IDS.EMBEDDED_WALLET_CONNECTOR_ID]: applyEmbeddedWalletConnectorMeta,
 } as const
 
 /**
@@ -23,7 +21,6 @@ const APPLY_CUSTOM_CONNECTOR_META_MAP = {
  *
  * Current transformations:
  * - Uniswap Wallet: Adds a new connector to the array
- * - Embedded Wallet: Adds customConnectorId, needed to trigger specific behavior in connection flow.
  * - Icon overrides: Applies custom icons from CONNECTOR_ICON_OVERRIDE_MAP
  *
  */
@@ -79,36 +76,4 @@ const UNISWAP_WALLET_CONNECTOR_META = {
 /** Adds a WalletConnectorMeta for the Uniswap Wallet Connect connector. */
 function applyUniswapWalletConnectorMeta(walletConnectors: WalletConnectorMeta[]): WalletConnectorMeta[] {
   return [...walletConnectors, UNISWAP_WALLET_CONNECTOR_META]
-}
-
-// =========================================
-// Embedded Wallet - Custom Connector
-// =========================================
-// Requires custom authentication flow via passkey sign-in.
-// Unlike standard wagmi connectors that activate immediately,
-// this connector needs to complete the passkey flow before
-// updating wagmi's connection state.
-
-/** Adds a customConnectorId to the embedded wallet connector to ensure it is treated as a custom connector. */
-function applyEmbeddedWalletConnectorMeta(walletConnectors: WalletConnectorMeta[]): WalletConnectorMeta[] {
-  return walletConnectors.map((walletConnector) => {
-    if (walletConnector.wagmi?.id === CONNECTION_PROVIDER_IDS.EMBEDDED_WALLET_CONNECTOR_ID) {
-      return { ...walletConnector, customConnectorId: CONNECTION_PROVIDER_IDS.EMBEDDED_WALLET_CONNECTOR_ID }
-    }
-    return walletConnector
-  })
-}
-
-export function useUniswapEmbeddedConnectionService(): ConnectionService {
-  const { signInWithPasskeyAsync } = useSignInWithPasskey()
-
-  return useMemo(
-    () => ({
-      connect: async () => {
-        await signInWithPasskeyAsync()
-        return { connected: true }
-      },
-    }),
-    [signInWithPasskeyAsync],
-  )
 }

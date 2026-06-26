@@ -3,12 +3,10 @@ import { Helmet } from 'react-helmet-async/lib/index'
 import { Navigate, useLocation } from 'react-router'
 import { useSporeColors } from 'ui/src'
 import { initializeScrollWatcher } from 'uniswap/src/components/modals/ScrollLock'
-import { EXTENSION_PASSKEY_AUTH_PATH } from 'uniswap/src/features/passkey/constants'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { ResetPageScrollEffect } from '~/app/bootstrap/ResetPageScroll'
 import { ResetPortfolioChainOnEntryEffect } from '~/app/bootstrap/ResetPortfolioChainOnEntry'
 import { UserPropertyUpdater } from '~/app/bootstrap/UserPropertyUpdater'
-import { Body } from '~/app/layout/Body'
 import { AppLayout } from '~/app/layout/Layout'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { useFeatureFlagUrlOverrides } from '~/featureFlags/useFeatureFlagUrlOverrides'
@@ -17,8 +15,6 @@ import { findRouteByPath } from '~/pages/RouteDefinitions'
 import { isPathBlocked } from '~/utils/blockedPaths'
 import { MICROSITE_LINK } from '~/utils/openDownloadApp'
 import { getCurrentPageFromLocation } from '~/utils/urlRoutes'
-
-const OVERRIDE_PAGE_LAYOUT = [EXTENSION_PASSKEY_AUTH_PATH]
 
 export function App() {
   const colors = useSporeColors()
@@ -54,8 +50,6 @@ export function App() {
     return <Navigate to="/swap" replace />
   }
 
-  const shouldOverridePageLayout = OVERRIDE_PAGE_LAYOUT.includes(pathname)
-
   return (
     <ErrorBoundary>
       <Trace page={currentPage}>
@@ -83,7 +77,7 @@ export function App() {
         <UserPropertyUpdater />
         <ResetPageScrollEffect />
         <ResetPortfolioChainOnEntryEffect />
-        {shouldOverridePageLayout ? <Body shouldRenderAppChrome={false} /> : <AppLayout />}
+        <AppLayout />
       </Trace>
     </ErrorBoundary>
   )

@@ -1,16 +1,12 @@
 import { isMobileWeb, isWebIOS } from '@universe/environment'
-import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useAtom } from 'jotai'
 import { PropsWithChildren } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, Text } from 'ui/src'
 import { AppStoreLogo } from 'ui/src/components/icons/AppStoreLogo'
-import { Passkey } from 'ui/src/components/icons/Passkey'
 import { PhoneDownload } from 'ui/src/components/icons/PhoneDownload'
-import { iconSizes } from 'ui/src/theme'
 import { CONNECTION_PROVIDER_IDS } from 'uniswap/src/constants/web3'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
-import { TestID } from 'uniswap/src/test/fixtures/testIDs'
 import { useEvent } from 'utilities/src/react/hooks'
 import { MenuStateVariant, useSetMenu } from '~/components/AccountDrawer/menuState'
 import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
@@ -20,7 +16,6 @@ import { DetectedBadge } from '~/components/WalletModal/shared'
 import { UniswapBrandedIcon } from '~/components/WalletModal/UniswapBrandedIcon'
 import { useWalletWithId } from '~/features/accounts/store/hooks'
 import { useConnectWallet } from '~/features/wallet/connection/hooks/useConnectWallet'
-import { useSignInWithPasskey } from '~/hooks/useSignInWithPasskey'
 import { persistHideMobileAppPromoBannerAtom } from '~/state/application/atoms'
 import { openDownloadApp } from '~/utils/openDownloadApp'
 
@@ -55,38 +50,12 @@ export function OptionContainer({ hideBackground, recent, children, onPress, tes
   )
 }
 
-function PasskeyLoginOption({ onSuccess }: { onSuccess: () => void }) {
-  const { t } = useTranslation()
-  const { signInWithPasskey: handlePasskeyLogin } = useSignInWithPasskey({ onSuccess })
-
-  return (
-    <OptionContainer onPress={handlePasskeyLogin} testID={TestID.LogIn}>
-      <Flex
-        width={iconSizes.icon32}
-        height={iconSizes.icon32}
-        minWidth={iconSizes.icon32}
-        alignItems="center"
-        justifyContent="center"
-        backgroundColor="$accent2"
-        borderRadius="$rounded8"
-      >
-        <Passkey color="$accent1" size="$icon.24" />
-      </Flex>
-      <Text variant="buttonLabel2" color="$neutral1" whiteSpace="nowrap">
-        {t('nav.logIn.button')}
-      </Text>
-    </OptionContainer>
-  )
-}
-
 export function UniswapWalletOptions() {
   const { t } = useTranslation()
   const [, setPersistHideMobileAppPromoBanner] = useAtom(persistHideMobileAppPromoBannerAtom)
-  const isEmbeddedWalletEnabled = useFeatureFlag(FeatureFlags.EmbeddedWallet)
 
   const uniswapExtensionWallet = useWalletWithId(CONNECTION_PROVIDER_IDS.UNISWAP_EXTENSION_RDNS)
   const uniswapMobileWallet = useWalletWithId(CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID)
-  const embeddedWallet = useWalletWithId(CONNECTION_PROVIDER_IDS.EMBEDDED_WALLET_CONNECTOR_ID)
 
   const accountDrawer = useAccountDrawer()
   const setMenu = useSetMenu()
@@ -120,7 +89,6 @@ export function UniswapWalletOptions() {
         ) : !isMobileWeb ? (
           <DownloadWalletOption />
         ) : null}
-        {isEmbeddedWalletEnabled && embeddedWallet ? <PasskeyLoginOption onSuccess={onSuccess} /> : null}
         <OptionContainer
           onPress={() => (uniswapMobileWallet ? connectWallet({ wallet: uniswapMobileWallet, onSuccess }) : undefined)}
         >
