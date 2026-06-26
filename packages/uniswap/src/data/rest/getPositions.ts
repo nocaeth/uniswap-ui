@@ -73,17 +73,22 @@ export function useGetPositionsInfiniteQuery(
 }
 
 export function useGetPositionsForPairs(
-  serializedPairs: {
-    [chainId: number]: {
-      [key: string]: { token0: SerializedToken; token1: SerializedToken }
-    }
-  },
+  serializedPairs:
+    | {
+        [chainId: number]: {
+          [key: string]: { token0: SerializedToken; token1: SerializedToken }
+        }
+      }
+    | undefined,
   account?: Address,
 ): UseQueryResult<GetPositionResponse, ConnectError>[] {
   const positionsQueryOptions = useMemo(() => {
-    return Object.keys(serializedPairs)
+    // The persisted `user.pairs` slice can be undefined (fresh/migrated state); guard
+    // so the saved-pairs lookup doesn't crash the whole positions page.
+    const pairs = serializedPairs ?? {}
+    return Object.keys(pairs)
       .flatMap((chainId) => {
-        const pairsForChain = serializedPairs[Number(chainId)]
+        const pairsForChain = pairs[Number(chainId)]
         if (!pairsForChain) {
           return []
         }
