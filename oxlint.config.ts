@@ -614,6 +614,19 @@ export default defineConfig({
     // SHARED OVERRIDES (apply across all projects)
     // ═══════════════════════════════════════════════════════════════════
 
+    // ── Gnosis-only fork: custom calldata builders ────────────────────
+    // The hand-written Gnosis liquidity/quote calldata builders use positional
+    // args mirroring the on-chain ABI argument order, so the 2-param cap and
+    // 500-line cap don't fit. Relax them here (same pattern as the app-dir
+    // overrides below) rather than reshaping working calldata logic.
+    {
+      files: ['packages/uniswap/src/data/apiClients/liquidityService/gnosis/**'],
+      rules: {
+        'max-params': 'off',
+        'max-lines': 'off',
+      },
+    },
+
     // ── Migration files: relax type rules ─────────────────────────────
     {
       files: ['**/*migration*', '**/*Migration*', '**/migrations/**/*.ts'],
