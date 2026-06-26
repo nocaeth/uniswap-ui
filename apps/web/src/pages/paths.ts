@@ -11,7 +11,6 @@ export const paths = [
   '/tokens/:chainName',
   '/tokens/:chainName/:tokenAddress',
   '/explore/pools/:chainName/:poolAddress',
-  '/sell',
   '/swap',
   '/pool/v2/find',
   '/pool/v2',
@@ -37,8 +36,6 @@ export const paths = [
   '/increase',
   '/remove/v2/:currencyIdA/:currencyIdB',
   '/remove/:tokenId',
-  '/migrate/v2/:chainName/:pairAddress',
-  '/migrate/v3/:chainName/:tokenId',
   '/extension/uninstall',
   '/preview',
 ]
