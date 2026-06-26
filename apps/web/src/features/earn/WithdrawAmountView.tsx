@@ -33,7 +33,7 @@ import {
   getWithdrawDestinationBalanceUsd,
   getWithdrawDestinationChainIds,
 } from '~/features/earn/withdrawDestinationChains'
-import { PredefinedAmount } from '~/pages/Swap/Buy/PredefinedAmount'
+import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 
 const CHAR_WIDTH = 45
 const MAX_FONT_SIZE = 70

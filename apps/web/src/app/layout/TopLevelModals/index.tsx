@@ -93,7 +93,6 @@ export function TopLevelModals() {
       <ModalRenderer modalName={ModalName.Help} />
       <ModalRenderer modalName={ModalName.DelegationMismatch} />
       <ModalRenderer modalName={ModalName.ReceiveCryptoModal} />
-      <ModalRenderer modalName={ModalName.Send} />
       <ModalRenderer modalName={ModalName.BridgedAsset} componentProps={bridgedAssetModalProps} />
       <ModalRenderer modalName={ModalName.Wormhole} componentProps={wormholeModalProps} />
       <ModalRenderer modalName={ModalName.PendingWalletConnection} />
