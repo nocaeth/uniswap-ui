@@ -17,7 +17,6 @@ export const EmptyWallet = () => {
         </Text>
       </Flex>
       <EmptyWalletCards
-        buyElementName={ElementName.EmptyStateBuy}
         receiveElementName={ElementName.EmptyStateReceive}
         cexTransferElementName={ElementName.EmptyStateCEXTransfer}
       />

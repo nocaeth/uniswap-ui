@@ -56,7 +56,6 @@ export function SwapBottomCard() {
         <AnimatePresence>
           <EmptyWalletCards
             horizontalLayout
-            buyElementName={ElementName.ForEmptyStateBuy}
             receiveElementName={ElementName.ForEmptyStateReceive}
             cexTransferElementName={ElementName.ForEmptyStateCEXTransfer}
           />

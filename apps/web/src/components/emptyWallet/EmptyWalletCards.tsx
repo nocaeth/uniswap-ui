@@ -1,10 +1,7 @@
-import { isExtensionApp } from '@universe/environment'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
 import { Flex, useIsDarkMode, useShadowPropsShort, useSporeColors } from 'ui/src'
 import { ArrowDownCircle } from 'ui/src/components/icons/ArrowDownCircle'
-import { Buy } from 'ui/src/components/icons/Buy'
 import { useDeviceDimensions } from 'ui/src/hooks/useDeviceDimensions'
 import type { ActionCardItem } from 'uniswap/src/components/misc/ActionCard'
 import { ActionCard } from 'uniswap/src/components/misc/ActionCard'
@@ -14,7 +11,6 @@ import { getOptionalServiceProviderLogo } from 'uniswap/src/features/fiatOnRamp/
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
 import { TestID } from 'uniswap/src/test/fixtures/testIDs'
 import { useEvent } from 'utilities/src/react/hooks'
-import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
 import { useCexTransferProviderPress } from '~/components/ReceiveCryptoModal/useCexTransferProviderPress'
 import { useOpenReceiveCryptoModal } from '~/components/ReceiveCryptoModal/useOpenReceiveCryptoModal'
 import { ReceiveModalState } from '~/types/receiveCryptoModal'
@@ -63,34 +59,24 @@ export const EmptyWalletCards = (
   {
     horizontalLayout,
     growFullWidth,
-    buyElementName,
     receiveElementName,
     cexTransferElementName,
   }: {
     horizontalLayout?: boolean
     growFullWidth?: boolean
-    buyElementName: ElementName
     receiveElementName: ElementName
     cexTransferElementName: ElementName
   } = {
     horizontalLayout: false,
     growFullWidth: false,
-    buyElementName: ElementName.EmptyStateBuy,
     receiveElementName: ElementName.EmptyStateReceive,
     cexTransferElementName: ElementName.EmptyStateCEXTransfer,
   },
 ): JSX.Element => {
   const { t } = useTranslation()
   const providers = useCexTransferProviders()
-  const accountDrawer = useAccountDrawer()
-  const navigate = useNavigate()
   const { fullWidth } = useDeviceDimensions()
   const shadowProps = useShadowPropsShort()
-
-  const handleBuyCryptoClick = useEvent(() => {
-    accountDrawer.close()
-    navigate(`/buy`, isExtensionApp ? { replace: true } : undefined)
-  })
 
   const handleReceiveCryptoClick = useOpenReceiveCryptoModal({
     modalState: ReceiveModalState.DEFAULT,
@@ -113,14 +99,6 @@ export const EmptyWalletCards = (
   const options: ActionCardItem[] = useMemo(
     () => [
       {
-        title: t('home.tokens.empty.action.buy.title'),
-        blurb: t('home.tokens.empty.action.buy.description'),
-        elementName: buyElementName,
-        icon: <Buy color="$accent1" size="$icon.28" />,
-        onPress: handleBuyCryptoClick,
-        testId: TestID.EmptyStateBuy,
-      },
-      {
         title: t('home.empty.transfer'),
         blurb: t('home.empty.transfer.description'),
         elementName: receiveElementName,
@@ -140,16 +118,7 @@ export const EmptyWalletCards = (
           ]
         : []),
     ],
-    [
-      providers,
-      handleBuyCryptoClick,
-      handleReceiveCryptoClick,
-      handleCEXTransferClick,
-      t,
-      buyElementName,
-      receiveElementName,
-      cexTransferElementName,
-    ],
+    [providers, handleReceiveCryptoClick, handleCEXTransferClick, t, receiveElementName, cexTransferElementName],
   )
 
   // Determine layout mode
@@ -186,7 +155,7 @@ export const EmptyWalletCards = (
             horizontalLayout
               ? {
                   display: 'grid',
-                  gridTemplateColumns: providers.length > 0 ? '1fr 1fr 1fr' : '1fr 1fr',
+                  gridTemplateColumns: providers.length > 0 ? '1fr 1fr' : '1fr',
                 }
               : undefined
           }
