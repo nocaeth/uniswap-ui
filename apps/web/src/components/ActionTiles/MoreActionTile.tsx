@@ -1,8 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Flex, FlexProps, Text } from 'ui/src'
-import { ArrowDownCircleFilled } from 'ui/src/components/icons/ArrowDownCircleFilled'
-import { ChartBar } from 'ui/src/components/icons/ChartBar'
 import { CoinConvert } from 'ui/src/components/icons/CoinConvert'
 import { MoreHorizontal } from 'ui/src/components/icons/MoreHorizontal'
 import { Plus } from 'ui/src/components/icons/Plus'
@@ -24,16 +22,6 @@ export function MoreActionTile({ padding = '$spacing12' }: { padding?: FlexProps
 
   const onPressSwap = useEvent(() => {
     navigateToSwapFlow({})
-    closeDropdown()
-  })
-
-  const onPressSell = useEvent(() => {
-    navigate('/sell')
-    closeDropdown()
-  })
-
-  const onPressLimit = useEvent(() => {
-    navigate('/limit')
     closeDropdown()
   })
 
@@ -65,24 +53,6 @@ export function MoreActionTile({ padding = '$spacing12' }: { padding?: FlexProps
           <Flex row alignItems="center" gap="$gap8">
             <CoinConvert size="$icon.16" color="$neutral2" />
             <Text variant="buttonLabel3">{t('common.swap')}</Text>
-          </Flex>
-        </InternalMenuItem>
-      </Trace>
-
-      <Trace logPress element={ElementName.PortfolioActionSell}>
-        <InternalMenuItem onPress={onPressSell}>
-          <Flex row alignItems="center" gap="$gap8">
-            <ArrowDownCircleFilled size="$icon.16" color="$neutral2" transform="rotate(180deg)" />
-            <Text variant="buttonLabel3">{t('common.sell.label')}</Text>
-          </Flex>
-        </InternalMenuItem>
-      </Trace>
-
-      <Trace logPress element={ElementName.PortfolioActionLimit}>
-        <InternalMenuItem onPress={onPressLimit}>
-          <Flex row alignItems="center" gap="$gap8">
-            <ChartBar size="$icon.16" color="$neutral2" />
-            <Text variant="buttonLabel3">{t('swap.limit')}</Text>
           </Flex>
         </InternalMenuItem>
       </Trace>

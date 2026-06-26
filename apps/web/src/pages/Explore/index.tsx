@@ -6,7 +6,7 @@ import { useDispatch } from 'react-redux'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { Button, Flex, styled, Text, useMedia } from 'ui/src'
 import { Plus } from 'ui/src/components/icons/Plus'
-import { getChainInfo, TOUCAN_AUCTION_SUPPORTED_CHAINS } from 'uniswap/src/features/chains/chainInfo'
+import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { isSVMChain } from 'uniswap/src/features/platforms/utils/chains'
 import { ElementName, InterfacePageName, ModalName } from 'uniswap/src/features/telemetry/constants'
@@ -19,8 +19,6 @@ import { EarnVaultsSection } from '~/features/earn/EarnVaultsSection'
 import { ExploreContextProvider } from '~/features/Explore/state'
 import { ExploreTablesFilterStoreContextProvider } from '~/features/Explore/state/exploreTablesFilterStore'
 import { VolumeTimeFrameSelector } from '~/features/Explore/VolumeTimeFrameSelector'
-import { AuctionStatusFilter as AuctionStatusFilterComponent } from '~/pages/Explore/AuctionStatusFilter'
-import { AuctionVerificationFilter as AuctionVerificationFilterComponent } from '~/pages/Explore/AuctionVerificationFilter'
 import {
   EXPLORE_STICKY_SCROLL_OFFSET_PX,
   EXPLORE_TOKEN_SECTION_ID,
@@ -31,8 +29,6 @@ import { TableNetworkFilter } from '~/pages/Explore/NetworkFilter'
 import { ProtocolFilter } from '~/pages/Explore/ProtocolFilter'
 import { useExploreParams } from '~/pages/Explore/redirects'
 import { SearchBar } from '~/pages/Explore/SearchBar'
-import { ToucanTable } from '~/pages/Explore/tables/Auctions/TopAuctionsTable'
-import { TopVerifiedAuctionsSection } from '~/pages/Explore/tables/Auctions/TopVerifiedAuctionsSection'
 import { ExploreTopPoolTable } from '~/pages/Explore/tables/Pools/PoolTable'
 import { RecentTransactionsTable } from '~/pages/Explore/tables/RecentTransactions/RecentTransactions'
 import { TopTokensTable } from '~/pages/Explore/tables/Tokens/TopTokensTable'
@@ -58,12 +54,6 @@ function usePages(): Array<Page> {
       key: ExploreTab.Tokens,
       component: TopTokensTable,
       loggingElementName: ElementName.ExploreTokensTab,
-    },
-    {
-      title: t('toucan.auctions'),
-      key: ExploreTab.Toucan,
-      component: ToucanTable,
-      loggingElementName: ElementName.ExploreAuctionsTab,
     },
     {
       title: t('common.pools'),
@@ -140,6 +130,8 @@ const Explore = ({ initialTab }: { initialTab?: ExploreTab }) => {
     return key
   }, [initialTab, Pages])
 
+  // Gnosis-only: RWA Explore surfaces (table + carousel) are gated by these flags, which
+  // are off by default in this deployment (no Statsig gate enables them on Gnosis).
   const isExploreTableEnabled = useFeatureFlag(FeatureFlags.RWAUXExplore)
   const isExploreCarouselEnabled = useFeatureFlag(FeatureFlags.RWAUXExploreCarousel)
 
@@ -316,50 +308,13 @@ const Explore = ({ initialTab }: { initialTab?: ExploreTab }) => {
                       </Button>
                     </Flex>
                   )}
-                  {currentKey !== ExploreTab.Toucan && <TableNetworkFilter />}
+                  <TableNetworkFilter />
                   {currentKey === ExploreTab.Tokens && <VolumeTimeFrameSelector />}
                   {currentKey === ExploreTab.Pools && <ProtocolFilter />}
-                  {currentKey !== ExploreTab.Toucan && <SearchBar tab={currentKey} />}
+                  <SearchBar tab={currentKey} />
                 </Flex>
               )}
             </Flex>
-            {currentKey === ExploreTab.Toucan && <TopVerifiedAuctionsSection />}
-            {currentKey === ExploreTab.Toucan && (
-              <Flex
-                row
-                maxWidth={MAX_WIDTH_MEDIA_BREAKPOINT}
-                mx="auto"
-                alignItems="center"
-                justifyContent="space-between"
-                width="100%"
-                paddingTop="$spacing24"
-                $lg={{
-                  row: false,
-                  flexDirection: 'column',
-                  mx: 'unset',
-                  alignItems: 'flex-start',
-                  gap: '$spacing16',
-                }}
-              >
-                <Text variant="subheading1" color="$neutral1">
-                  {t('toucan.auctions')}
-                </Text>
-                <Flex row gap="$spacing8" justifyContent="flex-start" $md={{ width: '100%' }}>
-                  <Button
-                    size="small"
-                    icon={<Plus />}
-                    fill={false}
-                    onPress={() => navigate('/liquidity/launch-auction')}
-                  >
-                    {t('toucan.createAuction.launchAuction')}
-                  </Button>
-                  <TableNetworkFilter networks={TOUCAN_AUCTION_SUPPORTED_CHAINS} />
-                  <AuctionVerificationFilterComponent />
-                  <AuctionStatusFilterComponent />
-                  <SearchBar tab={currentKey} />
-                </Flex>
-              </Flex>
-            )}
             <ExploreCategoryTablesOrPage showExploreCategoryTables={showExploreCategoryTables} page={<Page />} />
           </Flex>
         </ExploreTablesFilterStoreContextProvider>

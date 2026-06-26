@@ -28,7 +28,6 @@ export function usePortfolioTabs(): PortfolioTabInfo[] {
     ...(isPortfolioDefiTabEnabled
       ? [{ path: '/portfolio/defi', pageName: InterfacePageName.PortfolioDefiPage, label: t('portfolio.defi.title') }]
       : []),
-    { path: '/portfolio/nfts', pageName: InterfacePageName.PortfolioNftsPage, label: t('portfolio.nfts.title') },
     {
       path: '/portfolio/activity',
       pageName: InterfacePageName.PortfolioActivityPage,

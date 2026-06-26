@@ -16,7 +16,7 @@ import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { RampDirection } from 'uniswap/src/features/fiatOnRamp/types'
 import { ShowGetStartedProvider } from 'uniswap/src/features/passkey/ShowGetStartedContext'
 import { WebFORNudgeProvider } from 'uniswap/src/features/providers/webForNudgeProvider'
-import { InterfaceEventName, InterfacePageName, ModalName } from 'uniswap/src/features/telemetry/constants'
+import { InterfaceEventName, InterfacePageName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { SwapTransactionSettingsStoreContextProvider } from 'uniswap/src/features/transactions/components/settings/stores/transactionSettingsStore/SwapTransactionSettingsStoreContextProvider'
@@ -39,15 +39,12 @@ import { PAGE_WRAPPER_MAX_WIDTH, PageWrapper, SwapModuleWrapper } from '~/featur
 import { useHasInjectedWallets } from '~/features/wallet/connection/hooks/useOrderedWalletConnectors'
 import { useDeferredComponent } from '~/hooks/useDeferredComponent'
 import { PageType, useIsPage } from '~/hooks/useIsPage'
-import { useModalState } from '~/hooks/useModalState'
-import { ReturnToAuctionBanner } from '~/pages/Swap/ReturnToAuctionBanner'
 import { SlideoutChartCard } from '~/pages/Swap/Swap/SlideoutChartCard/SlideoutChartCard'
 import { useInitialCurrencyState } from '~/pages/Swap/Swap/state/hooks'
 import { SwapChartToggleButton } from '~/pages/Swap/Swap/SwapChartToggleButton'
 import { SwapForm, SwapFormSettingsButton } from '~/pages/Swap/Swap/SwapForm'
 import { useEmbeddedWalletState } from '~/state/embeddedWallet/store'
 import { MultichainContextProvider } from '~/state/multichain/MultichainContext'
-import { isIFramed } from '~/utils/isIFramed'
 
 function wrapWithTokenHoverCard(element: JSX.Element, currencyInfo: CurrencyInfo): JSX.Element {
   return (
@@ -97,7 +94,6 @@ export function SwapPage() {
           />
         </WebFORNudgeProvider>
       </PageWrapper>
-      <ReturnToAuctionBanner />
     </Trace>
   )
 }
@@ -201,27 +197,21 @@ export function Swap({
   )
 }
 
-const SWAP_TABS = [SwapTab.Swap, SwapTab.Limit, SwapTab.Buy, SwapTab.Sell]
+// Gnosis-only: only the Swap tab is supported (Limit/Buy/Sell/Send removed).
+const SWAP_TABS = [SwapTab.Swap] as const
 
 const TAB_TYPE_TO_LABEL = {
   [SwapTab.Swap]: (t: AppTFunction) => t('swap.form.header'),
-  [SwapTab.Limit]: (t: AppTFunction) => t('swap.limit'),
-  [SwapTab.Send]: (t: AppTFunction) => t('send.title'),
-  [SwapTab.Buy]: (t: AppTFunction) => t('common.buy.label'),
-  [SwapTab.Sell]: (t: AppTFunction) => t('common.sell.label'),
 }
 
 const PATHNAME_TO_TAB: { [key: string]: SwapTab } = {
   '/swap': SwapTab.Swap,
-  '/limit': SwapTab.Limit,
-  '/buy': SwapTab.Buy,
-  '/sell': SwapTab.Sell,
 }
 
 const CHART_CARD_HEIGHT = 288
 const CHART_CARD_GAP = 24
 
-const CHART_ELIGIBLE_TABS = new Set<SwapTab>([SwapTab.Swap, SwapTab.Limit])
+const CHART_ELIGIBLE_TABS = new Set<SwapTab>([SwapTab.Swap])
 
 function isChartEligibleTab(tab: SwapTab): boolean {
   return CHART_ELIGIBLE_TABS.has(tab)
@@ -279,24 +269,13 @@ function UniversalSwapFlow({
     })),
   )
 
-  const { openModal: openSendFormModal } = useModalState(ModalName.Send)
-
   useEffect(() => {
-    if (pathname === '/send') {
-      setCurrentTab(SwapTab.Swap)
-      // Do not open the send modal if iFramed (we do not allow the send tab to be iFramed due to clickjacking protections)
-      // https://www.notion.so/uniswaplabs/What-is-not-allowed-to-be-iFramed-Clickjacking-protections-874f85f066c648afa0eb3480b3f47b5c#d0ebf1846c83475a86342a594f77eae5
-      if (!isIFramed()) {
-        openSendFormModal()
-      }
-    } else {
-      const tab = PATHNAME_TO_TAB[pathname] ?? SwapTab.Swap
-      setCurrentTab(tab)
-      if (!isChartEligibleTab(tab)) {
-        setShowChart(false)
-      }
+    const tab = PATHNAME_TO_TAB[pathname] ?? SwapTab.Swap
+    setCurrentTab(tab)
+    if (!isChartEligibleTab(tab)) {
+      setShowChart(false)
     }
-  }, [pathname, openSendFormModal, setCurrentTab])
+  }, [pathname, setCurrentTab])
 
   const onTabClick = useCallback(
     (tab: SwapTab) => {

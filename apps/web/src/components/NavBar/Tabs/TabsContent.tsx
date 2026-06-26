@@ -1,13 +1,9 @@
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
-import { useSporeColors } from 'ui/src'
-import { ChartBar } from 'ui/src/components/icons/ChartBar'
 import { CoinConvert } from 'ui/src/components/icons/CoinConvert'
 import { Compass } from 'ui/src/components/icons/Compass'
-import { CreditCard } from 'ui/src/components/icons/CreditCard'
 import { Pools } from 'ui/src/components/icons/Pools'
-import { ReceiveAlt } from 'ui/src/components/icons/ReceiveAlt'
 import { SwapDotted } from 'ui/src/components/icons/SwapDotted'
 import { Wallet } from 'ui/src/components/icons/Wallet'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
@@ -36,7 +32,6 @@ export const useTabsContent = (): TabsSection[] => {
   const { t } = useTranslation()
   const { pathname, search, state } = useLocation()
   const { chainId: portfolioChainId, isExternalWallet } = usePortfolioRoutes()
-  const colors = useSporeColors()
   const isPortfolioDefiTabEnabled = useFeatureFlag(FeatureFlags.PortfolioDefiTab)
   const portfolioPoolsBalancesEnabled = useFeatureFlag(FeatureFlags.PortfolioPoolsBalances)
   const isAddLiquidityRevamp = useFeatureFlag(FeatureFlags.AddLiquidityRevamp)
@@ -47,7 +42,7 @@ export const useTabsContent = (): TabsSection[] => {
     {
       title: t('common.trade'),
       href: '/swap',
-      isActive: pathname.startsWith('/swap') || pathname.startsWith('/limit') || pathname.startsWith('/send'),
+      isActive: pathname.startsWith('/swap'),
       icon: <CoinConvert color="$accent1" size="$icon.20" />,
       elementName: ElementName.NavbarTradeTab,
       items: [
@@ -58,33 +53,12 @@ export const useTabsContent = (): TabsSection[] => {
           internal: true,
           elementName: ElementName.NavbarTradeDropdownSwap,
         },
-        {
-          label: t('swap.limit'),
-          icon: <ChartBar size="$icon.24" color="$neutral2" />,
-          href: '/limit',
-          internal: true,
-          elementName: ElementName.NavbarTradeDropdownLimit,
-        },
-        {
-          label: t('common.buy.label'),
-          icon: <CreditCard size="$icon.24" color="$neutral2" />,
-          href: '/buy',
-          internal: true,
-          elementName: ElementName.NavbarTradeDropdownBuy,
-        },
-        {
-          label: t('common.sell.label'),
-          icon: <ReceiveAlt fill={colors.neutral2.val} size={24} transform="rotate(180deg)" />,
-          href: '/sell',
-          internal: true,
-          elementName: ElementName.NavbarTradeDropdownSell,
-        },
       ],
     },
     {
       title: t('common.explore'),
       href: '/explore',
-      isActive: pathname.startsWith('/explore') || pathname.startsWith('/nfts'),
+      isActive: pathname.startsWith('/explore'),
       icon: <Compass color="$accent1" size="$icon.20" />,
       elementName: ElementName.NavbarExploreTab,
       items: [
@@ -93,12 +67,6 @@ export const useTabsContent = (): TabsSection[] => {
           href: '/explore/tokens',
           internal: true,
           elementName: ElementName.NavbarExploreDropdownTokens,
-        },
-        {
-          label: t('toucan.auctions'),
-          href: '/explore/auctions',
-          internal: true,
-          elementName: ElementName.NavbarExploreDropdownToucan,
         },
         {
           label: t('common.pools'),
@@ -133,12 +101,6 @@ export const useTabsContent = (): TabsSection[] => {
           href: isAddLiquidityRevamp ? '/positions/add' : '/positions/create',
           internal: true,
           elementName: ElementName.NavbarPoolDropdownCreatePosition,
-        },
-        {
-          label: t('toucan.createAuction.launchAuction'),
-          href: '/liquidity/launch-auction',
-          internal: true,
-          elementName: ElementName.NavbarPoolDropdownLaunchAuction,
         },
       ],
     },
@@ -196,15 +158,6 @@ export const useTabsContent = (): TabsSection[] => {
               },
             ]
           : []),
-        {
-          label: t('portfolio.nfts.title'),
-          href: buildPortfolioUrl({
-            tab: PortfolioTab.Nfts,
-            chainId: portfolioChainId,
-          }),
-          internal: true,
-          elementName: ElementName.NavbarPortfolioDropdownNfts,
-        },
         {
           label: t('common.activity'),
           href: buildPortfolioUrl({

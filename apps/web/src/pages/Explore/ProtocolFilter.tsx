@@ -12,7 +12,8 @@ import {
 } from '~/features/Explore/state/exploreTablesFilterStore'
 import { getProtocolVersionLabel } from '~/features/Liquidity/utils/protocolVersion'
 
-const PROTOCOL_VERSIONS = [ProtocolVersion.UNSPECIFIED, ProtocolVersion.V4, ProtocolVersion.V3, ProtocolVersion.V2]
+// Gnosis-only: V3 is the only deployed protocol version.
+const PROTOCOL_VERSIONS = [ProtocolVersion.UNSPECIFIED, ProtocolVersion.V3]
 
 export function ProtocolFilter() {
   const { t } = useTranslation()
