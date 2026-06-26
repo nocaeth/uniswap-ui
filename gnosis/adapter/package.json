@@ -14,7 +14,10 @@
     "@bufbuild/protobuf": "^1.10.0",
     "@connectrpc/connect": "^1.4.0",
     "@connectrpc/connect-node": "^1.4.0",
+    "@uniswap/client-data-api": "0.0.113",
     "@uniswap/client-explore": "0.0.18",
+    "@uniswap/sdk-core": "7.17.0",
+    "@uniswap/v3-sdk": "3.29.1",
     "graphql": "^16.9.0",
     "graphql-yoga": "^5.7.0",
     "viem": "^2.21.0"
