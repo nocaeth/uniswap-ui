@@ -44,13 +44,7 @@
       "path": "./packages/notifications"
     },
     {
-      "path": "./apps/cli"
-    },
-    {
       "path": "./packages/hashcash-native"
-    },
-    {
-      "path": "./packages/transactional"
     },
     {
       "path": "./packages/mycelium"
@@ -63,12 +57,6 @@
     },
     {
       "path": "./apps/mobile"
-    },
-    {
-      "path": "./apps/dev-portal"
-    },
-    {
-      "path": "./apps/mission-control"
     },
     {
       "path": "./packages/privacy"
