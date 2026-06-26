@@ -21,9 +21,9 @@ import { PriceChartDelta } from '~/components/Charts/PriceChart/PriceChartDelta'
 import { ChartType, PriceChartType } from '~/components/Charts/utils'
 import { CurrencyLogo } from '~/components/Logo/CurrencyLogo'
 import { useColor } from '~/hooks/useColor'
+import { useNavigateToTokenDetails } from '~/hooks/useNavigateToTokenDetails'
 import type { TokenPriceChartQueryVariables } from '~/hooks/useTokenPriceChartData'
 import { useTokenPriceChartPanel } from '~/hooks/useTokenPriceChartPanel'
-import { useNavigateToTokenDetails } from '~/pages/Portfolio/Tokens/hooks/useNavigateToTokenDetails'
 import { getNativeTokenDBAddress } from '~/utils/nativeTokens'
 
 const TIME_OPTIONS = [

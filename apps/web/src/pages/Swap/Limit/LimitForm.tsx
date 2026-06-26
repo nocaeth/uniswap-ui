@@ -43,7 +43,6 @@ import { ConfirmLimitOrderModal } from '~/pages/Swap/Limit/ConfirmLimitOrderModa
 import { LimitExpirySection } from '~/pages/Swap/Limit/LimitExpirySection'
 import { LimitOrdersNotSupportedBanner } from '~/pages/Swap/Limit/LimitOrdersNotSupportedBanner'
 import { LimitPriceError } from '~/pages/Swap/Limit/LimitPriceError'
-import { OpenLimitOrdersButton } from '~/pages/Swap/Limit/OpenLimitOrdersButton'
 import { getDefaultPriceInverted } from '~/pages/Swap/Limit/state/hooks'
 import { LimitContextProvider, useLimitContext } from '~/pages/Swap/Limit/state/LimitContext'
 import { useLimitOrderCallback } from '~/pages/Swap/Limit/useLimitOrderCallback'
@@ -480,14 +479,6 @@ function LimitForm({ onCurrencyChange }: LimitFormProps) {
             )}
           </Text>
         </Flex>
-      )}
-      {account.address && (
-        <OpenLimitOrdersButton
-          account={account.address}
-          openLimitsMenu={() => {
-            window.open('/portfolio', '_blank')
-          }}
-        />
       )}
       {limitOrderTrade && showConfirm && (
         <ConfirmLimitOrderModal

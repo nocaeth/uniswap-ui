@@ -33,7 +33,6 @@ import { useEthersProvider } from '~/hooks/useEthersProvider'
 import { useEthersSigner } from '~/hooks/useEthersSigner'
 import { PageType } from '~/hooks/useIsPage'
 import { useModalState } from '~/hooks/useModalState'
-import { buildPortfolioUrl } from '~/pages/Portfolio/utils/portfolioUrls'
 import { useOneClickSwapSetting } from '~/pages/Swap/Swap/settings/OneClickSwap'
 import { serializeSwapAddressesToURLParameters } from '~/pages/Swap/Swap/state/tradeQueryParams'
 import { useMultichainContext } from '~/state/multichain/useMultichainContext'
@@ -193,13 +192,11 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
   })
   const getCanSignPermits = useGetCanSignPermits()
 
-  const navigateToExternalProfile = useCallback(
-    ({ address }: { address: Address }) => {
-      navigate(buildPortfolioUrl({ externalAddress: address }))
-      closeSearchModal()
-    },
-    [navigate, closeSearchModal],
-  )
+  // Portfolio/profile pages are not part of this Gnosis-only build, so viewing an
+  // external address' profile is a no-op beyond dismissing the search modal.
+  const navigateToExternalProfile = useCallback(() => {
+    closeSearchModal()
+  }, [closeSearchModal])
 
   const { openModal } = useModalState(ModalName.DelegationMismatch)
 
