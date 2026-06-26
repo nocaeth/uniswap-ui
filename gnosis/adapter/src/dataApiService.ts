@@ -29,8 +29,9 @@ const NPM_ADDRESS = getAddress('0xAE8fbE656a77519a7490054274910129c9244FA3')
 const FACTORY_ADDRESS = getAddress('0xe32F7dD7e3f098D518ff19A22d5f028e076489B1')
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-// Read from the same node the wallet transacts against (anvil fork in dev). Falls
-// back to a public Gnosis endpoint for a hosted deployment.
+// Read from the same node the wallet transacts against. In dev that's the anvil
+// fork (POSITIONS_RPC_URL); in a hosted deployment set RPC_GNOSIS (see the adapter
+// service in docker-compose.yml). The localhost fallback only applies if none is set.
 const RPC_URL =
   process.env.POSITIONS_RPC_URL ??
   process.env.GNOSIS_RPC_URL ??

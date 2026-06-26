@@ -15,20 +15,31 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { logger } from 'utilities/src/logger/logger'
 
+// Gnosis-only build: the self-hosted analytics adapter serves Explore (tokens & pools)
+// only via the V1 GraphQL path — it does not implement the V2 Data API endpoints for
+// them. Upstream Uniswap gates that path on these Statsig flags; if Uniswap ever flips
+// them ON, the UI would call V2 endpoints the adapter lacks and Explore would break. Pin
+// them OFF here so behaviour can't change out from under the deployment. (Positions are
+// intentionally NOT pinned — the adapter DOES implement V2 ListPositions/GetPosition.)
+const FORCE_DISABLED_FLAGS = new Set<FeatureFlags>([FeatureFlags.V2EndpointsPools, FeatureFlags.V2EndpointsTokens])
+
 export function useFeatureFlag(flag: FeatureFlags): boolean {
   const name = getFeatureFlagName(flag)
   const value = useGateValue(name)
-  return value
+  return FORCE_DISABLED_FLAGS.has(flag) ? false : value
 }
 
 export function useFeatureFlagWithLoading(flag: FeatureFlags): { value: boolean; isLoading: boolean } {
   const { isStatsigLoading } = useStatsigClientStatus()
   const name = getFeatureFlagName(flag)
   const { value } = useFeatureGate(name)
-  return { value, isLoading: isStatsigLoading }
+  return { value: FORCE_DISABLED_FLAGS.has(flag) ? false : value, isLoading: isStatsigLoading }
 }
 
 export function getFeatureFlag(flag: FeatureFlags): boolean {
+  if (FORCE_DISABLED_FLAGS.has(flag)) {
+    return false
+  }
   try {
     const name = getFeatureFlagName(flag)
     return getStatsigClient().checkGate(name)
@@ -41,10 +52,13 @@ export function getFeatureFlag(flag: FeatureFlags): boolean {
 export function useFeatureFlagWithExposureLoggingDisabled(flag: FeatureFlags): boolean {
   const name = getFeatureFlagName(flag)
   const value = useGateValue(name, { disableExposureLog: true })
-  return value
+  return FORCE_DISABLED_FLAGS.has(flag) ? false : value
 }
 
 export function getFeatureFlagWithExposureLoggingDisabled(flag: FeatureFlags): boolean {
+  if (FORCE_DISABLED_FLAGS.has(flag)) {
+    return false
+  }
   const name = getFeatureFlagName(flag)
   return getStatsigClient().checkGate(name, { disableExposureLog: true })
 }

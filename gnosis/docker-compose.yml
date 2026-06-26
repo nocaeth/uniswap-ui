@@ -33,6 +33,10 @@ services:
     depends_on:
       indexer:
         condition: service_completed_successfully
+    environment:
+      # The adapter reads the NonfungiblePositionManager + pools live for
+      # ListPositions/GetPosition; without this it falls back to localhost:8545.
+      RPC_GNOSIS: ${RPC_GNOSIS:-https://rpc.gnosischain.com}
     volumes:
       - analytics-data:/data
     ports:
