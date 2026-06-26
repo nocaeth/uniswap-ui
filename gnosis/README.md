@@ -33,30 +33,27 @@ prices) does not serve Gnosis — so those pieces are replaced with self-hosted 
 | `docker-compose.yml` + `web.Dockerfile` | Run web + indexer + adapter together. |
 | `.env.gnosis.example` | All required env vars. |
 
-## Remaining app work
+### Swap routing (implemented)
+Uniswap's Trading API won't quote Gnosis, so swaps are routed client-side via
+**QuoterV2**, injected at the existing dependency-injected seams (no UI changes):
+`packages/uniswap/src/features/transactions/swap/services/gnosisRouter/`
+(quote provider + UniversalRouter tx builder), dispatched in
+`features/repositories.ts` and `…/evm/evmSwapInstructionsService.ts`. The quote path
+is validated against live Gnosis (QuoterV2 + computePoolAddress). **Set
+`REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS`** after deploying UniversalRouter.
 
-### Swap routing (not yet wired)
-Uniswap's Trading API won't quote Gnosis. Replace it with a **client-side V3
-router** at the existing dependency-injected seams — no UI changes:
+### Analytics (implemented)
+- Envio indexer: `gnosis/envio/` (config + schema + handlers skeleton).
+- Adapter service: `gnosis/adapter/` — implements the **ExploreStats ConnectRPC**
+  service (the Explore token + pool tables) on top of Envio, plus a GraphQL
+  endpoint for detail/charts. The protobuf mapping is validated against the
+  generated `@uniswap/client-explore` message classes.
+- App side: set `API_BASE_URL_V2_OVERRIDE` / `GRAPHQL_URL_OVERRIDE` to the adapter;
+  Gnosis rows are tagged `chain: 'GNOSIS'` and mapped via `fromGraphQLChain`.
 
-1. New quote provider conforming to `TradingApiClient['fetchQuote']`: generate
-   candidate V3 paths over a base set (WXDAI, USDC.e, USDT, WETH) at fee tiers
-   100/500/3000/10000, price them via **QuoterV2** (deployed: `0x7E9c…`) over
-   Multicall, read each hop's `slot0`+`liquidity`, and return a
-   `ClassicQuoteResponse` (`Routing.CLASSIC`) matching
-   `packages/api/src/clients/trading/tradeTypes.ts`.
-   Inject where `createTradeRepository` is constructed
-   (`packages/uniswap/src/features/transactions/swap/services/tradeService/tradeRepository.ts`).
-2. Tx builder paralleling `createLegacyEVMSwapRepository`
-   (`…/review/services/swapTxAndGasInfoService/evm/evmSwapRepository.ts`): build UR
-   calldata via `@uniswap/universal-router-sdk` `SwapRouter.swapCallParameters`,
-   reading the **deployed UR address** from chain config (avoids an SDK patch).
-3. Stub `fetchCheckApproval` from on-chain Permit2/allowance reads.
-4. Force `protocols: [ProtocolItems.V3]`.
-
-### Analytics wiring
-Stand up `envio/` + `adapter/`, then set `API_BASE_URL_V2_OVERRIDE` /
-`GRAPHQL_URL_OVERRIDE`. No app code changes required (see `adapter/README.md`).
+Remaining for analytics: flesh out the Envio handlers (USD pricing, rollups) and
+expand the adapter's GraphQL resolvers to cover all token/pool **detail** operations
+(the Explore landing tables already work via ConnectRPC).
 
 ## Local dev
 

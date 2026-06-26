@@ -1,0 +1,25 @@
+{
+  "name": "gnosis-analytics-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Serves Uniswap's Data API (ExploreStats, ConnectRPC) + GraphQL contract on top of an Envio Uniswap V3 Gnosis indexer.",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^1.10.0",
+    "@connectrpc/connect": "^1.4.0",
+    "@connectrpc/connect-node": "^1.4.0",
+    "@uniswap/client-explore": "^0.0.42",
+    "graphql": "^16.9.0",
+    "graphql-yoga": "^5.7.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}

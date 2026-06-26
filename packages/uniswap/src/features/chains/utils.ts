@@ -67,6 +67,10 @@ export function toGraphQLChain(chainId: UniverseChainId): GqlChainId {
 
 export function fromGraphQLChain(chain: GraphQLApi.Chain | string | undefined): UniverseChainId | null {
   switch (chain) {
+    // Gnosis is not in Uniswap's GraphQL Chain enum; our Envio analytics adapter
+    // tags Gnosis rows with the string 'GNOSIS'.
+    case 'GNOSIS':
+      return UniverseChainId.Gnosis
     case GraphQLApi.Chain.Ethereum:
       return UniverseChainId.Mainnet
     case GraphQLApi.Chain.Arbitrum:
