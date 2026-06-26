@@ -69,7 +69,10 @@ must be wired back into the app (step 3).
 ```bash
 git clone https://github.com/Uniswap/universal-router && cd universal-router
 git checkout cb222d358a2ea780feedee6990ff8a3c185301bf
-forge install
+forge install                  # lib/ submodules (forge-std, v4-periphery, …)
+yarn install                   # REQUIRED: node_modules/@uniswap/{v2-core,v3-core}
+                               # (npm install / bun install also work; the v2/v3-core
+                               #  imports resolve from node_modules, not lib/)
 cp /path/to/this-repo/gnosis/contracts/DeployGnosis.s.sol script/deployParameters/
 forge build
 forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
