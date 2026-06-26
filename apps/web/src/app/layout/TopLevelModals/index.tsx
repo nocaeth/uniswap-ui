@@ -49,7 +49,6 @@ export function TopLevelModals() {
         <ModalRenderer modalName={ModalName.FeatureFlags} />
         <ModalRenderer modalName={ModalName.BlockedAccount} />
         {shouldShowDevFlags && <ModalRenderer modalName={ModalName.DevFlags} />}
-        <ModalRenderer modalName={ModalName.Help} />
         <ModalRenderer modalName={ModalName.OffchainActivity} />
         <ModalRenderer modalName={ModalName.ReceiveCryptoModal} />
         <ModalRenderer modalName={ModalName.PendingWalletConnection} />
@@ -76,7 +75,6 @@ export function TopLevelModals() {
       <ModalRenderer modalName={ModalName.AddLiquidity} />
       <ModalRenderer modalName={ModalName.RemoveLiquidity} />
       <ModalRenderer modalName={ModalName.ClaimFee} />
-      <ModalRenderer modalName={ModalName.Help} />
       <ModalRenderer modalName={ModalName.DelegationMismatch} />
       <ModalRenderer modalName={ModalName.ReceiveCryptoModal} />
       <ModalRenderer modalName={ModalName.BridgedAsset} componentProps={bridgedAssetModalProps} />

@@ -51,9 +51,6 @@ const DelegationMismatchModal = createLazy(() =>
     default: module.default,
   })),
 )
-const HelpModal = createLazy(() =>
-  import('~/components/HelpModal/HelpModal').then((module) => ({ default: module.HelpModal })),
-)
 
 const ReceiveCryptoModal = createLazy(() =>
   import('~/components/ReceiveCryptoModal').then((module) => ({ default: module.ReceiveCryptoModal })),
@@ -185,10 +182,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.DelegationMismatch]: {
     component: DelegationMismatchModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.DelegationMismatch,
-  },
-  [ModalName.Help]: {
-    component: HelpModal,
-    shouldMount: () => true,
   },
   [ModalName.ReceiveCryptoModal]: {
     component: ReceiveCryptoModal,
