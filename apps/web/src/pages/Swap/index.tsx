@@ -345,14 +345,22 @@ function UniversalSwapFlow({
             justifyContent="space-between"
             onLayout={(e) => setTabsRowHeight(e.nativeEvent.layout.height)}
           >
-            <SegmentedControl
-              outlined={false}
-              size="large"
-              options={SWAP_TAB_OPTIONS}
-              selectedOption={currentTab}
-              onSelectOption={onTabClick}
-              gap={isMobileWeb ? '$spacing8' : undefined}
-            />
+            {/* SegmentedControl requires >=2 options; on Gnosis only the Swap tab
+                remains, so show a plain heading instead of the tab switcher. */}
+            {SWAP_TAB_OPTIONS.length > 1 ? (
+              <SegmentedControl
+                outlined={false}
+                size="large"
+                options={SWAP_TAB_OPTIONS}
+                selectedOption={currentTab}
+                onSelectOption={onTabClick}
+                gap={isMobileWeb ? '$spacing8' : undefined}
+              />
+            ) : (
+              <Text variant="subheading1" color="$neutral1">
+                {TAB_TYPE_TO_LABEL[SwapTab.Swap](t)}
+              </Text>
+            )}
             <Flex row gap="$spacing4" alignItems="center">
               {isChartEligibleTab(currentTab) && chartSettingsLeftContent}
               {currentTab === SwapTab.Swap && <SwapFormSettingsButton />}

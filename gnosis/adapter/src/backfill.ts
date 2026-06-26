@@ -914,19 +914,37 @@ function propagateUSD(
 }
 
 async function fetchLogos(): Promise<Map<string, string>> {
+  // Merge multiple Gnosis token lists by address (best-effort). CoinGecko's xdai
+  // list is the broadest; the CoW Swap list is curated for the major Gnosis
+  // tokens and is overlaid last so its (higher-quality) icons win on overlap.
+  const sources: { url: string; pick: (json: unknown) => { address?: string; logoURI?: string }[] }[] = [
+    {
+      url: 'https://tokens.coingecko.com/xdai/all.json',
+      pick: (j) => (j as { tokens?: { address?: string; logoURI?: string }[] }).tokens ?? [],
+    },
+    {
+      url: 'https://files.cow.fi/tokens/CowSwap.json',
+      pick: (j) =>
+        ((j as { tokens?: { chainId?: number; address?: string; logoURI?: string }[] }).tokens ?? []).filter(
+          (t) => t.chainId === 100,
+        ),
+    },
+  ]
   const map = new Map<string, string>()
-  try {
-    const res = await fetch('https://tokens.coingecko.com/xdai/all.json')
-    if (res.ok) {
-      const json = (await res.json()) as { tokens?: { address?: string; logoURI?: string }[] }
-      for (const t of json.tokens ?? []) {
+  for (const src of sources) {
+    try {
+      const res = await fetch(src.url)
+      if (!res.ok) {
+        continue
+      }
+      for (const t of src.pick(await res.json())) {
         if (t.address && t.logoURI) {
           map.set(t.address.toLowerCase(), t.logoURI)
         }
       }
+    } catch {
+      // logos are best-effort; ignore failures
     }
-  } catch {
-    // logos are best-effort; ignore failures
   }
   return map
 }
