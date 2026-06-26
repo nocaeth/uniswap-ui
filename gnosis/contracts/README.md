@@ -76,6 +76,10 @@ yarn install --ignore-engines  # REQUIRED: node_modules/@uniswap/{v2-core,v3-cor
                                # (edr is unused by forge build); or `fnm use 20` first.
                                # The v2/v3-core imports resolve from node_modules, not lib/.
 cp /path/to/this-repo/gnosis/contracts/DeployGnosis.s.sol script/deployParameters/
+# forge build compiles ALL of script/, and some sibling chain configs are stale vs
+# the 11-field struct (e.g. DeployTempo has 10 -> compile error). Remove them; only
+# DeployGnosis is needed (no test imports the others; the base script is one dir up).
+find script/deployParameters -name 'Deploy*.s.sol' ! -name 'DeployGnosis.s.sol' -delete
 forge build
 forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
   --rpc-url "$RPC_GNOSIS" --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast \
