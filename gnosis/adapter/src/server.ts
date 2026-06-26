@@ -1,4 +1,4 @@
-import { createServer } from 'node:http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { connectNodeAdapter } from '@connectrpc/connect-node'
 import { createYoga } from 'graphql-yoga'
 import { registerExploreRoutes } from './exploreService.js'
@@ -14,7 +14,27 @@ const connectHandler = connectNodeAdapter({ routes: registerExploreRoutes })
 // (point it at `<base>/v1/graphql`).
 const yoga = createYoga({ schema, graphqlEndpoint: '/v1/graphql' })
 
+// The web app runs on a different origin (e.g. http://localhost:3000) and calls
+// ExploreStats over Connect's GET protocol from the browser, so permissive CORS
+// (incl. preflight) is required. connectNodeAdapter does not add CORS itself.
+function applyCors(req: IncomingMessage, res: ServerResponse): boolean {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin ?? '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', '*')
+  res.setHeader('Access-Control-Expose-Headers', '*')
+  res.setHeader('Access-Control-Max-Age', '86400')
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204)
+    res.end()
+    return true
+  }
+  return false
+}
+
 const server = createServer((req, res) => {
+  if (applyCors(req, res)) {
+    return
+  }
   if (req.url?.startsWith('/v1/graphql')) {
     void yoga(req, res)
     return

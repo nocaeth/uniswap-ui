@@ -1,29 +1,20 @@
 /**
- * Thin GraphQL client for the Envio indexer's Hasura endpoint (gnosis/envio).
- * Envio exposes one row type per entity defined in gnosis/envio/schema.graphql.
+ * Data access for the analytics adapter.
+ *
+ * Reads the snapshot produced by `src/backfill.ts` (HyperSync events + RPC state)
+ * from `data/analytics.json`. This replaces the original Hasura/Envio-GraphQL
+ * source: envio's codegen is a no-op on this platform, so the indexer never runs.
+ * The snapshot is re-read from disk on each request (it is small) and is refreshed
+ * out-of-band by re-running `bun run backfill`. The exported function/return shapes
+ * are unchanged so exploreService/graphql/mappers need no edits.
  */
-const ENVIO_GRAPHQL_URL = process.env.ENVIO_GRAPHQL_URL ?? 'http://localhost:8080/v1/graphql'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-export async function envioQuery<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch(ENVIO_GRAPHQL_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ query, variables }),
-  })
-  if (!res.ok) {
-    throw new Error(`Envio GraphQL ${res.status}: ${await res.text()}`)
-  }
-  const json = (await res.json()) as { data?: T; errors?: unknown }
-  if (json.errors) {
-    throw new Error(`Envio GraphQL errors: ${JSON.stringify(json.errors)}`)
-  }
-  if (!json.data) {
-    throw new Error('Envio GraphQL returned no data')
-  }
-  return json.data
-}
+const SNAPSHOT_PATH = process.env.ANALYTICS_SNAPSHOT_PATH ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'analytics.json')
 
-// ---- Row types (mirror gnosis/envio/schema.graphql) ----
+// ---- Row types (shape of the backfill snapshot) ----
 
 export interface EnvioToken {
   id: string
@@ -59,44 +50,42 @@ export interface EnvioProtocolStats {
   poolCount: number
 }
 
-const TOKEN_FIELDS = `id symbol name decimals totalValueLockedUSD volumeUSD txCount derivedXDAI`
+interface Snapshot {
+  updatedAtBlock: number
+  tokens: EnvioToken[]
+  pools: EnvioPool[]
+  protocol: EnvioProtocolStats & { id: string }
+}
 
-/** Top tokens for the Explore tokens table. */
+function readSnapshot(): Snapshot {
+  try {
+    return JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8')) as Snapshot
+  } catch {
+    throw new Error(
+      `analytics snapshot not found at ${SNAPSHOT_PATH}. Run \`bun run backfill\` in gnosis/adapter first.`,
+    )
+  }
+}
+
+/** Top tokens for the Explore tokens table (snapshot is already sorted by TVL). */
 export function fetchTopTokens(limit = 100): Promise<{ Token: EnvioToken[] }> {
-  return envioQuery(
-    `query Tokens($limit: Int!) {
-       Token(limit: $limit, order_by: { totalValueLockedUSD: desc }) { ${TOKEN_FIELDS} }
-     }`,
-    { limit },
-  )
+  return Promise.resolve({ Token: readSnapshot().tokens.slice(0, limit) })
 }
 
-/** Top pools for the Explore pools table. */
+/** Top pools for the Explore pools table (snapshot is already sorted by TVL). */
 export function fetchTopPools(limit = 100): Promise<{ Pool: EnvioPool[] }> {
-  return envioQuery(
-    `query Pools($limit: Int!) {
-       Pool(limit: $limit, order_by: { totalValueLockedUSD: desc }) {
-         id feeTier totalValueLockedUSD volumeUSD txCount
-         token0 { ${TOKEN_FIELDS} }
-         token1 { ${TOKEN_FIELDS} }
-       }
-     }`,
-    { limit },
-  )
+  return Promise.resolve({ Pool: readSnapshot().pools.slice(0, limit) })
 }
 
-/** Daily price/volume points for a token's charts. */
-export function fetchTokenDayData(tokenId: string, days = 365): Promise<{ TokenDayData: EnvioTokenDayData[] }> {
-  return envioQuery(
-    `query TokenDays($id: String!, $days: Int!) {
-       TokenDayData(where: { token_id: { _eq: $id } }, order_by: { date: asc }, limit: $days) {
-         date priceUSD volumeUSD
-       }
-     }`,
-    { id: tokenId.toLowerCase(), days },
-  )
+/**
+ * Daily price/volume points for a token's charts. The backfill does not yet emit
+ * historical day-data (only current TVL + 24h volume), so this returns empty until
+ * a day-data rollup is added. Detail-page charts therefore render empty for now.
+ */
+export function fetchTokenDayData(_tokenId: string, _days = 365): Promise<{ TokenDayData: EnvioTokenDayData[] }> {
+  return Promise.resolve({ TokenDayData: [] })
 }
 
 export function fetchProtocolStats(): Promise<{ ProtocolStats: EnvioProtocolStats[] }> {
-  return envioQuery(`query { ProtocolStats(limit: 1) { totalValueLockedUSD volumeUSD txCount poolCount } }`)
+  return Promise.resolve({ ProtocolStats: [readSnapshot().protocol] })
 }
