@@ -12,7 +12,6 @@ const ConnectedAccountBlocked = createLazy(() => import('~/components/ConnectedA
 const PendingWalletConnectionModal = createLazy(
   () => import('~/components/WalletModal/PendingWalletConnectionModal/PendingWalletConnectionModal'),
 )
-const UniwalletModal = createLazy(() => import('~/components/AccountDrawer/UniwalletModal'))
 const OffchainActivityModal = createLazy(() => import('~/components/modals/OffchainActivityModal'))
 const TransactionDetailsModalDispatcher = createLazy(() =>
   import('~/app/layout/TopLevelModals/TransactionDetailsModalDispatcher').then((module) => ({
@@ -122,11 +121,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.BlockedAccount]: {
     component: ConnectedAccountBlocked,
     shouldMount: (state) => state.application.openModal?.name === ModalName.BlockedAccount,
-  },
-  [ModalName.UniWalletConnect]: {
-    component: UniwalletModal,
-    // This modal is opened via WalletConnect Uri, not redux state, so it should always be mounted
-    shouldMount: () => true,
   },
   [ModalName.OffchainActivity]: {
     component: OffchainActivityModal,

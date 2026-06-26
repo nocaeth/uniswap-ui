@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react'
+import { useEffect } from 'react'
 import { Helmet } from 'react-helmet-async/lib/index'
 import { Navigate, useLocation } from 'react-router'
 import { useSporeColors } from 'ui/src'
@@ -13,7 +13,6 @@ import { useFeatureFlagUrlOverrides } from '~/featureFlags/useFeatureFlagUrlOver
 import { useDynamicMetatags } from '~/pages/metatags'
 import { findRouteByPath } from '~/pages/RouteDefinitions'
 import { isPathBlocked } from '~/utils/blockedPaths'
-import { MICROSITE_LINK } from '~/utils/openDownloadApp'
 import { getCurrentPageFromLocation } from '~/utils/urlRoutes'
 
 export function App() {
@@ -32,18 +31,6 @@ export function App() {
   const metaTags = useDynamicMetatags()
   const staticTitle = findRouteByPath(pathname)?.getTitle(pathname) ?? 'NOCA'
   const staticDescription = findRouteByPath(pathname)?.getDescription(pathname)
-
-  // redirect address to landing pages until implemented
-  const shouldRedirectToAppInstall = pathname.startsWith('/address/')
-  useLayoutEffect(() => {
-    if (shouldRedirectToAppInstall) {
-      window.location.href = MICROSITE_LINK
-    }
-  }, [shouldRedirectToAppInstall])
-
-  if (shouldRedirectToAppInstall) {
-    return null
-  }
 
   const shouldBlockPath = isPathBlocked(pathname)
   if (shouldBlockPath && pathname !== '/swap') {

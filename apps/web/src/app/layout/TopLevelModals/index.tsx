@@ -47,7 +47,6 @@ export function TopLevelModals() {
         <ModalRenderer modalName={ModalName.PrivacyChoices} />
         <ModalRenderer modalName={ModalName.Disclosures} />
         <ModalRenderer modalName={ModalName.FeatureFlags} />
-        <ModalRenderer modalName={ModalName.UniWalletConnect} />
         <ModalRenderer modalName={ModalName.BlockedAccount} />
         {shouldShowDevFlags && <ModalRenderer modalName={ModalName.DevFlags} />}
         <ModalRenderer modalName={ModalName.Help} />
@@ -62,7 +61,6 @@ export function TopLevelModals() {
     <>
       <ModalRenderer modalName={ModalName.AddressClaim} />
       <ModalRenderer modalName={ModalName.BlockedAccount} componentProps={{ blockedAddress }} />
-      <ModalRenderer modalName={ModalName.UniWalletConnect} />
       <ModalRenderer modalName={ModalName.Banners} />
       <ModalRenderer modalName={ModalName.OffchainActivity} />
       <ModalRenderer modalName={ModalName.TransactionDetails} />

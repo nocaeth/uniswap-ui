@@ -13,10 +13,6 @@ vi.mock('~/components/ConnectedAccountBlocked', () => ({
   default: () => <div data-testid="mock-connected-account-blocked">Connected Account Blocked</div>,
 }))
 
-vi.mock('~/components/AccountDrawer/UniwalletModal', () => ({
-  default: () => <div data-testid="mock-uniwallet-modal">Uniwallet Modal</div>,
-}))
-
 vi.mock('~/components/modals/OffchainActivityModal', () => ({
   __esModule: true,
   default: () => <div data-testid="mock-offchain-activity-modal">Offchain Activity Modal</div>,
@@ -67,14 +63,6 @@ describe('ModalRegistry', () => {
       expect(screen.queryByTestId('mock-address-claim-modal')).not.toBeInTheDocument()
     })
 
-    it('renders modals with custom props', async () => {
-      mocked(useAppSelector).mockReturnValue({ application: { openModal: { name: ModalName.UniWalletConnect } } })
-      await act(async () => {
-        render(<ModalRenderer modalName={ModalName.UniWalletConnect} />)
-      })
-      expect(screen.getByTestId('mock-uniwallet-modal')).toBeInTheDocument()
-    })
-
     it('handles modal state from useModalState hook', async () => {
       mocked(useAppSelector).mockReturnValue({ application: { openModal: { name: ModalName.OffchainActivity } } })
       await act(async () => {
@@ -97,7 +85,6 @@ describe('ModalRegistry', () => {
       const requiredModals = [
         ModalName.AddressClaim,
         ModalName.BlockedAccount,
-        ModalName.UniWalletConnect,
         ModalName.OffchainActivity,
         ModalName.UkDisclaimer,
         ModalName.TestnetMode,
