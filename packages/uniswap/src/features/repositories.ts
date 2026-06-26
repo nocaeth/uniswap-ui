@@ -32,7 +32,9 @@ export function getEVMTradeRepository(): TradeRepository {
         : TradingApiClient.fetchQuote(params),
     fetchIndicativeQuote: (params) =>
       Number(params.tokenInChainId) === UniverseChainId.Gnosis
-        ? fetchGnosisQuote({ ...params, type: params.type, slippageTolerance: undefined } as TradingApi.QuoteRequest)
+        ? fetchGnosisQuote({ ...params, type: params.type, slippageTolerance: undefined } as TradingApi.QuoteRequest, {
+            indicative: true,
+          })
         : TradingApiClient.fetchIndicativeQuote(params),
     logger,
   })

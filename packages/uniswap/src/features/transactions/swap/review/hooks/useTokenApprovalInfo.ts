@@ -6,6 +6,7 @@ import { useUniswapContextSelector } from 'uniswap/src/contexts/UniswapContext'
 import { useCheckApprovalQuery } from 'uniswap/src/data/apiClients/tradingApi/useCheckApprovalQuery'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { convertGasFeeToDisplayValue, useActiveGasStrategy } from 'uniswap/src/features/gas/hooks'
+import { useGnosisApprovalInfo } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/useGnosisApprovalInfo'
 import { ApprovalAction, TokenApprovalInfo } from 'uniswap/src/features/transactions/swap/types/trade'
 import { isUniswapX } from 'uniswap/src/features/transactions/swap/utils/routing'
 import {
@@ -43,6 +44,10 @@ function useApprovalWillBeBatchedWithSwap(chainId: UniverseChainId, routing: Tra
 
 export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalTxInfo {
   const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, routing } = params
+
+  // Gnosis has no Trading API; resolve ERC20 -> Permit2 approval client-side instead.
+  const isGnosis = chainId === UniverseChainId.Gnosis
+  const gnosisApprovalInfo = useGnosisApprovalInfo({ address, chainId, wrapType, currencyInAmount })
 
   const isWrap = wrapType !== WrapType.NotApplicable
   /** Approval is included elsewhere for Chained Actions so it can be skipped */
@@ -103,7 +108,9 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
   ])
 
   const approvalWillBeBatchedWithSwap = useApprovalWillBeBatchedWithSwap(chainId, routing)
-  const shouldSkip = !approvalRequestArgs || isWrap || !address || approvalWillBeBatchedWithSwap || isChained
+  // Gnosis approvals are resolved client-side (see gnosisApprovalInfo), so skip the Trading API query.
+  const shouldSkip =
+    isGnosis || !approvalRequestArgs || isWrap || !address || approvalWillBeBatchedWithSwap || isChained
 
   const { data, isLoading, error } = useCheckApprovalQuery({
     params: shouldSkip ? undefined : approvalRequestArgs,
@@ -169,7 +176,7 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
     }
   }, [address, approvalRequestArgs, approvalWillBeBatchedWithSwap, data, error, isWrap, isChained])
 
-  return useMemo(() => {
+  const tradingApiApprovalTxInfo = useMemo(() => {
     const gasEstimate = data?.gasEstimates?.[0]
     const noApprovalNeeded = tokenApprovalInfo.action === ApprovalAction.None
     const noRevokeNeeded =
@@ -198,4 +205,6 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
       },
     }
   }, [gasStrategy, data?.cancelGasFee, data?.gasEstimates, data?.gasFee, isLoading, tokenApprovalInfo])
+
+  return isGnosis ? gnosisApprovalInfo : tradingApiApprovalTxInfo
 }
