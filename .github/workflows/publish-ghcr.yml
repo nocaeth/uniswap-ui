@@ -7,15 +7,14 @@
 #                                          single deployment.
 #
 # The public production values live in apps/web/.env.production (committed) — a static
-# frontend exposes everything it's built with, so NONE of this is secret. CI needs no
-# config to build a working image EXCEPT the analytics adapter host, which is the only
-# deployment-specific unknown. Set it once, either by editing apps/web/.env.production
-# or as repo Variables (Settings -> Secrets and variables -> Actions -> Variables):
-#   API_BASE_URL_V2_OVERRIDE, GRAPHQL_URL_OVERRIDE
-# Optional Variable overrides (else the .env.production defaults are used):
-#   REACT_APP_GNOSIS_RPC_URL, REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
-#   REACT_APP_WALLET_CONNECT_PROJECT_ID
-# Unset values fall back to the committed defaults (empty args are skipped at build).
+# frontend exposes everything it's built with, so NONE of this is secret. The analytics
+# adapter is served same-origin under /api (the web image's nginx proxies it to the
+# adapter container), so CI needs NO config to build a working image. Override any value
+# per-environment via repo Variables (Settings -> Secrets and variables -> Actions ->
+# Variables), else the committed apps/web/.env.production defaults are used:
+#   API_BASE_URL_V2_OVERRIDE, GRAPHQL_URL_OVERRIDE, REACT_APP_GNOSIS_RPC_URL,
+#   REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS, REACT_APP_WALLET_CONNECT_PROJECT_ID
+# Empty args are skipped at build (the committed default wins).
 name: Publish images (GHCR)
 
 on:

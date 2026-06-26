@@ -40,6 +40,7 @@ RUN cd apps/web && NODE_OPTIONS="--max-old-space-size=8192" bunx vite build --mo
 
 FROM nginx:alpine
 COPY --from=build /app/apps/web/build /usr/share/nginx/html
-# SPA fallback so client-side routes (e.g. /explore, /positions) resolve.
-RUN printf 'server {\n  listen 80;\n  root /usr/share/nginx/html;\n  location / { try_files $uri /index.html; }\n}\n' > /etc/nginx/conf.d/default.conf
+# Serve the SPA (with client-side-route fallback) AND reverse-proxy the analytics
+# adapter at /api on the same origin (so no second domain / CORS / CSP host needed).
+COPY gnosis/web.nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
