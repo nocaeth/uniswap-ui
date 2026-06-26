@@ -1,6 +1,6 @@
-import { WETH9 } from '@uniswap/sdk-core'
 import { useQueryState, useQueryStates } from 'nuqs'
-import { nativeOnChain, USDC, USDC_UNICHAIN } from 'uniswap/src/constants/tokens'
+import { nativeOnChain, USDC_UNICHAIN } from 'uniswap/src/constants/tokens'
+import { GNOSIS_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/gnosis'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { vi } from 'vitest'
 import { NATIVE_CHAIN_ID } from '~/constants/tokens'
@@ -34,8 +34,10 @@ const useQueryStatesMock = mocked(useQueryStates)
 const useCurrencyWithLoadingMock = mocked(useCurrencyWithLoading)
 
 describe('useLiquidityUrlState', () => {
-  const defaultChainId = UniverseChainId.Mainnet
+  const defaultChainId = UniverseChainId.Gnosis
   const defaultInitialToken = nativeOnChain(defaultChainId)
+  const defaultErc20Token = GNOSIS_CHAIN_INFO.tokens.USDC
+  const defaultWrappedNative = GNOSIS_CHAIN_INFO.tokens.WXDAI
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -57,7 +59,7 @@ describe('useLiquidityUrlState', () => {
       vi.fn(),
     ])
 
-    useCurrencyWithLoadingMock.mockImplementation(({ address, chainId }: { address?: string; chainId?: number }) => {
+    useCurrencyWithLoadingMock.mockImplementation(({ address }: { address?: string; chainId?: number }) => {
       // Handle native token: 'ETH' or 'NATIVE'
       if (
         (typeof address === 'string' && address.toUpperCase() === NATIVE_CHAIN_ID) ||
@@ -65,11 +67,11 @@ describe('useLiquidityUrlState', () => {
       ) {
         return { currency: defaultInitialToken, loading: false }
       }
-      if (address === USDC.address) {
-        return { currency: USDC, loading: false }
+      if (address === defaultErc20Token.address) {
+        return { currency: defaultErc20Token, loading: false }
       }
-      if (address === WETH9[chainId ?? defaultChainId].address) {
-        return { currency: WETH9[chainId ?? defaultChainId], loading: false }
+      if (address === defaultWrappedNative.address) {
+        return { currency: defaultWrappedNative, loading: false }
       }
       return { currency: undefined, loading: false }
     })
@@ -105,8 +107,8 @@ describe('useLiquidityUrlState', () => {
   it('parses currencyA and currencyB', () => {
     useQueryStatesMock.mockReturnValue([
       {
-        currencyA: USDC.address,
-        currencyB: WETH9[defaultChainId].address,
+        currencyA: defaultErc20Token.address,
+        currencyB: defaultWrappedNative.address,
         chain: null,
         fee: DEFAULT_FEE_DATA,
         hook: null,
@@ -116,8 +118,8 @@ describe('useLiquidityUrlState', () => {
       vi.fn(),
     ])
     const { result } = renderHook(() => useLiquidityUrlState())
-    expect(result.current.tokenA).toEqual(USDC)
-    expect(result.current.tokenB).toEqual(WETH9[defaultChainId])
+    expect(result.current.tokenA).toEqual(defaultErc20Token)
+    expect(result.current.tokenB).toEqual(defaultWrappedNative)
   })
 
   it('defaults to native token when currencyA is for a different chain', () => {
@@ -136,8 +138,8 @@ describe('useLiquidityUrlState', () => {
   it('prevents duplicate tokens', () => {
     useQueryStatesMock.mockReturnValue([
       {
-        currencyA: USDC.address,
-        currencyB: USDC.address,
+        currencyA: defaultErc20Token.address,
+        currencyB: defaultErc20Token.address,
         chain: null,
         fee: DEFAULT_FEE_DATA,
         hook: null,
@@ -147,15 +149,15 @@ describe('useLiquidityUrlState', () => {
       vi.fn(),
     ])
     const { result } = renderHook(() => useLiquidityUrlState())
-    expect(result.current.tokenA).toEqual(USDC)
+    expect(result.current.tokenA).toEqual(defaultErc20Token)
     expect(result.current.tokenB).toBeUndefined()
   })
 
-  it('prevents ETH + WETH', () => {
+  it('prevents native + wrapped native', () => {
     useQueryStatesMock.mockReturnValue([
       {
-        currencyA: 'ETH',
-        currencyB: WETH9[defaultChainId].address,
+        currencyA: NATIVE_CHAIN_ID,
+        currencyB: defaultWrappedNative.address,
         chain: null,
         fee: DEFAULT_FEE_DATA,
         hook: null,
@@ -242,8 +244,8 @@ describe('useLiquidityUrlState', () => {
   it('handles loading state', () => {
     useQueryStatesMock.mockReturnValue([
       {
-        currencyA: USDC.address,
-        currencyB: WETH9[defaultChainId].address,
+        currencyA: defaultErc20Token.address,
+        currencyB: defaultWrappedNative.address,
         chain: null,
         fee: DEFAULT_FEE_DATA,
         hook: null,
@@ -253,11 +255,11 @@ describe('useLiquidityUrlState', () => {
       vi.fn(),
     ])
     useCurrencyWithLoadingMock.mockImplementation(({ address }: { address?: string; chainId?: number }) => {
-      if (address === USDC.address) {
-        return { currency: USDC, loading: true }
+      if (address === defaultErc20Token.address) {
+        return { currency: defaultErc20Token, loading: true }
       }
-      if (address === WETH9[defaultChainId].address) {
-        return { currency: WETH9[defaultChainId], loading: false }
+      if (address === defaultWrappedNative.address) {
+        return { currency: defaultWrappedNative, loading: false }
       }
       return { currency: undefined, loading: false }
     })
@@ -268,9 +270,9 @@ describe('useLiquidityUrlState', () => {
   it('parses chain param and uses supportedChainId', () => {
     useQueryStatesMock.mockReturnValue([
       {
-        currencyA: USDC.address,
+        currencyA: defaultErc20Token.address,
         currencyB: '',
-        chain: UniverseChainId.Mainnet,
+        chain: UniverseChainId.Gnosis,
         fee: DEFAULT_FEE_DATA,
         hook: null,
         priceRangeState: {},
@@ -279,8 +281,8 @@ describe('useLiquidityUrlState', () => {
       vi.fn(),
     ])
     const { result } = renderHook(() => useLiquidityUrlState())
-    expect(result.current.tokenA).toEqual(USDC)
-    expect(result.current.chainId).toBe(UniverseChainId.Mainnet)
+    expect(result.current.tokenA).toEqual(defaultErc20Token)
+    expect(result.current.chainId).toBe(UniverseChainId.Gnosis)
   })
 
   it('handles missing currencyA and currencyB', () => {
@@ -455,9 +457,9 @@ describe('useLiquidityUrlState', () => {
     useQueryStateMock.mockReturnValue([PositionFlowStep.PRICE_RANGE, vi.fn()])
     useQueryStatesMock.mockReturnValue([
       {
-        currencyA: USDC.address,
+        currencyA: defaultErc20Token.address,
         currencyB: '',
-        chain: UniverseChainId.Mainnet,
+        chain: UniverseChainId.Gnosis,
         fee: { feeAmount: 3000, tickSpacing: 60, isDynamic: false },
         hook: '0x0000000000000000000000000000000000000001',
         priceRangeState: {
@@ -493,7 +495,7 @@ describe('useLiquidityUrlState', () => {
     expect(result.current).toHaveProperty('syncToUrl')
 
     // Verify specific values
-    expect(result.current.tokenA).toEqual(USDC)
+    expect(result.current.tokenA).toEqual(defaultErc20Token)
     expect(result.current.fee?.feeAmount).toBe(3000)
     expect(result.current.hook).toBe('0x0000000000000000000000000000000000000001')
     expect(result.current.priceRangeState.minTick).toBe(0)
@@ -503,7 +505,7 @@ describe('useLiquidityUrlState', () => {
     expect(result.current.priceRangeState.priceInverted).toBe(true)
     expect(result.current.depositState.exactAmounts?.[PositionField.TOKEN0]).toBe('100')
     expect(result.current.flowStep).toBe(PositionFlowStep.PRICE_RANGE)
-    expect(result.current.chainId).toBe(UniverseChainId.Mainnet)
+    expect(result.current.chainId).toBe(UniverseChainId.Gnosis)
   })
 
   it('provides setHistoryState function for step navigation', () => {
@@ -522,7 +524,7 @@ describe('useLiquidityUrlState', () => {
 
     // Test that syncToUrl can be called without errors
     const mockData = {
-      currencyInputs: { tokenA: USDC, tokenB: undefined },
+      currencyInputs: { tokenA: defaultErc20Token, tokenB: undefined },
       positionState: { fee: DEFAULT_FEE_DATA, hook: undefined },
       priceRangeState: { fullRange: true },
       depositState: { exactField: PositionField.TOKEN0, exactAmounts: {} },
@@ -536,7 +538,7 @@ describe('useLiquidityUrlState', () => {
       useQueryStatesMock.mockReturnValue([
         {
           currencya: NATIVE_CHAIN_ID,
-          currencyb: USDC.address,
+          currencyb: defaultErc20Token.address,
           chain: null,
           fee: DEFAULT_FEE_DATA,
           hook: null,
@@ -548,7 +550,7 @@ describe('useLiquidityUrlState', () => {
       const { result, rerender } = renderHook(() => useLiquidityUrlState())
       rerender()
       expect(result.current.tokenA).toEqual(defaultInitialToken)
-      expect(result.current.tokenB).toEqual(USDC)
+      expect(result.current.tokenB).toEqual(defaultErc20Token)
     })
 
     it('handles feeTier and isDynamic', () => {
