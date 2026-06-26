@@ -55,24 +55,50 @@ Gnosis — deploy that proxy first (Arachnid's deterministic-deployment-proxy).
 ## 2. UniversalRouter
 
 UniversalRouter has **no canonical address**, so its address is chain-specific and
-must be wired back into the app (step 3). Deploy from the official repo, pinned to
-the tag whose `UniversalRouterVersion` matches `supportedURVersions` in
-`packages/uniswap/src/features/chains/evm/info/gnosis.ts` (currently `_2_0`).
+must be wired back into the app (step 3).
+
+> **Version, the right way.** The app pins `UniversalRouterVersion._2_0`
+> (`supportedURVersions` in `gnosis.ts`), which is an `@uniswap/universal-router-sdk`
+> command-set version — **not** a contract git tag. The repo's `v1.x` tags are the
+> old NFT-aggregator UR (the SDK's `"1.2"` line) — wrong contract. The V4-capable UR
+> the SDK `"2.0"/"2.1"` targets lives on **`main`**. Pin the exact commit verified
+> here: **`cb222d358a2ea780feedee6990ff8a3c185301bf`** ("UR 2.1.1"). A UR built from
+> this commit + the Gnosis params executed a real WXDAI→USDC.e swap on a Gnosis fork,
+> so it's command-compatible with the app's `_2_0` pin.
 
 ```bash
 git clone https://github.com/Uniswap/universal-router && cd universal-router
-git checkout <tag-matching-v2_0>
-forge install && forge build
+git checkout cb222d358a2ea780feedee6990ff8a3c185301bf
+forge install
+cp /path/to/this-repo/gnosis/contracts/DeployGnosis.s.sol script/deployParameters/
+forge build
+forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
+  --rpc-url "$RPC_GNOSIS" --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast \
+  --verify --verifier etherscan --verifier-url https://api.gnosisscan.io/api \
+  --etherscan-api-key "$GNOSISSCAN_API_KEY"
 ```
 
-Create a params entry for Gnosis using the values in
-[`gnosis-router-parameters.json`](./gnosis-router-parameters.json) and run that
-repo's deploy script against Gnosis (the repo reads params from
-`script/deployParameters/`). Because UR's `RouterParameters` struct fields vary by
-tag, copy the values from the JSON into the struct fields present in your chosen
-tag; leave V2/V4 fields as the zero address / zero hash (Gnosis is V3-only).
+[`DeployGnosis.s.sol`](./DeployGnosis.s.sol) carries the verified params (matches the
+11-field struct at that commit). Deploy cost on Gnosis is a few cents. Record the
+`Universal Router Deployed:` address from the output.
 
-After broadcast, record the deployed address.
+> **Pre-deploy facts (verified on chain 100 this session with `cast`):** V3 Factory,
+> NonfungiblePositionManager, QuoterV2, SwapRouter02 and **Permit2 (canonical)** all
+> have code; **UniversalRouter is the only missing piece**. `poolInitCodeHash`
+> `0xe34f199b…` reproduces the real USDC.e/WXDAI pool via CREATE2.
+
+> **On "1:1 bytecode":** the deployed runtime bytecode will **not** byte-match
+> mainnet/Arbitrum UR — UR bakes its wiring (Permit2, WXDAI, factory, the freshly
+> deployed UnsupportedProtocol stub, …) in as **immutables**, which are Gnosis-specific.
+> That's correct. Verify by source on Gnosisscan + a live swap, not by byte-diff.
+
+### Optional dry run (recommended)
+```bash
+anvil --fork-url "$RPC_GNOSIS" --port 8545 &   # local Gnosis fork
+forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
+  --rpc-url http://localhost:8545 --private-key <anvil-acct0-key> --broadcast
+# then run gnosis/.../swap-proof against the deployed address before touching mainnet
+```
 
 ## 3. Wiring addresses back into the app
 
