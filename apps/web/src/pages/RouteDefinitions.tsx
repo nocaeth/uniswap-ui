@@ -38,7 +38,6 @@ const V2PositionPage = lazy(() => import('~/pages/Positions/V2PositionPage'))
 const PoolDetails = lazy(() => import('~/pages/PoolDetails'))
 const TokenDetails = lazy(() => import('~/pages/TokenDetails/TokenDetailsPage'))
 const ExtensionUninstall = lazy(() => import('~/pages/ExtensionUninstall/ExtensionUninstall'))
-const BetaPage = lazy(() => import('~/pages/Beta'))
 
 interface RouterConfig {
   browserRouterEnabled?: boolean
@@ -305,15 +304,6 @@ export const routes: RouteDefinition[] = [
     path: CHROME_EXTENSION_UNINSTALL_URL_PATH,
     getElement: () => <ExtensionUninstall />,
     getTitle: () => i18n.t('title.extension.uninstall'),
-  }),
-  createRouteDefinition({
-    path: '/preview',
-    getTitle: () => 'Uniswap Preview',
-    getElement: () => (
-      <Suspense fallback={null}>
-        <BetaPage />
-      </Suspense>
-    ),
   }),
   createRouteDefinition({ path: '*', getElement: () => <Navigate to="/not-found" replace /> }),
   createRouteDefinition({ path: '/not-found', getElement: () => <NotFound /> }),
