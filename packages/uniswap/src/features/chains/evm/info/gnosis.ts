@@ -20,6 +20,10 @@ import { gnosis } from 'wagmi/chains'
 // is the primary spot-price stablecoin. USDC.e is Circle's bridged USDC.
 const WXDAI_ADDRESS = '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
 
+// Allow pointing the Gnosis RPC at a self-hosted node or a local fork (e.g. anvil)
+// via REACT_APP_GNOSIS_RPC_URL, without code changes. Falls back to public endpoints.
+const GNOSIS_RPC_OVERRIDE = process.env['REACT_APP_GNOSIS_RPC_URL']
+
 const tokens = buildChainTokens({
   stables: {
     // WXDAI as primary: deepest USD-pegged liquidity on Gnosis V3
@@ -67,10 +71,12 @@ export const GNOSIS_CHAIN_INFO = {
   blockTimeMs: 5000,
   pendingTransactionsRetryOptions: DEFAULT_RETRY_OPTIONS,
   rpcUrls: {
-    [RPCType.Default]: { http: ['https://rpc.gnosischain.com'] },
-    [RPCType.Public]: { http: ['https://gnosis.drpc.org'] },
-    [RPCType.Interface]: { http: ['https://rpc.gnosischain.com'] },
-    [RPCType.Fallback]: { http: ['https://gnosis.drpc.org', 'https://rpc.gnosis.gateway.fm'] },
+    [RPCType.Default]: { http: [GNOSIS_RPC_OVERRIDE ?? 'https://rpc.gnosischain.com'] },
+    [RPCType.Public]: { http: [GNOSIS_RPC_OVERRIDE ?? 'https://gnosis.drpc.org'] },
+    [RPCType.Interface]: { http: [GNOSIS_RPC_OVERRIDE ?? 'https://rpc.gnosischain.com'] },
+    [RPCType.Fallback]: {
+      http: GNOSIS_RPC_OVERRIDE ? [GNOSIS_RPC_OVERRIDE] : ['https://gnosis.drpc.org', 'https://rpc.gnosis.gateway.fm'],
+    },
   },
   tokens,
   statusPage: undefined,
