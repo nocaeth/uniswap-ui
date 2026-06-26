@@ -1,9 +1,7 @@
 import i18n from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import { initReactI18next } from 'react-i18next'
-import { Locale } from 'uniswap/src/features/language/constants'
 import enUsLocale from 'uniswap/src/i18n/locales/source/en-US.json'
-import { getLocaleTranslationKey } from 'uniswap/src/i18n/utils'
 import { logger } from 'utilities/src/logger/logger'
 
 let isSetup = false
@@ -19,21 +17,9 @@ export function setupi18n(): undefined {
   i18n
     .use(initReactI18next)
     .use(
-      resourcesToBackend((locale: string) => {
-        // not sure why but it tries to load es THEN es-ES, for any language, but we just want the second
-        if (!locale.includes('-')) {
-          return undefined
-        }
-
-        if (locale === Locale.EnglishUnitedStates) {
-          return enUsLocale
-        }
-
-        const fileName = getLocaleTranslationKey(locale)
-
-        // oxlint-disable-next-line no-unsanitized/method
-        return import(`./locales/translations/${fileName}.json`)
-      }),
+      // Gnosis-only fork: English only. Every locale resolves to the en-US bundle
+      // (non-English translations have been removed).
+      resourcesToBackend(() => enUsLocale),
     )
     // oxlint-disable-next-line max-params
     .on('failedLoading', (language, namespace, msg) => {
