@@ -34,7 +34,6 @@ import { IncreaseLiquidityStep, useIncreaseLiquidityContext } from '~/pages/Incr
 import { useIncreaseLiquidityTxContext } from '~/pages/IncreaseLiquidity/IncreaseLiquidityTxContext'
 import { useSetOverrideOneClickSwapFlag } from '~/pages/Swap/Swap/settings/OneClickSwap'
 import { liquiditySaga } from '~/state/sagas/liquidity/liquiditySaga'
-import { ExternalLink } from '~/theme/components/Links'
 
 // oxlint-disable-next-line complexity
 export function IncreaseLiquidityReview({ onClose }: { onClose: () => void }) {
@@ -258,11 +257,6 @@ export function IncreaseLiquidityReview({ onClose }: { onClose: () => void }) {
                 </Flex>
               </Flex>
             )}
-            <ExternalLink href="https://support.uniswap.org/hc/en-us/articles/39530204759693-How-do-I-add-liquidity-to-an-existing-position">
-              <Text variant="body3" color="$accent1">
-                {t('common.button.learn')}
-              </Text>
-            </ExternalLink>
           </Flex>
         )}
       </Flex>

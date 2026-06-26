@@ -81,10 +81,7 @@ function PrivacyPolicy() {
         name: 'TRM Labs',
         description: (
           <>
-            {t('privacy.trm')}{' '}
-            <ExternalLink href="https://support.uniswap.org/hc/en-us/articles/8671777747597-Address-Screening-Guide">
-              {t('common.button.learn')}
-            </ExternalLink>
+            {t('privacy.trm')}
           </>
         ),
       },
