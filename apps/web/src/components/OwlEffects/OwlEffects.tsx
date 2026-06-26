@@ -1,5 +1,5 @@
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
 import '~/components/OwlEffects/owl.css'
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
 
 /** Window event that triggers the owl fountain (dispatched by the owl button). */
 export const OWL_FOUNTAIN_EVENT = 'noca-owls'

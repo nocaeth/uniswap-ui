@@ -29,6 +29,7 @@ import {
   NumericalInputWrapper,
   StyledNumericalInput,
 } from '~/components/NumericalInput/LargeAmountInput'
+import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 import { NATIVE_CHAIN_ID } from '~/constants/tokens'
 import { useActiveAddresses } from '~/features/accounts/store/hooks'
 import { PAGE_WRAPPER_MAX_WIDTH } from '~/features/Swap/styled'
@@ -40,7 +41,6 @@ import { CountryListModal } from '~/pages/Swap/Buy/CountryListModal'
 import { FiatOnRampCurrencyModal } from '~/pages/Swap/Buy/FiatOnRampCurrencyModal'
 import { fallbackCurrencyInfo, useOffRampTransferDetailsRequest } from '~/pages/Swap/Buy/hooks'
 import { OffRampConfirmTransferModal } from '~/pages/Swap/Buy/OffRampConfirmTransferModal'
-import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 import { resolveInitialBuyFormToken } from '~/pages/Swap/Buy/resolveInitialBuyFormToken'
 import { SelectTokenPanel } from '~/pages/Swap/Buy/SelectTokenPanel'
 import { formatFiatOnRampFiatAmount, getCountryFromLocale } from '~/pages/Swap/Buy/shared'

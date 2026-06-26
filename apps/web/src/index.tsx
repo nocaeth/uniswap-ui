@@ -246,46 +246,46 @@ const RootApp = (): JSX.Element => {
                   <Router>
                     <I18nextProvider i18n={i18n}>
                       <LanguageProvider>
-                          <Web3Provider>
-                            <StatsigProvider>
-                              <WalletCapabilitiesEffects />
-                              <ExternalWalletProvider>
-                                <ConnectWalletMutationProvider>
-                                  <WebAccountsStoreProvider>
-                                    <WebUniswapProvider>
-                                      <GraphqlProviders>
-                                        <TransactionWatcherProvider>
-                                          <LivePricesProvider>
-                                            <LocalizationContextProvider>
-                                              <BlockNumberProvider>
-                                                <Updaters />
-                                                <ThemeProvider>
-                                                  <TamaguiProvider>
-                                                    <PortalProvider>
-                                                      <WebNotificationServiceManager />
-                                                      <ThemedGlobalStyle />
-                                                      <App />
-                                                      {AgentationLazy && isDevEnv() && (
-                                                        <Suspense fallback={null}>
-                                                          <AgentationLazy />
-                                                        </Suspense>
-                                                      )}
-                                                    </PortalProvider>
-                                                  </TamaguiProvider>
-                                                </ThemeProvider>
-                                              </BlockNumberProvider>
-                                            </LocalizationContextProvider>
-                                          </LivePricesProvider>
-                                        </TransactionWatcherProvider>
-                                      </GraphqlProviders>
-                                    </WebUniswapProvider>
-                                  </WebAccountsStoreProvider>
-                                </ConnectWalletMutationProvider>
-                              </ExternalWalletProvider>
-                            </StatsigProvider>
-                          </Web3Provider>
-                        </LanguageProvider>
-                      </I18nextProvider>
+                        <Web3Provider>
+                          <StatsigProvider>
+                            <WalletCapabilitiesEffects />
+                            <ExternalWalletProvider>
+                              <ConnectWalletMutationProvider>
+                                <WebAccountsStoreProvider>
+                                  <WebUniswapProvider>
+                                    <GraphqlProviders>
+                                      <TransactionWatcherProvider>
+                                        <LivePricesProvider>
+                                          <LocalizationContextProvider>
+                                            <BlockNumberProvider>
+                                              <Updaters />
+                                              <ThemeProvider>
+                                                <TamaguiProvider>
+                                                  <PortalProvider>
+                                                    <WebNotificationServiceManager />
+                                                    <ThemedGlobalStyle />
+                                                    <App />
+                                                    {AgentationLazy && isDevEnv() && (
+                                                      <Suspense fallback={null}>
+                                                        <AgentationLazy />
+                                                      </Suspense>
+                                                    )}
+                                                  </PortalProvider>
+                                                </TamaguiProvider>
+                                              </ThemeProvider>
+                                            </BlockNumberProvider>
+                                          </LocalizationContextProvider>
+                                        </LivePricesProvider>
+                                      </TransactionWatcherProvider>
+                                    </GraphqlProviders>
+                                  </WebUniswapProvider>
+                                </WebAccountsStoreProvider>
+                              </ConnectWalletMutationProvider>
+                            </ExternalWalletProvider>
+                          </StatsigProvider>
+                        </Web3Provider>
+                      </LanguageProvider>
+                    </I18nextProvider>
                   </Router>
                 </NuqsAdapter>
               </ComplianceClientProvider>

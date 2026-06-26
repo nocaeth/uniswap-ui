@@ -14,12 +14,7 @@ import { swapActions, swapReducer, swapSaga, swapSagaName } from '~/state/sagas/
 import { watchTransactionsSaga } from '~/state/sagas/transactions/watcherSaga'
 import { wrapSaga } from '~/state/sagas/transactions/wrapSaga'
 
-const sagas = [
-  wrapSaga,
-  liquiditySaga,
-  watchTransactionsSaga,
-  lpIncentivesClaimSaga,
-]
+const sagas = [wrapSaga, liquiditySaga, watchTransactionsSaga, lpIncentivesClaimSaga]
 
 // Stateful sagas that are registered with the store on startup
 const monitoredSagas: Record<string, MonitoredSaga> = {

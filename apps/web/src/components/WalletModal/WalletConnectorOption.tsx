@@ -46,13 +46,7 @@ function OtherWalletsIcon() {
  * We have custom icons for certain Uniswap Connectors.
  * This function returns the correct icon for the connector.
  */
-function getIcon({
-  wallet,
-  themeColors,
-}: {
-  wallet: ExternalWallet
-  themeColors: UseSporeColorsReturn
-}) {
+function getIcon({ wallet, themeColors }: { wallet: ExternalWallet; themeColors: UseSporeColorsReturn }) {
   const iconSize = iconSizes.icon40
 
   if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID) {

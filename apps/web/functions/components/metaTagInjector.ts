@@ -17,9 +17,7 @@ function doesMatchPath(path: string): boolean {
   return regexPaths.some((regex) => new RegExp(regex).test(path))
 }
 
-function parseExplorePath(
-  pathname: string,
-): { type: 'token' | 'pool'; networkName: string; address: string } | null {
+function parseExplorePath(pathname: string): { type: 'token' | 'pool'; networkName: string; address: string } | null {
   const tokenMatch = pathname.match(/^\/explore\/tokens\/([^/]+)\/([^/]+)$/)
   if (tokenMatch) {
     return {

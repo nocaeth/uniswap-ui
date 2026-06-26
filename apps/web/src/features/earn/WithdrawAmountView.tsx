@@ -26,6 +26,7 @@ import {
   NumericalInputWrapper,
   StyledNumericalInput,
 } from '~/components/NumericalInput/LargeAmountInput'
+import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 import { useActiveAddresses } from '~/features/accounts/store/hooks'
 import { EARN_SELECTOR_DROPDOWN_MAX_HEIGHT } from '~/features/earn/constants'
 import { EarnAmountViewHeader } from '~/features/earn/EarnAmountViewHeader'
@@ -33,7 +34,6 @@ import {
   getWithdrawDestinationBalanceUsd,
   getWithdrawDestinationChainIds,
 } from '~/features/earn/withdrawDestinationChains'
-import { PredefinedAmount } from '~/components/PredefinedAmount/PredefinedAmount'
 
 const CHAR_WIDTH = 45
 const MAX_FONT_SIZE = 70
