@@ -1,0 +1,124 @@
+# Build and publish the Gnosis-only stack images to GitHub Container Registry.
+#
+#   ghcr.io/<owner>/uniswap-ui-adapter  -> analytics adapter + indexer (one image,
+#                                          runtime-configurable; fully reusable)
+#   ghcr.io/<owner>/uniswap-ui-web      -> the static interface (nginx). Vite bakes
+#                                          env at BUILD time, so this image targets a
+#                                          single deployment. Its override values are
+#                                          read from repo Variables/Secrets below.
+#
+# Configure once (Repo Settings -> Secrets and variables -> Actions):
+#   Variables: API_BASE_URL_V2_OVERRIDE, GRAPHQL_URL_OVERRIDE,
+#              REACT_APP_GNOSIS_RPC_URL, REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS
+#   Secrets:   REACT_APP_WALLET_CONNECT_PROJECT_ID
+# Unset values fall back to the committed defaults (empty args are skipped at build).
+name: Publish images (GHCR)
+
+on:
+  workflow_dispatch:
+    inputs:
+      images:
+        description: Which images to build
+        type: choice
+        default: both
+        options: [both, adapter, web]
+  push:
+    branches: [gnosis-only-ui]
+    tags: ['v*']
+
+concurrency:
+  group: ghcr-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  adapter:
+    if: ${{ github.event_name != 'workflow_dispatch' || contains(fromJSON('["both","adapter"]'), inputs.images) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-adapter
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push adapter
+        uses: docker/build-push-action@v6
+        with:
+          context: gnosis/adapter
+          file: gnosis/adapter/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=adapter
+          cache-to: type=gha,scope=adapter,mode=max
+
+  web:
+    if: ${{ github.event_name != 'workflow_dispatch' || contains(fromJSON('["both","web"]'), inputs.images) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      # Full history: vite.config.mts runs `git rev-parse HEAD` and `git tag --list`.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-web
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: gnosis/web.Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+          build-args: |
+            API_BASE_URL_V2_OVERRIDE=${{ vars.API_BASE_URL_V2_OVERRIDE }}
+            GRAPHQL_URL_OVERRIDE=${{ vars.GRAPHQL_URL_OVERRIDE }}
+            REACT_APP_GNOSIS_RPC_URL=${{ vars.REACT_APP_GNOSIS_RPC_URL }}
+            REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS=${{ vars.REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS }}
+            REACT_APP_WALLET_CONNECT_PROJECT_ID=${{ secrets.REACT_APP_WALLET_CONNECT_PROJECT_ID }}

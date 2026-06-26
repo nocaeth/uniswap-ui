@@ -11,6 +11,7 @@
 # Refresh analytics later with: `docker compose run --rm indexer`.
 services:
   indexer:
+    image: ghcr.io/nocaeth/uniswap-ui-adapter:latest
     build:
       context: ./adapter
     command: ['bun', 'src/backfill.ts']
@@ -26,6 +27,7 @@ services:
     restart: 'no'
 
   adapter:
+    image: ghcr.io/nocaeth/uniswap-ui-adapter:latest
     build:
       context: ./adapter
     depends_on:
@@ -37,6 +39,7 @@ services:
       - '8081:8081'
 
   web:
+    image: ghcr.io/nocaeth/uniswap-ui-web:latest
     build:
       context: ..
       dockerfile: gnosis/web.Dockerfile
