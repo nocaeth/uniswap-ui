@@ -101,7 +101,6 @@ describe('ModalRegistry', () => {
         ModalName.OffchainActivity,
         ModalName.UkDisclaimer,
         ModalName.TestnetMode,
-        ModalName.GetTheApp,
         ModalName.PrivacyPolicy,
         ModalName.PrivacyChoices,
         ModalName.FeatureFlags,

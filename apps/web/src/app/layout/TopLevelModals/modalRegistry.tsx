@@ -23,9 +23,6 @@ const UkDisclaimerModal = createLazy(() => import('~/app/layout/TopLevelModals/U
 const TestnetModeModal = createLazy(() =>
   import('uniswap/src/features/testnets/TestnetModeModal').then((module) => ({ default: module.TestnetModeModal })),
 )
-const GetTheAppModal = createLazy(() =>
-  import('~/components/NavBar/DownloadApp/Modal').then((module) => ({ default: module.GetTheAppModal })),
-)
 const PrivacyPolicyModal = createLazy(() =>
   import('~/components/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicyModal })),
 )
@@ -146,10 +143,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.TestnetMode]: {
     component: TestnetModeModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.TestnetMode,
-  },
-  [ModalName.GetTheApp]: {
-    component: GetTheAppModal,
-    shouldMount: () => true,
   },
   [ModalName.PendingWalletConnection]: {
     component: PendingWalletConnectionModal,
