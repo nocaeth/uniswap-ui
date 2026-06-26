@@ -12,7 +12,6 @@ export const paths = [
   '/tokens/:chainName/:tokenAddress',
   '/explore/pools/:chainName/:poolAddress',
   '/vote/*',
-  '/create-proposal',
   '/sell',
   '/send',
   '/swap',

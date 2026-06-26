@@ -87,7 +87,6 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
   )
 
   const navigateToPoolDetails = useCallback(
-    // oxlint-disable-next-line no-shadow
     ({ poolId, chainId }: { poolId: Address; chainId: UniverseChainId }) => {
       const url = getPoolDetailsURL(poolId, chainId)
       navigate(url)
@@ -169,7 +168,6 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
 
   const onSwapChainsChanged = useEvent(
     ({
-      // oxlint-disable-next-line no-shadow
       chainId,
       prevChainId,
       outputChainId,

@@ -45,7 +45,6 @@ interface RouterConfig {
   hash?: string
   isAddLiquidityRevampEnabled?: boolean
   isEmbeddedWalletEnabled?: boolean
-  isWrappedEnabled?: boolean
 }
 
 /**
@@ -56,7 +55,6 @@ export function useRouterConfig(): RouterConfig {
   const { hash } = useLocation()
   const isAddLiquidityRevampEnabled = useFeatureFlag(FeatureFlags.AddLiquidityRevamp)
   const isEmbeddedWalletEnabled = useFeatureFlag(FeatureFlags.EmbeddedWallet)
-  const isWrappedEnabled = useFeatureFlag(FeatureFlags.UniswapWrapped2025)
 
   return useMemo(
     () => ({
@@ -64,9 +62,8 @@ export function useRouterConfig(): RouterConfig {
       hash,
       isAddLiquidityRevampEnabled,
       isEmbeddedWalletEnabled,
-      isWrappedEnabled,
     }),
-    [browserRouterEnabled, hash, isAddLiquidityRevampEnabled, isEmbeddedWalletEnabled, isWrappedEnabled],
+    [browserRouterEnabled, hash, isAddLiquidityRevampEnabled, isEmbeddedWalletEnabled],
   )
 }
 
@@ -174,12 +171,6 @@ export const routes: RouteDefinition[] = [
         <PoolDetails />
       </Suspense>
     ),
-  }),
-  createRouteDefinition({
-    path: '/create-proposal',
-    getTitle: () => i18n.t('title.createGovernanceOn'),
-    getDescription: () => i18n.t('title.createGovernanceTo'),
-    getElement: () => <Navigate to="/vote/create-proposal" replace />,
   }),
   createRouteDefinition({
     path: '/swap',

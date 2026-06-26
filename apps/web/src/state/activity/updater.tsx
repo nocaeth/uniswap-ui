@@ -3,7 +3,6 @@ import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useCallback } from 'react'
 import { isL2ChainId } from 'uniswap/src/features/chains/utils'
 import { getDisplayedPriceSource } from 'uniswap/src/features/prices/getDisplayedPriceSource'
-import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import {
   finalizeTransaction,
   interfaceApplyTransactionHashToBatch,

@@ -37,7 +37,6 @@ import { useOnSwitchTokens } from '~/features/Swap/state/hooks'
 import type { CurrencyState } from '~/features/Swap/state/types'
 import { useSwapAndLimitContext } from '~/features/Swap/state/useSwapContext'
 import { ArrowContainer, ArrowWrapper, SwapSection } from '~/features/Swap/styled'
-import { useAccount } from '~/hooks/useAccount'
 import { usePermit2Allowance, AllowanceState } from '~/hooks/usePermit2Allowance'
 import { ConfirmLimitOrderModal } from '~/pages/Swap/Limit/ConfirmLimitOrderModal'
 import { LimitExpirySection } from '~/pages/Swap/Limit/LimitExpirySection'
@@ -80,7 +79,6 @@ type LimitFormProps = {
 // oxlint-disable-next-line complexity
 function LimitForm({ onCurrencyChange }: LimitFormProps) {
   const { t } = useTranslation()
-  const account = useAccount()
   const { chainId } = useMultichainContext()
   const {
     currencyState: { inputCurrency, outputCurrency },
