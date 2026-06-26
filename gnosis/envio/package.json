@@ -1,0 +1,17 @@
+{
+  "name": "gnosis-uniswap-v3-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start"
+  },
+  "dependencies": {
+    "envio": "3.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

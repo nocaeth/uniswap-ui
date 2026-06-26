@@ -4,9 +4,10 @@
 #
 # Docs: https://docs.envio.dev/docs/HyperIndex/configuration-file
 name: gnosis-uniswap-v3
-unordered_multichain_mode: true
 
-networks:
+# Envio uses HyperSync by default for Gnosis (chain 100) — fast historical backfill,
+# no RPC required.
+chains:
   - id: 100
     # UniswapV3Factory was deployed on Gnosis in April 2023. Set this to the exact
     # factory-creation block to minimize backfill time (look it up on gnosisscan).
