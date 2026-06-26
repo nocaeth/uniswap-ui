@@ -23,7 +23,6 @@ const CreatePosition = lazy(() => import('~/pages/CreatePosition/CreatePosition'
 const AddLiquidityV3WithTokenRedirects = lazy(() => import('~/pages/AddLiquidityV3/redirects'))
 const AddLiquidityV2WithTokenRedirects = lazy(() => import('~/pages/AddLiquidityV2/redirects'))
 const RedirectExplore = lazy(() => import('~/pages/Explore/redirects'))
-const MigrateV3 = lazy(() => import('~/pages/Migrate'))
 const NotFound = lazy(() => import('~/pages/NotFound'))
 const Pool = lazy(() => import('~/pages/Positions'))
 const LegacyPoolRedirects = lazy(() =>
@@ -46,9 +45,6 @@ const ExtensionPasskeyAuthPopUp = lazy(() => import('~/pages/ExtensionPasskeyAut
 const PasskeyManagement = lazy(() => import('~/pages/PasskeyManagement'))
 const ExtensionUninstall = lazy(() => import('~/pages/ExtensionUninstall/ExtensionUninstall'))
 const Portfolio = lazy(() => import('~/pages/Portfolio/Portfolio'))
-const ToucanToken = lazy(() => import('~/pages/Explore/ToucanToken'))
-const CreateAuction = lazy(() => import('~/pages/Liquidity/CreateAuction/CreateAuction'))
-const XOAuthCallbackPage = lazy(() => import('~/pages/Liquidity/CreateAuction/XOAuthCallbackPage'))
 const BetaPage = lazy(() => import('~/pages/Beta'))
 const Wrapped = lazy(() => import('~/pages/Wrapped'))
 
@@ -186,36 +182,6 @@ export const routes: RouteDefinition[] = [
     ),
   }),
   createRouteDefinition({
-    path: '/explore/auctions/:chainName/:auctionAddress',
-    getTitle: () => StaticTitlesAndDescriptions.DetailsPageBaseTitle,
-    getDescription: () => StaticTitlesAndDescriptions.ToucanAuctionDescription,
-    getElement: () => (
-      <Suspense fallback={null}>
-        <ToucanToken />
-      </Suspense>
-    ),
-  }),
-  createRouteDefinition({
-    path: '/liquidity/launch-auction',
-    getTitle: () => i18n.t('toucan.createAuction.title'),
-    getDescription: () => StaticTitlesAndDescriptions.ToucanLaunchAuctionDescription,
-    getElement: () => (
-      <Suspense fallback={null}>
-        <CreateAuction />
-      </Suspense>
-    ),
-  }),
-  createRouteDefinition({
-    path: '/liquidity/launch-auction/x/callback',
-    getTitle: () => 'X Verification',
-    getDescription: () => StaticTitlesAndDescriptions.ToucanLaunchAuctionDescription,
-    getElement: () => (
-      <Suspense fallback={null}>
-        <XOAuthCallbackPage />
-      </Suspense>
-    ),
-  }),
-  createRouteDefinition({
     path: '/vote/*',
     getTitle: () => i18n.t('title.voteOnGov'),
     getDescription: () => i18n.t('title.uniToken'),
@@ -239,36 +205,6 @@ export const routes: RouteDefinition[] = [
     getTitle: () => i18n.t('title.createGovernanceOn'),
     getDescription: () => i18n.t('title.createGovernanceTo'),
     getElement: () => <Navigate to="/vote/create-proposal" replace />,
-  }),
-  createRouteDefinition({
-    path: '/buy',
-    getElement: () => <SwapPage />,
-    getTitle: () => StaticTitlesAndDescriptions.SwapTitle,
-  }),
-  createRouteDefinition({
-    path: '/sell',
-    getElement: () => <SwapPage />,
-    getTitle: () => StaticTitlesAndDescriptions.SwapTitle,
-  }),
-  createRouteDefinition({
-    path: '/send',
-    getElement: () => <SwapPage />,
-    getTitle: () => i18n.t('title.sendTokens'),
-  }),
-  createRouteDefinition({
-    path: '/limits',
-    getElement: () => <Navigate to="/limit" replace />,
-    getTitle: () => i18n.t('title.placeLimit'),
-  }),
-  createRouteDefinition({
-    path: '/limit',
-    getElement: () => <SwapPage />,
-    getTitle: () => i18n.t('title.placeLimit'),
-  }),
-  createRouteDefinition({
-    path: '/buy',
-    getElement: () => <SwapPage />,
-    getTitle: () => StaticTitlesAndDescriptions.SwapTitle,
   }),
   createRouteDefinition({
     path: '/swap',
@@ -323,18 +259,6 @@ export const routes: RouteDefinition[] = [
     getElement: () => <PositionPage />,
     getTitle: getPositionPageTitle,
     getDescription: getPositionPageDescription,
-  }),
-  createRouteDefinition({
-    path: '/migrate/v2/:chainName/:pairAddress',
-    getElement: () => <MigrateV3 />,
-    getTitle: () => StaticTitlesAndDescriptions.MigrateTitle,
-    getDescription: () => StaticTitlesAndDescriptions.MigrateDescription,
-  }),
-  createRouteDefinition({
-    path: '/migrate/v3/:chainName/:tokenId',
-    getElement: () => <MigrateV3 />,
-    getTitle: () => StaticTitlesAndDescriptions.MigrateTitleV3,
-    getDescription: () => StaticTitlesAndDescriptions.MigrateDescriptionV4,
   }),
   // Legacy pool routes
   createRouteDefinition({
@@ -431,13 +355,11 @@ export const routes: RouteDefinition[] = [
       'tokens',
       'pools',
       'defi',
-      'nfts',
       'activity',
       ':walletAddress',
       ':walletAddress/tokens',
       ':walletAddress/pools',
       ':walletAddress/defi',
-      ':walletAddress/nfts',
       ':walletAddress/activity',
     ],
   }),

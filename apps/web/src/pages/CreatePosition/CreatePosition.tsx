@@ -151,7 +151,8 @@ const Toolbar = () => {
 
   const versionOptions = useMemo(
     () =>
-      [ProtocolVersion.V4, ProtocolVersion.V3, ProtocolVersion.V2]
+      // Gnosis-only: V3 is the only deployed protocol version.
+      [ProtocolVersion.V3]
         .filter((version) => version !== protocolVersion)
         .map((version) => (
           <TouchableArea key={`version-${version}`} onPress={() => handleVersionChange(version)}>
@@ -251,7 +252,8 @@ function CreatePositionContent({
   paramsProtocolVersion: ProtocolVersion | undefined
   autoSlippageTolerance: number
 }) {
-  const initialProtocolVersion = paramsProtocolVersion ?? ProtocolVersion.V4
+  // Gnosis-only: default to V3 (the only deployed protocol version).
+  const initialProtocolVersion = paramsProtocolVersion ?? ProtocolVersion.V3
 
   const [currencyInputs, setCurrencyInputs] = useState<{ tokenA: Maybe<Currency>; tokenB: Maybe<Currency> }>({
     tokenA: initialInputs.tokenA,
