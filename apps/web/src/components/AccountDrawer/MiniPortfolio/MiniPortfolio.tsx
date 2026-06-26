@@ -5,9 +5,9 @@ import type { ActivityItem } from 'uniswap/src/components/activity/generateActiv
 import { useActivityData } from 'uniswap/src/features/activity/hooks/useActivityData'
 import type { DataApiOutageState } from 'uniswap/src/features/dataApi/types'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
+import { filterTransactionDetailsFromActivityItems } from '~/components/AccountDrawer/MiniPortfolio/activityItemFilters'
 import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
-import { filterTransactionDetailsFromActivityItems } from '~/pages/Portfolio/Activity/Filters/utils'
-import { ViewAllButton } from '~/pages/Portfolio/Overview/ViewAllButton'
+import { ViewAllButton } from '~/components/AccountDrawer/MiniPortfolio/ViewAllButton'
 import { filterDefinedWalletAddresses } from '~/utils/filterDefinedWalletAddresses'
 
 const MAX_RECENT_ACTIVITY_ITEMS = 3
@@ -53,14 +53,6 @@ export function MiniPortfolio({
 
   return (
     <Flex mt="$spacing12" gap="$spacing4">
-      <ViewAllButton
-        label={t('portfolio.view')}
-        elementName={ElementName.MiniPortfolioViewPortfolioButton}
-        href="/portfolio"
-        onPress={accountDrawer.close}
-        fullWidth
-      />
-
       <Flex gap="$spacing8" pt="$spacing16">
         <Text variant="subheading2" color="$neutral1" p="$spacing8">
           {t('activity.recentActivity')}
@@ -69,10 +61,11 @@ export function MiniPortfolio({
       </Flex>
 
       <ViewAllButton
-        label={t('portfolio.overview.activity.table.viewAllActivity')}
-        elementName={ElementName.PortfolioViewAllActivity}
-        href="/portfolio/activity"
+        label={t('pool.positions')}
+        elementName={ElementName.MiniPortfolioViewPortfolioButton}
+        href="/positions"
         onPress={accountDrawer.close}
+        fullWidth
       />
     </Flex>
   )

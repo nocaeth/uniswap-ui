@@ -17,6 +17,7 @@ import { adjustItemWidths, MIN_BAR_WIDTH } from '~/components/PercentageAllocati
 import { PercentageBars } from '~/components/PercentageAllocationChart/PercentageBars'
 import type { PercentageAllocationItem } from '~/components/PercentageAllocationChart/types'
 import { useChartHover } from '~/components/PercentageAllocationChart/useChartHover'
+import { useNavigateToTokenDetails } from '~/hooks/useNavigateToTokenDetails'
 import { useTopNetworkBarColors } from '~/pages/Explore/tables/Tokens/VolumeByNetworkPopover/useTopNetworkBarColors'
 import {
   getPercentageDisplay,
@@ -29,7 +30,6 @@ import {
   VolumeBreakdownRowLabel,
   type VolumeHoverSource,
 } from '~/pages/Explore/tables/Tokens/VolumeByNetworkPopover/VolumeBreakdownRow'
-import { useNavigateToTokenDetails } from '~/pages/Portfolio/Tokens/hooks/useNavigateToTokenDetails'
 
 const MAX_VISIBLE_NETWORKS = 3
 const POPOVER_MIN_WIDTH = 300

@@ -6,7 +6,6 @@ import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defa
 import { EXTENSION_PASSKEY_AUTH_PATH } from 'uniswap/src/features/passkey/constants'
 import i18n from 'uniswap/src/i18n'
 import { getExploreDescription, getExploreTitle } from '~/pages/getExploreTitle'
-import { getPortfolioDescription, getPortfolioTitle } from '~/pages/getPortfolioTitle'
 import {
   getAddLiquidityPageTitle,
   getPositionPageDescription,
@@ -42,7 +41,6 @@ const TokenDetails = lazy(() => import('~/pages/TokenDetails/TokenDetailsPage'))
 const ExtensionPasskeyAuthPopUp = lazy(() => import('~/pages/ExtensionPasskeyAuthPopUp'))
 const PasskeyManagement = lazy(() => import('~/pages/PasskeyManagement'))
 const ExtensionUninstall = lazy(() => import('~/pages/ExtensionUninstall/ExtensionUninstall'))
-const Portfolio = lazy(() => import('~/pages/Portfolio/Portfolio'))
 const BetaPage = lazy(() => import('~/pages/Beta'))
 
 interface RouterConfig {
@@ -325,24 +323,6 @@ export const routes: RouteDefinition[] = [
     getElement: () => <PasskeyManagement />,
     getTitle: () => StaticTitlesAndDescriptions.PasskeyManagementTitle,
     enabled: (args) => args.isEmbeddedWalletEnabled ?? false,
-  }),
-  // Portfolio Pages (no nav entry — reachable only via "view address" links)
-  createRouteDefinition({
-    path: '/portfolio',
-    getElement: () => <Portfolio />,
-    getTitle: getPortfolioTitle,
-    getDescription: getPortfolioDescription,
-    nestedPaths: [
-      'tokens',
-      'pools',
-      'defi',
-      'activity',
-      ':walletAddress',
-      ':walletAddress/tokens',
-      ':walletAddress/pools',
-      ':walletAddress/defi',
-      ':walletAddress/activity',
-    ],
   }),
   // Uniswap Extension Uninstall Page
   createRouteDefinition({

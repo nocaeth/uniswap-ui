@@ -10,7 +10,6 @@ import { useEvent } from 'utilities/src/react/hooks'
 import { ActionTileWithIconAnimation } from '~/components/ActionTiles/ActionTileWithIconAnimation'
 import { SendButtonTooltip } from '~/components/ActionTiles/SendActionTile/SendButtonTooltip'
 import { useActiveAddresses } from '~/features/accounts/store/hooks'
-import { usePortfolioRoutes } from '~/pages/Portfolio/Header/hooks/usePortfolioRoutes'
 
 export function SendActionTile({
   onPress,
@@ -27,13 +26,12 @@ export function SendActionTile({
   const { t } = useTranslation()
   const { navigateToSendFlow } = useUniswapContext()
   const { evmAddress, svmAddress } = useActiveAddresses()
-  const { chainId } = usePortfolioRoutes()
 
   const isSolanaOnlyWallet = Boolean(svmAddress && !evmAddress)
 
   const onPressSend = useEvent(() => {
     if (!isSolanaOnlyWallet) {
-      navigateToSendFlow({ chainId: chainId ?? UniverseChainId.Mainnet, recipient })
+      navigateToSendFlow({ chainId: UniverseChainId.Mainnet, recipient })
       onPress?.()
     }
   })

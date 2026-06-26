@@ -10,10 +10,10 @@ import { hasActiveNeckKey as checkHasActiveNeckKey } from 'uniswap/src/features/
 import { ElementName, ModalName } from 'uniswap/src/features/telemetry/constants'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { useEvent } from 'utilities/src/react/hooks'
+import { useIsPortfolioZero } from '~/components/AccountDrawer/hooks/useIsPortfolioZero'
 import { useListAuthenticatorsQuery } from '~/components/AccountDrawer/PasskeyMenu/hooks/useListAuthenticatorsQuery'
 import { getPrivyAppId } from '~/config'
 import { useAccount } from '~/hooks/useAccount'
-import { useIsPortfolioZero } from '~/pages/Portfolio/Overview/hooks/useIsPortfolioZero'
 import { setOpenModal } from '~/state/application/reducer'
 import { useEmbeddedWalletState } from '~/state/embeddedWallet/store'
 

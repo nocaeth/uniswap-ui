@@ -1,6 +1,6 @@
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { TdpChainSelectionType } from 'uniswap/src/utils/linking'
-import { useNavigateToTokenDetails } from '~/pages/Portfolio/Tokens/hooks/useNavigateToTokenDetails'
+import { useNavigateToTokenDetails } from '~/hooks/useNavigateToTokenDetails'
 import { renderHook } from '~/test-utils/render'
 
 const navigateMock = vi.fn()

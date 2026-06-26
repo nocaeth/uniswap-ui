@@ -25,7 +25,6 @@ import {
 import { unwrapToken } from '~/appGraphql/data/util'
 import { AddressHoverCard } from '~/components/AddressHoverCard/AddressHoverCard'
 import { LimitedDataBanner } from '~/components/Banner/Outage/OutageBanner'
-import { InternalLink } from '~/components/InternalLink'
 import { Table } from '~/components/Table'
 import { Cell } from '~/components/Table/Cell'
 import { Filter } from '~/components/Table/Filter'
@@ -35,7 +34,6 @@ import { TimestampCell } from '~/components/Table/shared/TimestampCell'
 import { TokenLinkCell } from '~/components/Table/shared/TokenLinkCell'
 import { FilterHeaderRow, HeaderCell } from '~/components/Table/styled'
 import { useUpdateManualOutage } from '~/hooks/useUpdateManualOutage'
-import { buildPortfolioUrl } from '~/pages/Portfolio/utils/portfolioUrls'
 
 interface SwapTransaction {
   hash: string
@@ -309,9 +307,7 @@ export function TransactionsTable({
           return (
             <Cell loading={showLoadingSkeleton} justifyContent="flex-end">
               <AddressHoverCard address={address} platform={chainInfo.platform}>
-                <InternalLink to={buildPortfolioUrl({ externalAddress: address })}>
-                  <TableText>{shortenedAddress}</TableText>
-                </InternalLink>
+                <TableText>{shortenedAddress}</TableText>
               </AddressHoverCard>
             </Cell>
           )

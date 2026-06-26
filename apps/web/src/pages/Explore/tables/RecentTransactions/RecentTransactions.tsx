@@ -21,7 +21,6 @@ import {
 } from '~/appGraphql/data/useAllTransactions'
 import { PortfolioLogo } from '~/components/AccountDrawer/MiniPortfolio/PortfolioLogo'
 import { AddressHoverCard } from '~/components/AddressHoverCard/AddressHoverCard'
-import { InternalLink } from '~/components/InternalLink'
 import { Table } from '~/components/Table'
 import { Cell } from '~/components/Table/Cell'
 import { Filter } from '~/components/Table/Filter'
@@ -31,7 +30,6 @@ import { TokenLinkCell } from '~/components/Table/shared/TokenLinkCell'
 import { FilterHeaderRow, HeaderCell } from '~/components/Table/styled'
 import { useUpdateManualOutage } from '~/hooks/useUpdateManualOutage'
 import { useFilteredTransactions } from '~/pages/Explore/tables/RecentTransactions/useFilterTransaction'
-import { buildPortfolioUrl } from '~/pages/Portfolio/utils/portfolioUrls'
 import { useChainIdFromUrlParam } from '~/utils/params/chainParams'
 
 const TableRow = styled(Flex, {
@@ -243,9 +241,7 @@ export const RecentTransactionsTable = memo(function RecentTransactions() {
           return (
             <Cell loading={showLoadingSkeleton}>
               <AddressHoverCard address={address} platform={chainInfo.platform}>
-                <InternalLink to={buildPortfolioUrl({ externalAddress: address })}>
-                  <TableText>{shortenedAddress}</TableText>
-                </InternalLink>
+                <TableText>{shortenedAddress}</TableText>
               </AddressHoverCard>
             </Cell>
           )
