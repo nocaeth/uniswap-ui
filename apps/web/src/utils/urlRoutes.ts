@@ -1,4 +1,3 @@
-import { CHROME_EXTENSION_UNINSTALL_URL_PATH } from 'uniswap/src/constants/urls'
 import { InterfacePageName } from 'uniswap/src/features/telemetry/constants'
 import { NATIVE_CHAIN_ID } from '~/constants/tokens'
 import { CHAIN_SEARCH_PARAM, TDP_MULTICHAIN_CHAIN_QUERY_VALUE } from '~/utils/params/chainQueryParam'
@@ -42,8 +41,6 @@ export function getCurrentPageFromLocation(locationPathname: string): InterfaceP
       return InterfacePageName.PoolPage
     case locationPathname.startsWith('/tokens'):
       return InterfacePageName.TokensPage
-    case locationPathname.startsWith(CHROME_EXTENSION_UNINSTALL_URL_PATH):
-      return InterfacePageName.ExtensionUninstall
     default:
       return undefined
   }

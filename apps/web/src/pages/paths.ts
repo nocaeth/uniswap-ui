@@ -36,5 +36,4 @@ export const paths = [
   '/increase',
   '/remove/v2/:currencyIdA/:currencyIdB',
   '/remove/:tokenId',
-  '/extension/uninstall',
 ]

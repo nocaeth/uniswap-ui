@@ -1,7 +1,6 @@
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { lazy, ReactNode, Suspense, useMemo } from 'react'
 import { matchPath, Navigate, useLocation } from 'react-router'
-import { CHROME_EXTENSION_UNINSTALL_URL_PATH } from 'uniswap/src/constants/urls'
 import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defaults'
 import i18n from 'uniswap/src/i18n'
 import { getExploreDescription, getExploreTitle } from '~/pages/getExploreTitle'
@@ -37,7 +36,6 @@ const PositionPage = lazy(() => import('~/pages/Positions/PositionPage'))
 const V2PositionPage = lazy(() => import('~/pages/Positions/V2PositionPage'))
 const PoolDetails = lazy(() => import('~/pages/PoolDetails'))
 const TokenDetails = lazy(() => import('~/pages/TokenDetails/TokenDetailsPage'))
-const ExtensionUninstall = lazy(() => import('~/pages/ExtensionUninstall/ExtensionUninstall'))
 
 interface RouterConfig {
   browserRouterEnabled?: boolean
@@ -298,12 +296,6 @@ export const routes: RouteDefinition[] = [
     getElement: () => <LegacyPositionPageRedirects />,
     getTitle: () => i18n.t('title.removePoolLiquidity'),
     getDescription: () => i18n.t('title.removev3Liquidity'),
-  }),
-  // Uniswap Extension Uninstall Page
-  createRouteDefinition({
-    path: CHROME_EXTENSION_UNINSTALL_URL_PATH,
-    getElement: () => <ExtensionUninstall />,
-    getTitle: () => i18n.t('title.extension.uninstall'),
   }),
   createRouteDefinition({ path: '*', getElement: () => <Navigate to="/not-found" replace /> }),
   createRouteDefinition({ path: '/not-found', getElement: () => <NotFound /> }),
