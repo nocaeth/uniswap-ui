@@ -4,9 +4,10 @@
 #
 #   docker build -t gnosis-adapter gnosis/adapter
 #
-# The same image runs both roles (compose overrides the command):
+# The same image runs each role (compose overrides the command):
 #   - server : `bun src/server.ts`   (default CMD)
-#   - indexer: `bun src/backfill.ts` (writes the SQLite DB to a shared volume)
+#   - indexer: `bun src/backfill.ts` (bootstrap/repair writes)
+#   - syncer : `bun src/sync.ts`     (incremental tail)
 FROM oven/bun:1.3.11
 WORKDIR /app
 

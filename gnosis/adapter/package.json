@@ -9,6 +9,7 @@
     "start": "bun src/server.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "backfill": "bun src/backfill.ts",
+    "sync": "bun src/sync.ts",
     "sync-schema": "cp ../../packages/api/src/clients/graphql/schema.graphql ./schema.graphql"
   },
   "dependencies": {

@@ -45,7 +45,12 @@ is validated against live Gnosis (QuoterV2 + computePoolAddress). **Set
 - Indexer: `gnosis/adapter/src/backfill.ts` reads Gnosis V3 (factory, pools,
   swaps/mints/burns) directly over **Envio HyperSync** and writes a SQLite store
   (`data/analytics.db`) — tokens/pools snapshots, daily/hourly rollups, recent
-  tx feed, with USD pricing (V3 spot from `sqrtPriceX96`, stables ≈ $1).
+  tx feed, with USD pricing (V3 spot from `sqrtPriceX96`, stables ≈ $1). This is
+  the bootstrap/repair path.
+- Syncer: `gnosis/adapter/src/sync.ts` tails HyperSync incrementally after
+  `meta.updatedAtBlock`, updates recent rollups/transactions, and periodically
+  refreshes current pool/token snapshots from RPC. Defaults: 60s polling,
+  24-block finality lag, 5-minute snapshot refresh.
 - Adapter service: `gnosis/adapter/` — implements the **ExploreStats / ProtocolStats
   ConnectRPC** services (Explore token + pool tables) and a **GraphQL** endpoint
   (token/pool detail + charts + transactions) on top of that SQLite store. The
@@ -55,8 +60,11 @@ is validated against live Gnosis (QuoterV2 + computePoolAddress). **Set
 - App side: set `API_BASE_URL_V2_OVERRIDE` / `GRAPHQL_URL_OVERRIDE` to the adapter;
   Gnosis rows are tagged `chain: 'GNOSIS'` and mapped via `fromGraphQLChain`.
 
-Refresh the data with `docker compose run --rm indexer` (or `bun run backfill` in
-`gnosis/adapter`). Widen the window with `INDEX_DAYS` for longer charts.
+Normal freshness comes from the long-running `syncer` service. Repair/rebuild the
+data with `docker compose run --rm indexer` (or `bun run backfill` in
+`gnosis/adapter`). Widen the window with `INDEX_DAYS` for longer charts. Do not run
+a frequent cron that reruns the full backfill; it rescans and rewrites the whole
+window.
 
 ## Local dev
 

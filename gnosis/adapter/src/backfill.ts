@@ -32,6 +32,7 @@
  */
 import { createPublicClient, http, parseAbi, getAddress } from 'viem'
 import { gnosis } from 'viem/chains'
+import { pathToFileURL } from 'node:url'
 import { getDb, initSchema } from './db.js'
 
 const HYPERSYNC_URL = 'https://gnosis.hypersync.xyz/query'
@@ -221,7 +222,7 @@ interface RawTx {
   blockNumber: number
 }
 
-async function main(): Promise<void> {
+export async function runBackfill(): Promise<void> {
   const t0 = Date.now()
   const client = createPublicClient({ chain: gnosis, transport: http(RPC_URL) })
   const height = await hyperHeight()
@@ -957,7 +958,9 @@ async function fetchLogos(): Promise<Map<string, string>> {
   return map
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runBackfill().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+}
