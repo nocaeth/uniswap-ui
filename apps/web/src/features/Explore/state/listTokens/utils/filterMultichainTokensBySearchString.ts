@@ -1,5 +1,7 @@
 import type { MultichainToken } from '@uniswap/client-data-api/dist/data/v1/types_pb'
 import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { canonicalizeGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 
 /** Filters multichain tokens by search string (name, symbol, address, project name). */
 export function filterMultichainTokensBySearchString(
@@ -9,7 +11,11 @@ export function filterMultichainTokensBySearchString(
   if (!filterString) {
     return tokens
   }
-  const lowercaseFilter = filterString.toLowerCase()
+  const canonicalFilterString = canonicalizeGnosisDiscoveryTokenAddress({
+    chainId: UniverseChainId.Gnosis,
+    address: filterString,
+  })
+  const lowercaseFilter = canonicalFilterString.toLowerCase()
   return tokens.filter((token) => {
     const nameMatch = token.name.toLowerCase().includes(lowercaseFilter)
     const symbolMatch = token.symbol.toLowerCase().includes(lowercaseFilter)

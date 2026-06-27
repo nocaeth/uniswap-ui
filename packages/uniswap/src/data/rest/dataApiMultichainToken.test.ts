@@ -3,6 +3,11 @@ import {
   dataApiChainTokenToCurrencyInfo,
   dataApiMultichainTokenToSearchResult,
 } from 'uniswap/src/data/rest/dataApiMultichainToken'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import {
+  GNOSIS_GBPE_CANONICAL_ADDRESS,
+  GNOSIS_GBPE_LEGACY_ADDRESSES,
+} from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { createDataApiMultichainToken } from 'uniswap/src/test/fixtures/dataApi/multichainToken'
 
 describe('dataApiChainTokenToCurrencyInfo', () => {
@@ -157,5 +162,29 @@ describe('dataApiMultichainTokenToSearchResult', () => {
     const result = dataApiMultichainTokenToSearchResult(mt)
 
     expect(result?.logoUrl).toBeUndefined()
+  })
+
+  it('should filter legacy Gnosis GBPe aliases from list-token search results', () => {
+    const mt = createDataApiMultichainToken({
+      symbol: 'GBPe',
+      name: 'Monerium GBP emoney',
+      chainTokens: [
+        new ChainToken({
+          chainId: UniverseChainId.Gnosis,
+          address: GNOSIS_GBPE_LEGACY_ADDRESSES[0],
+          decimals: 18,
+        }),
+        new ChainToken({
+          chainId: UniverseChainId.Gnosis,
+          address: GNOSIS_GBPE_CANONICAL_ADDRESS,
+          decimals: 18,
+        }),
+      ],
+    })
+
+    const result = dataApiMultichainTokenToSearchResult(mt)
+
+    expect(result?.tokens).toHaveLength(1)
+    expect(result?.tokens[0]?.currency.wrapped.address).toBe(GNOSIS_GBPE_CANONICAL_ADDRESS)
   })
 })

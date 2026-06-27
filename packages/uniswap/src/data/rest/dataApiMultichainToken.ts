@@ -11,6 +11,7 @@ import {
   getRestCurrencySafetyInfo,
   getRestTokenSafetyInfo,
 } from 'uniswap/src/features/dataApi/utils/getCurrencySafetyInfo'
+import { isLegacyGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import type { CurrencyId } from 'uniswap/src/types/currency'
 import { currencyId } from 'uniswap/src/utils/currencyId'
 
@@ -69,6 +70,13 @@ export function dataApiMultichainTokenToSearchResult(
   const safetyInfo = deriveParentSafetyInfo(multichainToken)
 
   const tokens = multichainToken.chainTokens
+    .filter(
+      (ct) =>
+        !isLegacyGnosisDiscoveryTokenAddress({
+          chainId: ct.chainId,
+          address: ct.address,
+        }),
+    )
     .map((ct) => dataApiChainTokenToCurrencyInfo({ chainToken: ct, parent: multichainToken, safetyInfo }))
     .filter((c): c is CurrencyInfo => c !== null)
 

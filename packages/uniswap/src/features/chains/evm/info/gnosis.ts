@@ -1,3 +1,4 @@
+// oxlint-disable eslint-js/no-restricted-syntax -- Vite statically replaces this Gnosis RPC env var at build time.
 import { Token } from '@uniswap/sdk-core'
 import { GraphQLApi, TradingApi } from '@universe/api'
 import { SwapConfigKey } from '@universe/gating'

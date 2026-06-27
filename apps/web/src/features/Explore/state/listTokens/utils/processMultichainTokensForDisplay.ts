@@ -1,4 +1,5 @@
 import type { MultichainToken } from '@uniswap/client-data-api/dist/data/v1/types_pb'
+import { isLegacyGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { TokenSortMethod } from '~/components/Tokens/constants'
 import type { UseListTokensOptions } from '~/features/Explore/state/listTokens/types'
 import { buildTokenSortRankFromMultichain } from '~/features/Explore/state/listTokens/utils/buildTokenSortRankFromMultichain'
@@ -21,6 +22,34 @@ function sortTokensForDisplay(tokens: MultichainToken[], options: Required<UseLi
   return tokens
 }
 
+function removeLegacyGnosisDiscoveryTokenAddresses(token: MultichainToken): MultichainToken | undefined {
+  const chainTokens = token.chainTokens.filter(
+    (chainToken) =>
+      !isLegacyGnosisDiscoveryTokenAddress({
+        chainId: chainToken.chainId,
+        address: chainToken.address,
+      }),
+  )
+
+  if (!chainTokens.length) {
+    return undefined
+  }
+
+  if (chainTokens.length === token.chainTokens.length) {
+    return token
+  }
+
+  const filteredToken = token.clone()
+  filteredToken.chainTokens = chainTokens
+  return filteredToken
+}
+
+function filterLegacyGnosisDiscoveryTokens(tokens: MultichainToken[]): MultichainToken[] {
+  return tokens
+    .map(removeLegacyGnosisDiscoveryTokenAddresses)
+    .filter((token): token is MultichainToken => token !== undefined)
+}
+
 type ProcessMultichainTokensForDisplayResult = {
   topTokens: MultichainToken[]
   /** multichainId → 1-based rank after client sort, before search filter. */
@@ -39,7 +68,8 @@ export function processMultichainTokensForDisplay(
   tokens: MultichainToken[],
   options: Required<UseListTokensOptions>,
 ): ProcessMultichainTokensForDisplayResult {
-  const sorted = sortTokensForDisplay(tokens, options)
+  const discoveryTokens = filterLegacyGnosisDiscoveryTokens(tokens)
+  const sorted = sortTokensForDisplay(discoveryTokens, options)
   const tokenSortRank = buildTokenSortRankFromMultichain(sorted)
   const topTokens = filterMultichainTokensBySearchString(sorted, options.filterString)
   return { topTokens, tokenSortRank }

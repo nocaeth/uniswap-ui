@@ -1,5 +1,12 @@
 import { MultichainToken, ChainToken, SpamCode } from '@uniswap/client-data-api/dist/data/v1/searchTypes_pb'
 import { toMultichainSearchResult } from 'uniswap/src/data/rest/toMultichainSearchResult'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import {
+  GNOSIS_EURE_CANONICAL_ADDRESS,
+  GNOSIS_EURE_LEGACY_ADDRESS,
+  GNOSIS_GBPE_CANONICAL_ADDRESS,
+  GNOSIS_GBPE_LEGACY_ADDRESSES,
+} from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 
 function createMultichainToken(
   overrides: Partial<{
@@ -39,8 +46,16 @@ describe('toMultichainSearchResult', () => {
   it('should convert a MultichainToken with multiple chains into a MultichainSearchResult', () => {
     const mt = createMultichainToken({
       chainTokens: [
-        new ChainToken({ chainId: 1, address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 }),
-        new ChainToken({ chainId: 137, address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6 }),
+        new ChainToken({
+          chainId: 1,
+          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          decimals: 6,
+        }),
+        new ChainToken({
+          chainId: 137,
+          address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+          decimals: 6,
+        }),
       ],
     })
 
@@ -74,7 +89,11 @@ describe('toMultichainSearchResult', () => {
     const mt = createMultichainToken({
       chainTokens: [
         new ChainToken({ chainId: 0, address: '', decimals: 6 }),
-        new ChainToken({ chainId: 1, address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6 }),
+        new ChainToken({
+          chainId: 1,
+          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+          decimals: 6,
+        }),
       ],
     })
 
@@ -85,7 +104,9 @@ describe('toMultichainSearchResult', () => {
   })
 
   it('should use shared logoUrl from MultichainToken on each CurrencyInfo', () => {
-    const mt = createMultichainToken({ logoUrl: 'https://example.com/token.png' })
+    const mt = createMultichainToken({
+      logoUrl: 'https://example.com/token.png',
+    })
 
     const result = toMultichainSearchResult(mt)
 
@@ -183,5 +204,42 @@ describe('toMultichainSearchResult', () => {
 
     expect(result?.safetyInfo).toBeDefined()
     expect(result?.safetyInfo?.tokenList).toBeDefined()
+  })
+
+  it('should filter legacy Gnosis EURe and GBPe chain tokens from search discovery results', () => {
+    const mt = createMultichainToken({
+      symbol: 'MNY',
+      name: 'Monerium',
+      chainTokens: [
+        new ChainToken({
+          chainId: UniverseChainId.Gnosis,
+          address: GNOSIS_EURE_LEGACY_ADDRESS,
+          decimals: 18,
+        }),
+        new ChainToken({
+          chainId: UniverseChainId.Gnosis,
+          address: GNOSIS_GBPE_LEGACY_ADDRESSES[0],
+          decimals: 18,
+        }),
+        new ChainToken({
+          chainId: UniverseChainId.Gnosis,
+          address: GNOSIS_EURE_CANONICAL_ADDRESS,
+          decimals: 18,
+        }),
+        new ChainToken({
+          chainId: UniverseChainId.Gnosis,
+          address: GNOSIS_GBPE_CANONICAL_ADDRESS,
+          decimals: 18,
+        }),
+      ],
+    })
+
+    const result = toMultichainSearchResult(mt)
+
+    expect(result?.tokens).toHaveLength(2)
+    expect(result?.tokens.map((token) => token.currency.wrapped.address)).toEqual([
+      GNOSIS_EURE_CANONICAL_ADDRESS,
+      GNOSIS_GBPE_CANONICAL_ADDRESS,
+    ])
   })
 })

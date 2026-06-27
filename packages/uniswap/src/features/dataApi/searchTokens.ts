@@ -11,6 +11,7 @@ import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { MultichainSearchResult } from 'uniswap/src/features/dataApi/types'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import { NUMBER_OF_RESULTS_LONG } from 'uniswap/src/features/search/SearchModal/constants'
+import { canonicalizeGnosisDiscoverySearchQuery } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { useEvent } from 'utilities/src/react/hooks'
 
 function useSearchTokensQuery<T>({
@@ -32,18 +33,22 @@ function useSearchTokensQuery<T>({
 
   const isSvmConnected = useConnectionStatus(Platform.SVM).isConnected
 
-  const variables = useMemo(
-    () => ({
-      searchQuery: searchQuery ?? undefined,
-      chainIds: chainFilter ? [chainFilter] : enabledChainIds,
+  const variables = useMemo(() => {
+    const chainIds = chainFilter ? [chainFilter] : enabledChainIds
+
+    return {
+      searchQuery: canonicalizeGnosisDiscoverySearchQuery({
+        searchQuery,
+        chainIds,
+      }),
+      chainIds,
       searchType: SearchType.TOKEN,
       page: 1,
       size,
       prioritizeSvm: isSvmConnected,
       multichain,
-    }),
-    [searchQuery, chainFilter, size, enabledChainIds, isSvmConnected, multichain],
-  )
+    }
+  }, [searchQuery, chainFilter, size, enabledChainIds, isSvmConnected, multichain])
 
   const { data, error, isPending, refetch } = useSearchTokensAndPoolsQuery<T>({
     input: variables,
@@ -75,5 +80,12 @@ export function useMultichainSearchTokens({
       .filter((r): r is MultichainSearchResult => r !== undefined)
   })
 
-  return useSearchTokensQuery({ searchQuery, chainFilter, skip, size, multichain: true, select })
+  return useSearchTokensQuery({
+    searchQuery,
+    chainFilter,
+    skip,
+    size,
+    multichain: true,
+    select,
+  })
 }

@@ -68,6 +68,10 @@ import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { CurrencyInfo, TokenList } from 'uniswap/src/features/dataApi/types'
 import { buildCurrencyInfo } from 'uniswap/src/features/dataApi/utils/buildCurrency'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
+import {
+  GNOSIS_EURE_CANONICAL_ADDRESS,
+  GNOSIS_GBPE_CANONICAL_ADDRESS,
+} from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { areAddressesEqual } from 'uniswap/src/utils/addresses'
 import { isNativeCurrencyAddress } from 'uniswap/src/utils/currencyId'
 
@@ -113,8 +117,8 @@ export const COMMON_BASES: ChainCurrencyList = {
       'DAI',
       'Dai Stablecoin on Gnosis',
     ),
-    new Token(UniverseChainId.Gnosis, '0x420ca0f9b9b604ce0fd9c18ef134c705e5fa3430', 18, 'EURe', 'Monerium EUR emoney'),
-    new Token(UniverseChainId.Gnosis, '0x5cb9073902f2035222b9749f8fb0c9bfe5527108', 18, 'GBPe', 'Monerium GBP emoney'),
+    new Token(UniverseChainId.Gnosis, GNOSIS_EURE_CANONICAL_ADDRESS, 18, 'EURe', 'Monerium EUR emoney'),
+    new Token(UniverseChainId.Gnosis, GNOSIS_GBPE_CANONICAL_ADDRESS, 18, 'GBPe', 'Monerium GBP emoney'),
     new Token(UniverseChainId.Gnosis, '0x177127622c4A00F3d409B75571e12cB3c8973d3c', 18, 'COW', 'CoW Protocol Token'),
     new Token(UniverseChainId.Gnosis, '0x4d18815d14fe5c3304e87b3fa18318baa5c23820', 18, 'SAFE', 'Safe Token'),
     new Token(

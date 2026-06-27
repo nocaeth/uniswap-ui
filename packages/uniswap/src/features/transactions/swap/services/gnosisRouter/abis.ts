@@ -117,6 +117,20 @@ export const MULTICALL3_ABI = [
   },
 ] as const
 
+export const V3_FACTORY_ABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'address', name: '', type: 'address' },
+      { internalType: 'uint24', name: '', type: 'uint24' },
+    ],
+    name: 'getPool',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const
+
 // Permit2 allowance read + approve (the UniversalRouter pulls input tokens via Permit2).
 export const PERMIT2_ABI = [
   {
