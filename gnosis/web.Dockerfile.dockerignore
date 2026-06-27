@@ -14,6 +14,12 @@
 **/.turbo
 **/*.tsbuildinfo
 
+# Generated (gitignored) code — regenerated in-build via `nx run-many -t prepare`.
+# Excluded so the build context matches a clean CI checkout (and no stale codegen
+# is shipped); the build below regenerates these.
+**/__generated__
+packages/uniswap/src/abis/types
+
 # Apps not needed to build the web bundle
 apps/mobile
 apps/extension

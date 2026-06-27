@@ -33,6 +33,12 @@ COPY . .
 # install scripts still run.
 RUN SKIP_RUNTIME_VERSION_CHECK=1 bun install --frozen-lockfile
 
+# Run the codegen the build depends on (nx `prepare` graph: graphql + trading API
+# clients, ajv validators, typechain abis). These outputs are gitignored and the
+# direct vite build below doesn't trigger nx's dependsOn. config:pull is excluded
+# on purpose — it needs deploy secrets and isn't required for a static build.
+RUN NX_DAEMON=false node node_modules/.bin/nx run-many -t prepare
+
 # Bake the non-empty overrides into .env.production (mode=production loads it with
 # highest precedence, covering keys outside Vite's process.env allowlist such as
 # GRAPHQL_URL_OVERRIDE). Empty args are skipped so committed defaults aren't clobbered.
