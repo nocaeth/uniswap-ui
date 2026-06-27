@@ -34,7 +34,8 @@ bun run start                                          # serve on :8081 (PORT to
 
 In Docker the same image runs all roles: `indexer` bootstraps the shared volume,
 `syncer` keeps it fresh, and `adapter` serves it. Use `indexer` later for manual
-repair/rebuilds, not as a frequent cron.
+repair/rebuilds, not as a frequent cron — stop the `syncer` first (its full DB
+wipe+rewrite must not race the syncer's live writes), then restart it after.
 
 ## Notes
 - Denominated in USD: V3 spot from `sqrtPriceX96`, Gnosis stables ≈ $1, with a

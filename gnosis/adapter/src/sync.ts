@@ -568,7 +568,10 @@ async function refreshCurrentSnapshots(client: PublicClient, pools: PoolRow[]): 
 
   const updateToken = db.prepare('UPDATE tokens SET priceUSD = ?, tvlUSD = ?, fdv = ? WHERE id = ?')
   const updatePool = db.prepare(
-    'UPDATE pools SET tvlUSD = ?, token0Price = ?, token1Price = ?, token0Supply = ?, token1Supply = ? WHERE id = ?',
+    `UPDATE pools SET tvlUSD = ?, token0Supply = ?, token1Supply = ?,
+       token0Price = CASE WHEN ? > 0 THEN ? ELSE token0Price END,
+       token1Price = CASE WHEN ? > 0 THEN ? ELSE token1Price END
+     WHERE id = ?`,
   )
   const upsertTokenDay = db.prepare(
     `INSERT INTO token_day_data (tokenId,day,priceUSD,volumeUSD,tvlUSD) VALUES (?,?,?,?,?)
@@ -584,8 +587,14 @@ async function refreshCurrentSnapshots(client: PublicClient, pools: PoolRow[]): 
     `INSERT INTO pool_day_data (poolId,day,volumeUSD,tvlUSD,feesUSD,token0Price,token1Price,txCount) VALUES (?,?,?,?,?,?,?,?)
      ON CONFLICT(poolId, day) DO UPDATE SET
        tvlUSD = excluded.tvlUSD,
-       token0Price = excluded.token0Price,
-       token1Price = excluded.token1Price`,
+       token0Price = CASE WHEN excluded.token0Price > 0 THEN excluded.token0Price ELSE pool_day_data.token0Price END,
+       token1Price = CASE WHEN excluded.token1Price > 0 THEN excluded.token1Price ELSE pool_day_data.token1Price END`,
+  )
+  const upsertPoolHour = db.prepare(
+    `INSERT INTO pool_hour_data (poolId,hour,volumeUSD,token0Price,token1Price) VALUES (?,?,?,?,?)
+     ON CONFLICT(poolId, hour) DO UPDATE SET
+       token0Price = CASE WHEN excluded.token0Price > 0 THEN excluded.token0Price ELSE pool_hour_data.token0Price END,
+       token1Price = CASE WHEN excluded.token1Price > 0 THEN excluded.token1Price ELSE pool_hour_data.token1Price END`,
   )
   const upsertProtocolDay = db.prepare(
     `INSERT INTO protocol_day_data (day,tvlUSD,volumeUSD) VALUES (?,?,?)
@@ -609,9 +618,13 @@ async function refreshCurrentSnapshots(client: PublicClient, pools: PoolRow[]): 
       }
       const tvl = (usd.get(p.token0) ?? 0) * st.reserve0 + (usd.get(p.token1) ?? 0) * st.reserve1
       const spot = price1per0.get(p.id) ?? 0
+      // token0Price = token0 per token1 (1/spot); token1Price = token1 per token0 (spot)
+      const token0Price = spot > 0 ? 1 / spot : 0
+      const token1Price = spot
       protocolTvl += tvl
-      updatePool.run(tvl, spot, spot > 0 ? 1 / spot : 0, st.reserve0, st.reserve1, p.id)
-      upsertPoolDay.run(p.id, today, 0, tvl, 0, spot, spot > 0 ? 1 / spot : 0, 0)
+      updatePool.run(tvl, st.reserve0, st.reserve1, token0Price, token0Price, token1Price, token1Price, p.id)
+      upsertPoolDay.run(p.id, today, 0, tvl, 0, token0Price, token1Price, 0)
+      upsertPoolHour.run(p.id, thisHour, 0, token0Price, token1Price)
     }
     upsertProtocolDay.run(today, protocolTvl, 0)
     setMeta('lastSnapshotAt', nowTs)
@@ -677,8 +690,9 @@ function parsePoolEvent(
     account,
     timestamp,
     blockNumber,
-    token0Price: spot,
-    token1Price: spot > 0 ? 1 / spot : 0,
+    // token0Price = token0 per token1 (1/spot); token1Price = token1 per token0 (spot)
+    token0Price: spot > 0 ? 1 / spot : 0,
+    token1Price: spot,
     feeUSD: volumeUSD * (pool.feeTier / 1e6),
   }
 }
@@ -775,6 +789,13 @@ function applyEvents(events: RawEvent[]): number {
        volumeUSD = token_hour_data.volumeUSD + excluded.volumeUSD,
        priceUSD = CASE WHEN excluded.priceUSD > 0 THEN excluded.priceUSD ELSE token_hour_data.priceUSD END`,
   )
+  const upsertPoolHour = db.prepare(
+    `INSERT INTO pool_hour_data (poolId,hour,volumeUSD,token0Price,token1Price) VALUES (?,?,?,?,?)
+     ON CONFLICT(poolId, hour) DO UPDATE SET
+       volumeUSD = pool_hour_data.volumeUSD + excluded.volumeUSD,
+       token0Price = CASE WHEN excluded.token0Price > 0 THEN excluded.token0Price ELSE pool_hour_data.token0Price END,
+       token1Price = CASE WHEN excluded.token1Price > 0 THEN excluded.token1Price ELSE pool_hour_data.token1Price END`,
+  )
   const upsertProtocolDay = db.prepare(
     `INSERT INTO protocol_day_data (day,tvlUSD,volumeUSD) VALUES (?,?,?)
      ON CONFLICT(day) DO UPDATE SET volumeUSD = protocol_day_data.volumeUSD + excluded.volumeUSD`,
@@ -795,6 +816,7 @@ function applyEvents(events: RawEvent[]): number {
       const hour = floorHour(ev.timestamp)
       const txCount = ev.type === 'SWAP' ? 1 : 0
       upsertPoolDay.run(ev.poolId, day, ev.volumeUSD, 0, ev.feeUSD, ev.token0Price, ev.token1Price, txCount)
+      upsertPoolHour.run(ev.poolId, hour, ev.volumeUSD, ev.token0Price, ev.token1Price)
       upsertTokenDay.run(ev.token0, day, tokenPrice.get(ev.token0) ?? 0, ev.volumeUSD, 0)
       upsertTokenDay.run(ev.token1, day, tokenPrice.get(ev.token1) ?? 0, ev.volumeUSD, 0)
       upsertTokenHour.run(ev.token0, hour, tokenPrice.get(ev.token0) ?? 0, ev.volumeUSD)

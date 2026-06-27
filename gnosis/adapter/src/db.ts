@@ -141,6 +141,9 @@ export function getDb(write = false): Database {
   }
   const db = new Database(DB_PATH, write ? { create: true, readwrite: true } : { readonly: true })
   db.exec('PRAGMA journal_mode = WAL;')
+  // Wait out a transient lock (e.g. a checkpoint or a one-off repair backfill
+  // overlapping the long-running syncer) instead of failing with SQLITE_BUSY.
+  db.exec('PRAGMA busy_timeout = 5000;')
   if (write) {
     db.exec('PRAGMA synchronous = NORMAL;')
   }
