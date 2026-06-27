@@ -1,14 +1,18 @@
 # Self-hosted Gnosis-only Uniswap UI stack.
 #
-#   indexer  -> one-shot backfill: reads Gnosis via Envio HyperSync and writes the
-#               analytics SQLite DB to a shared volume, then exits.
+#   indexer  -> one-shot bootstrap/repair backfill: reads Gnosis via Envio
+#               HyperSync and writes the analytics SQLite DB to a shared volume,
+#               then exits.
+#   syncer   -> long-running incremental HyperSync tailer: keeps the SQLite DB
+#               fresh after the bootstrap backfill.
 #   adapter  -> long-running service exposing Uniswap's Data API (ConnectRPC) +
 #               GraphQL on top of that SQLite DB, so the UI's Explore/detail pages
 #               work unchanged. Starts only after the indexer has populated the DB.
 #   web      -> the built interface (this repo, apps/web), served by nginx.
 #
 # Copy .env.gnosis.example -> .env and fill values before `docker compose up`.
-# Refresh analytics later with: `docker compose run --rm indexer`.
+# Repair analytics later with: `docker compose run --rm indexer`. Normal freshness
+# comes from the syncer service; do not run an external frequent backfill cron.
 services:
   indexer:
     image: ghcr.io/nocaeth/uniswap-ui-adapter:latest
@@ -26,6 +30,28 @@ services:
       - analytics-data:/data
     restart: 'no'
 
+  syncer:
+    image: ghcr.io/nocaeth/uniswap-ui-adapter:latest
+    build:
+      context: ./adapter
+    command: ['bun', 'src/sync.ts']
+    depends_on:
+      indexer:
+        condition: service_completed_successfully
+    environment:
+      ENVIO_API_TOKEN: ${ENVIO_API_TOKEN}
+      RPC_GNOSIS: ${RPC_GNOSIS:-https://rpc.gnosischain.com}
+      TX_DAYS: ${TX_DAYS:-7}
+      # Incremental sync cadence. Defaults are conservative for Envio Pro 100 rpm.
+      SYNC_INTERVAL_MS: ${SYNC_INTERVAL_MS:-60000}
+      SYNC_FINALITY_BLOCKS: ${SYNC_FINALITY_BLOCKS:-24}
+      SYNC_SNAPSHOT_INTERVAL_MS: ${SYNC_SNAPSHOT_INTERVAL_MS:-300000}
+      SYNC_BOOTSTRAP_BACKFILL: ${SYNC_BOOTSTRAP_BACKFILL:-true}
+      INDEX_DAYS: ${INDEX_DAYS:-30}
+    volumes:
+      - analytics-data:/data
+    restart: unless-stopped
+
   adapter:
     image: ghcr.io/nocaeth/uniswap-ui-adapter:latest
     build:
@@ -33,6 +59,8 @@ services:
     depends_on:
       indexer:
         condition: service_completed_successfully
+      syncer:
+        condition: service_started
     environment:
       # The adapter reads the NonfungiblePositionManager + pools live for
       # ListPositions/GetPosition; without this it falls back to localhost:8545.
