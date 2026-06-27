@@ -25,11 +25,15 @@ import {
   GNOSIS_GBPE_V1,
   GNOSIS_GBPE_V2,
   GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS,
+  GNOSIS_MAX_SPLIT_LEGS,
   GNOSIS_MIN_CANDIDATE_POOL_TVL_USD,
   GNOSIS_MULTICALL3_ADDRESS,
   GNOSIS_QUOTE_TIMEOUT_MS,
   GNOSIS_QUOTER_ADDRESS,
   GNOSIS_SDAI,
+  GNOSIS_SPLIT_ENABLED,
+  GNOSIS_SPLIT_GRID_STEPS,
+  GNOSIS_SPLIT_SHADOW,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
   GNOSIS_USDCE,
   GNOSIS_USDT,
@@ -37,10 +41,19 @@ import {
   GNOSIS_WETH,
   GNOSIS_WSTETH,
   GNOSIS_WXDAI,
+  MIN_SPLIT_IMPROVEMENT_BPS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import { discoverGnosisPoolGraphEdges } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolDiscovery'
 import { annotateGnosisPoolGraphEdgesWithTvl } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolTvl'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
+import { pickDisjointSet } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
+import {
+  activeLegCount,
+  enumerateAllocations,
+  passesAcceptGate,
+  selectBestSplit,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/splitAllocation'
+import { logger } from 'utilities/src/logger/logger'
 import {
   buildGnosisPoolGraph,
   buildGnosisRouteCandidates,
@@ -208,17 +221,24 @@ export function buildCandidateRouteSets(args: {
   }
 }
 
-/** Quotes every candidate route in a single Multicall3 eth_call via the path-based quoter. */
-async function quoteCandidateRoutes(args: {
+/**
+ * Quotes arbitrary (route, amount) pairs in a single Multicall3 eth_call via the path-based quoter.
+ * Returns one result per input pair, aligned by index (`undefined` where the pool is missing, has no
+ * liquidity, or the quote is zero/undecodable). This is the shared primitive behind both candidate
+ * ranking and split-fill grid allocation, so a whole grid of leg×sub-amount quotes costs one call.
+ */
+async function quoteRouteAmountPairs(args: {
   provider: JsonRpcProvider
-  routes: CandidateRoute[]
-  amount: BigNumber
+  pairs: { route: CandidateRoute; amount: BigNumber }[]
   tradeType: TradingApi.TradeType
-}): Promise<QuotedRoute | undefined> {
-  const { provider, routes, amount, tradeType } = args
+}): Promise<(QuotedRoute | undefined)[]> {
+  const { provider, pairs, tradeType } = args
+  if (!pairs.length) {
+    return []
+  }
   const exactOutput = tradeType === TradingApi.TradeType.EXACT_OUTPUT
   const fn = exactOutput ? 'quoteExactOutput' : 'quoteExactInput'
-  const calls = routes.map((route) => ({
+  const calls = pairs.map(({ route, amount }) => ({
     target: GNOSIS_QUOTER_ADDRESS,
     allowFailure: true,
     callData: quoterInterface.encodeFunctionData(fn, [
@@ -229,36 +249,188 @@ async function quoteCandidateRoutes(args: {
 
   const results = await getMulticall(provider).callStatic.aggregate3(calls)
 
-  let best: QuotedRoute | undefined
-  results.forEach((result, i) => {
-    if (!result.success) {
-      return // pool missing / no liquidity
-    }
-    const route = routes[i]
-    if (!route) {
-      return
+  return pairs.map((pair, i) => {
+    const result = results[i]
+    if (!result?.success) {
+      return undefined // pool missing / no liquidity
     }
     try {
       const decoded = quoterInterface.decodeFunctionResult(fn, result.returnData)
       const quoted = BigNumber.from(decoded[0])
       const gasEstimate = BigNumber.from(decoded[3] ?? 0)
       if (quoted.isZero()) {
-        return
+        return undefined
       }
-      const candidate: QuotedRoute = exactOutput
-        ? { route, amountIn: quoted, amountOut: amount, gasEstimate }
-        : { route, amountIn: amount, amountOut: quoted, gasEstimate }
-
-      if (!best) {
-        best = candidate
-      } else if (exactOutput ? candidate.amountIn.lt(best.amountIn) : candidate.amountOut.gt(best.amountOut)) {
-        best = candidate
-      }
+      return exactOutput
+        ? { route: pair.route, amountIn: quoted, amountOut: pair.amount, gasEstimate }
+        : { route: pair.route, amountIn: pair.amount, amountOut: quoted, gasEstimate }
     } catch {
-      // ignore undecodable result
+      return undefined // undecodable result
     }
   })
-  return best
+}
+
+/**
+ * Quotes every candidate route at `amount` in one Multicall3 call and returns the successful quotes
+ * ranked best-first (max output for EXACT_INPUT, min input for EXACT_OUTPUT). The caller takes
+ * `[0]` as the single best route; the full ranking is the source set for split-fill disjointness.
+ */
+async function quoteCandidateRoutes(args: {
+  provider: JsonRpcProvider
+  routes: CandidateRoute[]
+  amount: BigNumber
+  tradeType: TradingApi.TradeType
+}): Promise<QuotedRoute[]> {
+  const { provider, routes, amount, tradeType } = args
+  const exactOutput = tradeType === TradingApi.TradeType.EXACT_OUTPUT
+  const quoted = await quoteRouteAmountPairs({ provider, pairs: routes.map((route) => ({ route, amount })), tradeType })
+  const successful = quoted.filter((q): q is QuotedRoute => q !== undefined)
+  successful.sort((a, b) =>
+    exactOutput
+      ? a.amountIn.lt(b.amountIn)
+        ? -1
+        : a.amountIn.gt(b.amountIn)
+          ? 1
+          : 0
+      : a.amountOut.gt(b.amountOut)
+        ? -1
+        : a.amountOut.lt(b.amountOut)
+          ? 1
+          : 0,
+  )
+  return successful
+}
+
+interface SplitLeg {
+  route: CandidateRoute
+  amountIn: BigNumber
+  amountOut: BigNumber
+  gasEstimate: BigNumber
+}
+
+interface SplitResult {
+  legs: SplitLeg[]
+  totalOut: BigNumber
+}
+
+const splitPairKey = (legIndex: number, amount: BigNumber): string => `${legIndex}:${amount.toString()}`
+
+/**
+ * Split-fill quote (spec §4), EXACT_INPUT only. From the ranked candidate routes, greedily pick a
+ * pool-disjoint set (so summing their independent quotes never double-counts a pool), then grid-
+ * search the input allocation across the legs — every leg×sub-amount quote runs in ONE Multicall3
+ * call — and return the highest-output allocation. The caller applies the accept gate and decides
+ * whether to use it. Returns undefined when there is no disjoint alternative to split across.
+ */
+async function computeBestSplit(args: {
+  provider: JsonRpcProvider
+  ranked: QuotedRoute[]
+  amount: BigNumber
+  tradeType: TradingApi.TradeType
+}): Promise<SplitResult | undefined> {
+  const { provider, ranked, amount, tradeType } = args
+  if (tradeType === TradingApi.TradeType.EXACT_OUTPUT) {
+    return undefined // split allocation is defined over input; exact-output keeps the single best
+  }
+  const legs = pickDisjointSet(
+    ranked.map((r) => r.route),
+    GNOSIS_MAX_SPLIT_LEGS,
+  )
+  if (legs.length < 2) {
+    return undefined // nothing pool-disjoint to split across
+  }
+
+  const allocations = enumerateAllocations({
+    total: amount,
+    legs: legs.length,
+    steps: GNOSIS_SPLIT_GRID_STEPS,
+    deepestLegIndex: 0, // leg 0 is the best (typically deepest) route; it absorbs the dust
+  })
+
+  // Collect the unique (leg, sub-amount) pairs across the whole grid and quote them in one call.
+  const uniquePairs = new Map<string, { legIndex: number; route: CandidateRoute; amount: BigNumber }>()
+  for (const allocation of allocations) {
+    allocation.forEach((legAmount, legIndex) => {
+      if (legAmount.isZero()) {
+        return
+      }
+      const key = splitPairKey(legIndex, legAmount)
+      const route = legs[legIndex]
+      if (route && !uniquePairs.has(key)) {
+        uniquePairs.set(key, { legIndex, route, amount: legAmount })
+      }
+    })
+  }
+  const pairs = [...uniquePairs.values()]
+  const quoted = await quoteRouteAmountPairs({
+    provider,
+    pairs: pairs.map((p) => ({ route: p.route, amount: p.amount })),
+    tradeType,
+  })
+  const quoteByPair = new Map<string, QuotedRoute>()
+  quoted.forEach((q, i) => {
+    const pair = pairs[i]
+    if (q && pair) {
+      quoteByPair.set(splitPairKey(pair.legIndex, pair.amount), q)
+    }
+  })
+
+  const best = selectBestSplit({
+    allocations,
+    outputForLeg: (legIndex, legAmount) => quoteByPair.get(splitPairKey(legIndex, legAmount))?.amountOut,
+  })
+  if (!best || activeLegCount(best.allocation) < 2) {
+    return undefined // the optimum is a single route — no split
+  }
+
+  const splitLegs: SplitLeg[] = []
+  best.allocation.forEach((legAmount, legIndex) => {
+    if (legAmount.isZero()) {
+      return
+    }
+    const q = quoteByPair.get(splitPairKey(legIndex, legAmount))
+    const route = legs[legIndex]
+    if (q && route) {
+      splitLegs.push({ route, amountIn: legAmount, amountOut: q.amountOut, gasEstimate: q.gasEstimate })
+    }
+  })
+
+  return { legs: splitLegs, totalOut: best.totalOut }
+}
+
+/**
+ * Decides the legs to finalize and emit. Split-fill is attempted only when enabled (or in shadow
+ * mode) and never for USD quotes; shadow mode computes and logs the single-vs-split delta but keeps
+ * the single best route. Returns the accepted split's legs under the live flag, else the single best
+ * route as a one-leg list.
+ */
+async function resolveQuoteLegs(args: {
+  provider: JsonRpcProvider
+  ranked: QuotedRoute[]
+  best: QuotedRoute
+  amount: BigNumber
+  tradeType: TradingApi.TradeType
+  params: TradingApi.QuoteRequest & { isUSDQuote?: boolean }
+}): Promise<SplitLeg[]> {
+  const { provider, ranked, best, amount, tradeType, params } = args
+  const singleLeg: SplitLeg[] = [
+    { route: best.route, amountIn: best.amountIn, amountOut: best.amountOut, gasEstimate: best.gasEstimate },
+  ]
+  if (params.isUSDQuote || (!GNOSIS_SPLIT_ENABLED && !GNOSIS_SPLIT_SHADOW)) {
+    return singleLeg
+  }
+
+  const split = await computeBestSplit({ provider, ranked, amount, tradeType })
+  if (!split) {
+    return singleLeg
+  }
+  const accepted = passesAcceptGate({
+    splitOutput: split.totalOut,
+    singleBestOutput: best.amountOut,
+    minImprovementBps: MIN_SPLIT_IMPROVEMENT_BPS,
+  })
+  logShadowSplit({ params, best, split, accepted })
+  return GNOSIS_SPLIT_ENABLED && accepted ? split.legs : singleLeg
 }
 
 interface ReadCall {
@@ -267,33 +439,14 @@ interface ReadCall {
   callData: string
 }
 
-/**
- * Reads everything needed to finalize the winning route in one Multicall3 call:
- * per-hop pool state (cache-aware), metadata for any unknown tokens, and — when an ERC20
- * input may need it — the Permit2→UniversalRouter allowance.
- */
-async function finalizeBestRoute(args: {
-  provider: JsonRpcProvider
-  best: QuotedRoute
-  tokenAddresses: string[]
-  permitOwner: string | undefined
-  permitToken: string | undefined
-}): Promise<{
-  metas: Map<string, TokenMeta>
-  poolStates: PoolState[]
-  poolAddresses: string[]
-  permit2Allowance?: { amount: BigNumber; expiration: BigNumber }
-}> {
-  const { provider, best, tokenAddresses, permitOwner, permitToken } = args
-  const now = Date.now()
-
-  // Pool addresses are independent of token decimals, so compute them up front.
-  const poolAddresses: string[] = []
-  for (let i = 0; i < best.route.fees.length; i++) {
-    const a = best.route.tokens[i] ?? ''
-    const b = best.route.tokens[i + 1] ?? ''
-    const fee = best.route.fees[i] ?? FeeAmount.MEDIUM
-    poolAddresses.push(
+/** Per-hop CREATE2 pool addresses for a route (independent of token decimals). */
+function computeRoutePoolAddresses(route: CandidateRoute): string[] {
+  const addresses: string[] = []
+  for (let i = 0; i < route.fees.length; i++) {
+    const a = route.tokens[i] ?? ''
+    const b = route.tokens[i + 1] ?? ''
+    const fee = route.fees[i] ?? FeeAmount.MEDIUM
+    addresses.push(
       computePoolAddress({
         factoryAddress: GNOSIS_V3_FACTORY_ADDRESS,
         tokenA: new Token(UniverseChainId.Gnosis, a, 18),
@@ -302,12 +455,39 @@ async function finalizeBestRoute(args: {
       }),
     )
   }
+  return addresses
+}
+
+/**
+ * Reads everything needed to finalize the chosen route(s) in one Multicall3 call: per-hop pool
+ * state (cache-aware) for every leg, metadata for any unknown tokens, and — when an ERC20 input may
+ * need it — the Permit2→UniversalRouter allowance. Returns pool state grouped per route so a single
+ * (single-route) or multi-leg (split-fill) quote can both be built from one batched read.
+ */
+async function finalizeRoutes(args: {
+  provider: JsonRpcProvider
+  routes: CandidateRoute[]
+  tokenAddresses: string[]
+  permitOwner: string | undefined
+  permitToken: string | undefined
+}): Promise<{
+  metas: Map<string, TokenMeta>
+  poolStatesByRoute: PoolState[][]
+  permit2Allowance?: { amount: BigNumber; expiration: BigNumber }
+}> {
+  const { provider, routes, tokenAddresses, permitOwner, permitToken } = args
+  const now = Date.now()
+
+  // Pool addresses per route; legs are pool-disjoint so the union has no duplicates, but dedupe
+  // (by lowercased key) defensively for the on-chain read.
+  const poolAddressesByRoute = routes.map(computeRoutePoolAddresses)
+  const uniquePoolAddresses = [...new Map(poolAddressesByRoute.flat().map((a) => [a.toLowerCase(), a])).values()]
 
   const calls: ReadCall[] = []
   const callTags: { kind: 'slot0' | 'liquidity' | 'symbol' | 'decimals' | 'permit2'; key: string }[] = []
 
   // Pool state for cache misses only.
-  const poolNeedsRead = poolAddresses.filter((addr) => {
+  const poolNeedsRead = uniquePoolAddresses.filter((addr) => {
     const cached = poolStateCache.get(addr.toLowerCase())
     return !cached || now - cached.ts > POOL_STATE_TTL_MS
   })
@@ -408,19 +588,68 @@ async function finalizeBestRoute(args: {
     metas.set(key, { ...meta, address: raw })
   }
 
-  const poolStates = poolAddresses.map((addr) => {
-    const cached = poolStateCache.get(addr.toLowerCase())
-    if (!cached) {
-      throw new Error(`Missing pool state for ${addr} on Gnosis`)
-    }
-    return cached.state
-  })
+  const poolStatesByRoute = poolAddressesByRoute.map((addresses) =>
+    addresses.map((addr) => {
+      const cached = poolStateCache.get(addr.toLowerCase())
+      if (!cached) {
+        throw new Error(`Missing pool state for ${addr} on Gnosis`)
+      }
+      return cached.state
+    }),
+  )
 
-  return { metas, poolStates, poolAddresses, permit2Allowance: wantsPermit ? permit2Allowance : undefined }
+  return { metas, poolStatesByRoute, permit2Allowance: wantsPermit ? permit2Allowance : undefined }
 }
 
 function toTokenInRoute(meta: TokenMeta): TradingApi.TokenInRoute {
   return { address: meta.address, chainId: GNOSIS_CHAIN_ID, symbol: meta.symbol, decimals: String(meta.decimals) }
+}
+
+/**
+ * Builds the per-hop V3PoolInRoute array for a single (sub-)route. The universal-router-sdk reads
+ * only the first hop's `amountIn` and the last hop's `amountOut` per sub-route; intermediate
+ * boundary amounts are unused. Shared by the single-route and split-fill (one sub-route per leg)
+ * quote paths.
+ */
+function buildSubRoute(args: {
+  route: CandidateRoute
+  amountIn: BigNumber
+  amountOut: BigNumber
+  metas: Map<string, TokenMeta>
+  poolStates: PoolState[]
+}): TradingApi.V3PoolInRoute[] {
+  const { route, amountIn, amountOut, metas, poolStates } = args
+  return route.fees.map((fee, i) => {
+    const metaIn = metas.get((route.tokens[i] ?? '').toLowerCase())
+    const metaOut = metas.get((route.tokens[i + 1] ?? '').toLowerCase())
+    if (!metaIn || !metaOut) {
+      throw new Error('Missing token metadata while building Gnosis route')
+    }
+    const state = poolStates[i]
+    if (!state) {
+      throw new Error('Missing pool state while building Gnosis route')
+    }
+    const poolAddress = computePoolAddress({
+      factoryAddress: GNOSIS_V3_FACTORY_ADDRESS,
+      tokenA: new Token(UniverseChainId.Gnosis, metaIn.address, metaIn.decimals),
+      tokenB: new Token(UniverseChainId.Gnosis, metaOut.address, metaOut.decimals),
+      fee,
+    })
+    const isFirst = i === 0
+    const isLast = i === route.fees.length - 1
+    return {
+      type: 'v3-pool',
+      address: poolAddress,
+      tokenIn: toTokenInRoute(metaIn),
+      tokenOut: toTokenInRoute(metaOut),
+      fee: String(fee),
+      liquidity: state.liquidity.toString(),
+      sqrtRatioX96: state.sqrtPriceX96.toString(),
+      tickCurrent: String(state.tick),
+      amountIn: isFirst ? amountIn.toString() : '0',
+      amountOut: isLast ? amountOut.toString() : '0',
+    }
+  })
 }
 
 export interface FetchGnosisQuoteOptions {
@@ -556,17 +785,18 @@ async function fetchGnosisQuoteInner(
   // quoting the fallback set: routes through confirmed sub-threshold pools are intentionally
   // not compared, since their thin liquidity would surface as price impact in the quote anyway.
   // Fallback is only quoted when no preferred route exists or none of them quote successfully.
-  const preferredBest = preferredRoutes.length
+  const preferredRanked = preferredRoutes.length
     ? await quoteCandidateRoutes({ provider, routes: preferredRoutes, amount, tradeType })
-    : undefined
-  if (!preferredBest && !fallbackRoutes.length) {
+    : []
+  if (!preferredRanked.length && !fallbackRoutes.length) {
     fallbackRoutes = getFallbackRoutes()
   }
-  const best =
-    preferredBest ??
-    (fallbackRoutes.length
+  const ranked = preferredRanked.length
+    ? preferredRanked
+    : fallbackRoutes.length
       ? await quoteCandidateRoutes({ provider, routes: fallbackRoutes, amount, tradeType })
-      : undefined)
+      : []
+  const best = ranked[0]
   if (!best) {
     throw new Error(`No Gnosis V3 route found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
@@ -609,11 +839,20 @@ async function fetchGnosisQuoteInner(
     params.swapper.toLowerCase() !== ZERO_ADDRESS
   const executionInputToken = best.route.tokens[0] ?? resolvedIn
 
-  const [{ metas, poolStates, permit2Allowance }, blockNumber, gasPrice] = await Promise.all([
-    finalizeBestRoute({
+  // Either the accepted split's legs or the single best route as a one-leg list (the latter is
+  // byte-identical to the pre-split single-route quote).
+  const legs = await resolveQuoteLegs({ provider, ranked, best, amount, tradeType, params })
+
+  const allTokenAddresses = [...new Set(legs.flatMap((leg) => leg.route.tokens))]
+  const totalAmountIn = legs.reduce((sum, leg) => sum.add(leg.amountIn), BigNumber.from(0))
+  const totalAmountOut = legs.reduce((sum, leg) => sum.add(leg.amountOut), BigNumber.from(0))
+  const totalGasEstimate = legs.reduce((sum, leg) => sum.add(leg.gasEstimate), BigNumber.from(0))
+
+  const [{ metas, poolStatesByRoute, permit2Allowance }, blockNumber, gasPrice] = await Promise.all([
+    finalizeRoutes({
       provider,
-      best,
-      tokenAddresses: best.route.tokens,
+      routes: legs.map((leg) => leg.route),
+      tokenAddresses: allTokenAddresses,
       permitOwner: permitRelevant ? params.swapper : undefined,
       permitToken: permitRelevant ? executionInputToken : undefined,
     }),
@@ -621,47 +860,30 @@ async function fetchGnosisQuoteInner(
     provider.getGasPrice(),
   ])
 
-  // Build per-hop V3PoolInRoute (only the boundary amounts are consumed downstream).
-  const routePools: TradingApi.V3PoolInRoute[] = best.route.fees.map((fee, i) => {
-    const metaIn = metas.get((best.route.tokens[i] ?? '').toLowerCase())
-    const metaOut = metas.get((best.route.tokens[i + 1] ?? '').toLowerCase())
-    if (!metaIn || !metaOut) {
-      throw new Error('Missing token metadata while building Gnosis route')
-    }
-    const state = poolStates[i]
-    if (!state) {
-      throw new Error('Missing pool state while building Gnosis route')
-    }
-    const poolAddress = computePoolAddress({
-      factoryAddress: GNOSIS_V3_FACTORY_ADDRESS,
-      tokenA: new Token(UniverseChainId.Gnosis, metaIn.address, metaIn.decimals),
-      tokenB: new Token(UniverseChainId.Gnosis, metaOut.address, metaOut.decimals),
-      fee,
-    })
-    const isFirst = i === 0
-    const isLast = i === best.route.fees.length - 1
-    return {
-      type: 'v3-pool',
-      address: poolAddress,
-      tokenIn: toTokenInRoute(metaIn),
-      tokenOut: toTokenInRoute(metaOut),
-      fee: String(fee),
-      liquidity: state.liquidity.toString(),
-      sqrtRatioX96: state.sqrtPriceX96.toString(),
-      tickCurrent: String(state.tick),
-      // Only the first hop's amountIn and the last hop's amountOut are read by the
-      // universal-router-sdk; intermediate boundary amounts are unused.
-      amountIn: isFirst ? best.amountIn.toString() : '0',
-      amountOut: isLast ? best.amountOut.toString() : '0',
-    }
-  })
+  // One sub-route per leg; the universal-router-sdk consumes the multi-sub-route shape natively.
+  const route: TradingApi.V3PoolInRoute[][] = legs.map((leg, legIndex) =>
+    buildSubRoute({
+      route: leg.route,
+      amountIn: leg.amountIn,
+      amountOut: leg.amountOut,
+      metas,
+      poolStates: poolStatesByRoute[legIndex] ?? [],
+    }),
+  )
 
-  const priceImpact = computeRoutePriceImpact({ best, metas, poolStates, tradeType })
-  const gasFee = best.gasEstimate.mul(gasPrice).toString()
+  const priceImpact =
+    legs.length === 1
+      ? computeRoutePriceImpact({ best, metas, poolStates: poolStatesByRoute[0] ?? [], tradeType })
+      : computeAggregatePriceImpact({ legs, poolStatesByRoute, metas, tradeType, totalAmountIn })
+  const gasFee = totalGasEstimate.mul(gasPrice).toString()
 
-  const routeString = best.route.fees
-    .map((fee, i) => `${i === 0 ? best.route.tokens[i] : ''}-[${fee}]-${best.route.tokens[i + 1]}`)
-    .join('')
+  const routeString = legs
+    .map((leg) =>
+      leg.route.fees
+        .map((fee, i) => `${i === 0 ? leg.route.tokens[i] : ''}-[${fee}]-${leg.route.tokens[i + 1]}`)
+        .join(''),
+    )
+    .join(' + ')
 
   // Build the Permit2 → UniversalRouter approval tx when the current allowance is missing/expired.
   const permitTransaction = buildPermitTransactionIfNeeded({
@@ -669,20 +891,20 @@ async function fetchGnosisQuoteInner(
     permit2Allowance,
     swapper: params.swapper,
     token: executionInputToken,
-    requiredAmount: best.amountIn,
+    requiredAmount: totalAmountIn,
   })
 
   const quote: TradingApi.ClassicQuote = {
     chainId: GNOSIS_CHAIN_ID,
     swapper: params.swapper,
-    input: { token: inputToken, amount: best.amountIn.toString() },
-    output: { token: outputToken, amount: best.amountOut.toString(), recipient: params.swapper },
+    input: { token: inputToken, amount: totalAmountIn.toString() },
+    output: { token: outputToken, amount: totalAmountOut.toString(), recipient: params.swapper },
     tradeType,
     slippage: params.slippageTolerance,
-    route: [routePools],
+    route,
     routeString,
     quoteId: 'gnosis-local',
-    gasUseEstimate: best.gasEstimate.toString(),
+    gasUseEstimate: totalGasEstimate.toString(),
     gasFee,
     blockNumber: String(blockNumber),
     priceImpact,
@@ -752,6 +974,58 @@ function computeRoutePriceImpact(args: {
   } catch {
     return 0
   }
+}
+
+/** Input-weighted average of per-leg price impact for a split quote (legs > 1). */
+function computeAggregatePriceImpact(args: {
+  legs: SplitLeg[]
+  poolStatesByRoute: PoolState[][]
+  metas: Map<string, TokenMeta>
+  tradeType: TradingApi.TradeType
+  totalAmountIn: BigNumber
+}): number {
+  const { legs, poolStatesByRoute, metas, tradeType, totalAmountIn } = args
+  if (totalAmountIn.isZero()) {
+    return 0
+  }
+  let weighted = 0
+  legs.forEach((leg, i) => {
+    const impact = computeRoutePriceImpact({
+      best: { route: leg.route, amountIn: leg.amountIn, amountOut: leg.amountOut, gasEstimate: leg.gasEstimate },
+      metas,
+      poolStates: poolStatesByRoute[i] ?? [],
+      tradeType,
+    })
+    const weightBps = leg.amountIn.mul(10_000).div(totalAmountIn).toNumber()
+    weighted += impact * weightBps
+  })
+  return Number((weighted / 10_000).toFixed(3))
+}
+
+/**
+ * Shadow-mode telemetry (spec §10): record the single-best vs best-split delta for every live quote
+ * without changing the emitted quote, so the real per-pair benefit can be measured before enabling.
+ */
+function logShadowSplit(args: {
+  params: TradingApi.QuoteRequest
+  best: QuotedRoute
+  split: SplitResult
+  accepted: boolean
+}): void {
+  const { params, best, split, accepted } = args
+  const deltaBps = best.amountOut.isZero()
+    ? 0
+    : split.totalOut.sub(best.amountOut).mul(10_000).div(best.amountOut).toNumber()
+  logger.info('fetchGnosisQuote', 'logShadowSplit', 'gnosis split shadow', {
+    pair: `${params.tokenIn}->${params.tokenOut}`,
+    amountIn: params.amount,
+    legs: split.legs.length,
+    singleBestOut: best.amountOut.toString(),
+    splitOut: split.totalOut.toString(),
+    deltaBps,
+    accepted,
+    enabled: GNOSIS_SPLIT_ENABLED,
+  })
 }
 
 function buildPermitTransactionIfNeeded(args: {
