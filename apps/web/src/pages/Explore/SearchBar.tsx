@@ -32,7 +32,6 @@ export function SearchBar({ tab }: { tab?: string }) {
     [ExploreTab.Tokens]: t('tokens.table.filter.placeholder.tokens'),
     [ExploreTab.Pools]: t('tokens.table.filter.placeholder.pools'),
     [ExploreTab.Transactions]: t('tokens.table.filter.placeholder.transactions'),
-    [ExploreTab.Toucan]: t('auctions.table.filter.placeholder'),
   }
 
   return (

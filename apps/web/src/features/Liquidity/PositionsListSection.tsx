@@ -148,12 +148,7 @@ function VirtualizedPositionsList({
                 style={{ textDecoration: 'none' }}
                 to={getPositionCardLinkTarget({ position, readOnly, entryPoint })}
               >
-                <LiquidityPositionCard
-                  showVisibilityOption
-                  liquidityPosition={position}
-                  showMigrateButton
-                  readOnly={readOnly}
-                />
+                <LiquidityPositionCard showVisibilityOption liquidityPosition={position} readOnly={readOnly} />
               </Link>
             </Flex>
           )

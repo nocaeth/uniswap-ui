@@ -23,7 +23,6 @@ import { type EthMethod } from 'uniswap/src/features/dappRequests/types'
 import { type FiatCurrency } from 'uniswap/src/features/fiatCurrency/constants'
 import { type Platform } from 'uniswap/src/features/platforms/types/Platform'
 import {
-  type AuctionEventName,
   type ExtensionEventName,
   type FiatOffRampEventName,
   type FiatOnRampEventName,
@@ -524,223 +523,6 @@ export type LiquidityAnalyticsProperties = ITraceContext & {
   price_source?: PriceSourceTag
 }
 
-export type AuctionWithdrawAnalyticsProperties = ITraceContext & {
-  transaction_hash: string
-  chain_id: number
-  auction_contract_address: string
-
-  // Auction tokens claimed (what user receives)
-  auction_token_address?: string
-  auction_token_symbol?: string
-  auction_token_amount_raw?: string
-  auction_token_amount_usd?: number
-
-  // Bid tokens refunded (original bid returned)
-  bid_token_address?: string
-  bid_token_symbol?: string
-  bid_token_amount_raw?: string
-  bid_token_amount_usd?: number
-
-  // Original bid budget (full initial budget amount)
-  budget_token_amount_raw?: string
-  budget_token_amount_usd?: number
-
-  // Max FDV from original bid
-  max_fdv_usd?: number
-
-  // Expected output
-  expected_receive_amount?: number
-
-  // Auction status
-  is_graduated: boolean
-  is_auction_completed: boolean
-  price_source?: PriceSourceTag
-}
-
-export type AuctionBidAnalyticsProperties = ITraceContext & {
-  transaction_hash: string
-  chain_id: number
-  auction_contract_address: string
-
-  // Bid parameters
-  bid_token_address: string
-  bid_token_amount_raw: string
-  bid_token_amount_usd?: number
-  max_price_q96: string
-  max_fdv_usd?: number
-  price_per_token?: number
-
-  // Expected output
-  min_expected_receive_amount?: number
-  max_receivable_amount?: number
-
-  // Token info
-  token_symbol?: string
-  token_name?: string
-  price_source?: PriceSourceTag
-}
-
-export type AuctionBidInputtedAnalyticsProperties = ITraceContext & {
-  chain_id: number
-  auction_contract_address: string
-  bid_token_address: string
-
-  // Budget (max amount user will spend)
-  bid_token_amount_raw: string
-  bid_token_amount_usd?: number
-
-  // Max Valuation (FDV limit)
-  max_price_q96: string
-  max_fdv_usd?: number
-  price_per_token?: number
-
-  // Expected Output (what user expects to receive)
-  expected_receive_amount?: number
-  min_expected_receive_amount?: number
-  max_receivable_amount?: number
-
-  // Token info
-  token_symbol?: string
-  price_source?: PriceSourceTag
-}
-
-export type AuctionCreateTokenSource = 'new' | 'existing'
-
-export type AuctionCreateAnalyticsProperties = ITraceContext & {
-  chain_id: number
-  token_source: AuctionCreateTokenSource
-
-  // Predicted addresses returned by the CreateAuction endpoint before submission
-  auction_contract_address: string
-  auction_token_address: string
-  auction_token_symbol?: string
-
-  // Auction configuration
-  /** Percent of total supply deposited into the auction (0-100). */
-  auction_supply_pct?: number
-  /** Percent of auctioned tokens reserved for post-auction liquidity (0-100). Omitted for bracketed (tiered) allocations. */
-  lp_pct?: number
-  /** True when the post-auction liquidity allocation uses raise-milestone brackets (tiers). */
-  is_bracketed: boolean
-  /**
-   * Scalar summary of a tiered (bracketed) LP allocation; all set only when is_bracketed is true.
-   * The exact [raiseMilestone, percent] ladder is intentionally not logged — it isn't chartable in
-   * Amplitude and is recoverable from the auction config via auction_contract_address.
-   */
-  lp_tier_count?: number
-  /** Lowest LP percent across tiers (0-100). */
-  lp_pct_min?: number
-  /** Highest LP percent across tiers (0-100). */
-  lp_pct_max?: number
-  start_datetime?: string
-  end_datetime?: string
-  floor_price?: string
-  floor_price_usd?: number
-  raise_currency: string
-  raise_currency_address?: string
-  /** FDV at the floor price, denominated in the raise currency. */
-  max_fdv?: number
-  max_fdv_usd?: number
-
-  // Pool configuration
-  timelock_enabled: boolean
-  /** Timelock duration in days; omitted when the timelock is disabled. */
-  timelock_duration?: number
-  has_kyc_hook: boolean
-}
-
-/** Source surface for launch-auction (CCA supply-side) analytics events. */
-export type AuctionAnalyticsOrigin = 'cca-supply'
-
-/** Snapshot of the token-details step values, fired when the user advances from Token Details. */
-export type AuctionTokenInfoEnteredProperties = ITraceContext & {
-  token_source: AuctionCreateTokenSource
-  token_name?: string
-  token_ticker?: string
-  token_description?: string
-  token_image_url?: string
-  origin: AuctionAnalyticsOrigin
-}
-
-/** Social-verification success (X/Twitter today), fired when the user links a social profile on Token Details. */
-export type AuctionVerifyCompletedProperties = ITraceContext & {
-  verify_type: 'twitter'
-  origin: AuctionAnalyticsOrigin
-}
-
-/** Snapshot of the auction-details step values, fired when the user advances from Auction Details. */
-export type AuctionDetailsInfoEnteredProperties = ITraceContext & {
-  token_source: AuctionCreateTokenSource
-  /** Percent of total supply deposited into the auction (0-100). */
-  auction_supply_pct?: number
-  floor_price?: string
-  floor_price_usd?: number
-  raise_currency: string
-  raise_currency_address?: string
-  /** FDV at the floor price, denominated in the raise currency. */
-  max_fdv?: number
-  max_fdv_usd?: number
-  start_datetime?: string
-  end_datetime?: string
-  /** Percent of auctioned tokens reserved for post-auction liquidity; omitted for bracketed allocations. */
-  lp_pct?: number
-  is_bracketed: boolean
-  /** Number of liquidity brackets (tiers); only present for bracketed allocations. */
-  bracket_count?: number
-  has_kyc_hook: boolean
-  origin: AuctionAnalyticsOrigin
-}
-
-/** Snapshot of the pool-details step values, fired when the user advances from Pool Details. */
-export type AuctionPoolDetailsInfoEnteredProperties = ITraceContext & {
-  /** Fee tier in hundredths of a bip (e.g. 3000 = 0.30%). */
-  fee_tier: number
-  /** Fee tier as a percent (e.g. 0.3 for a 0.30% pool). */
-  fee_pct: number
-  range_type: string
-  /** Number of custom price ranges; only present when range_type is custom. */
-  custom_range_count?: number
-  owner_set: boolean
-  timelock_enabled: boolean
-  /** Timelock duration in days; omitted when the timelock is disabled. */
-  timelock_duration?: number
-  timelock_unlock_date?: string
-  fee_forwarding: boolean
-  buyback_burn: boolean
-  origin: AuctionAnalyticsOrigin
-}
-
-/** Stage at which the launch failed. */
-export type AuctionCreateFailedStep = 'build_request' | 'create_auction_request' | 'launch'
-
-export type AuctionCreateFailedProperties = ITraceContext & {
-  token_source: AuctionCreateTokenSource
-  chain_id: number
-  failed_step: AuctionCreateFailedStep
-  error_code?: string | number
-}
-
-/** Fired when the user adds a custom post-auction-liquidity price range on the Pool Details step. */
-export type AuctionCustomPriceRangeAddedProperties = ITraceContext & {
-  /** 0-based index of the newly added range. */
-  range_index: number
-  /** Total number of custom price ranges after the add. */
-  range_count: number
-  /** Lower bound as percent-from-clearing-price (e.g. -50 = 50% below clearing). */
-  min_price: number
-  /** Upper bound as percent-from-clearing-price; omitted when the range is unbounded (+∞). */
-  max_price?: number
-  /** Liquidity percent assigned to the new range at add-time (store default). */
-  lp_pct?: number
-  origin: AuctionAnalyticsOrigin
-}
-
-/** Fired when the user creates a custom fee tier via the fee-tier modal's create popup on Pool Details. */
-export type AuctionFeeTierCreatedProperties = ITraceContext & {
-  /** Created fee tier as a percentage (e.g. 0.3 = 0.3%), matching `fee_pct` on Pool Details Info Entered. */
-  fee_pct: number
-}
-
 export type NotificationToggleLoggingType = 'settings_general_updates_enabled' | 'wallet_activity'
 
 type TokenReportProperties = {
@@ -992,8 +774,6 @@ export type UniverseEventProperties = {
     action: FeePoolSelectAction
     fee_tier: number
     is_new_fee_tier?: boolean
-    /** Set when the fee tier is selected from the launch-auction (CCA supply-side) flow. */
-    origin?: AuctionAnalyticsOrigin
   } & ITraceContext
   [LiquidityEventName.MigrateLiquiditySubmitted]: {
     action: string
@@ -1013,20 +793,6 @@ export type UniverseEventProperties = {
     expected?: string
     actual: string
   } & LiquidityAnalyticsProperties
-  [AuctionEventName.AuctionWithdrawSubmitted]: AuctionWithdrawAnalyticsProperties
-  [AuctionEventName.AuctionBidSubmitted]: AuctionBidAnalyticsProperties
-  [AuctionEventName.AuctionBidInputted]: AuctionBidInputtedAnalyticsProperties
-  [AuctionEventName.AuctionTokenInfoEntered]: AuctionTokenInfoEnteredProperties
-  [AuctionEventName.AuctionVerifyCompleted]: AuctionVerifyCompletedProperties
-  [AuctionEventName.AuctionDetailsInfoEntered]: AuctionDetailsInfoEnteredProperties
-  [AuctionEventName.PoolDetailsInfoEntered]: AuctionPoolDetailsInfoEnteredProperties
-  [AuctionEventName.AuctionCustomPriceRangeAdded]: AuctionCustomPriceRangeAddedProperties
-  [AuctionEventName.FeeTierCreated]: AuctionFeeTierCreatedProperties
-  [AuctionEventName.AuctionCreateSubmitted]: AuctionCreateAnalyticsProperties
-  [AuctionEventName.AuctionCreateFailed]: AuctionCreateFailedProperties
-  [AuctionEventName.AuctionCreateCompleted]: AuctionCreateAnalyticsProperties & {
-    transaction_hash: string
-  }
   [MobileEventName.AutomatedOnDeviceRecoveryTriggered]: {
     showNotificationScreen: boolean
     showBiometricsScreen: boolean
@@ -1136,16 +902,6 @@ export type UniverseEventProperties = {
     token_address?: string
     token_symbol?: string
     token_list_length?: number
-    /** ElementName.Continue on the launch-auction flow — new (factory-deployed) vs existing token */
-    token_source?: AuctionCreateTokenSource
-    /** ElementName.AuctionRaiseCurrency — selected raise currency on the launch-auction flow (ETH / USDC). */
-    raise_currency?: string
-    /** ElementName.AuctionRaiseCurrency — resolved raise-currency token address (zero address for native ETH). */
-    raise_currency_address?: string
-    /** ElementName.AuctionPriceRangeStrategy — selected post-auction liquidity price-range strategy (PriceRangeStrategy value). */
-    range_type?: string
-    /** ElementName.AuctionTimelockToggle — resulting pool-timelock enabled state. */
-    timelock_enabled?: boolean
   }
   [SharedEventName.PAGE_VIEWED]: ITraceContext & {
     /** Token details */
@@ -1421,9 +1177,6 @@ export type UniverseEventProperties = {
   [UniswapEventName.LpIncentiveCollectRewardsRetry]: undefined
   [UniswapEventName.LpIncentiveCollectRewardsSuccess]: { token_rewards: string }
   [UniswapEventName.LpIncentiveLearnMoreCtaClicked]: undefined
-  [UniswapEventName.AuctionFilterSelected]: {
-    filter: 'all' | 'verified' | 'unverified' | 'active' | 'complete'
-  }
   [UniswapEventName.NetworkFilterSelected]: ITraceContext & {
     chain: UniverseChainId | typeof ALL_NETWORKS_LABEL
     chain_name: string | typeof ALL_NETWORKS_LABEL

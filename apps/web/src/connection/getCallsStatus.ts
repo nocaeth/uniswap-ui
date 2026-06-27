@@ -3,7 +3,7 @@ import { ensure0xHex, numberToHex } from '@universe/encoding'
 import { TradingApiClient } from 'uniswap/src/data/apiClients/tradingApi/TradingApiClient'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { toTradingApiSupportedChainId } from 'uniswap/src/features/transactions/swap/utils/tradingApi'
-import type { GetCallsStatusResult } from 'wallet/src/features/dappRequests/types'
+import type { GetCallsStatusResult } from '~/connection/walletCapabilities'
 
 // Rank swap rows by how resolved they are. We query the batch id in both hash
 // fields (see below), so the response carries up to two rows — the field that

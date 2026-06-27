@@ -1,6 +1,5 @@
 import { Flex } from 'ui/src'
 import { ApproveTransactionDetails } from 'uniswap/src/components/activity/details/transactions/ApproveTransactionDetails'
-import { AuctionTransactionDetails } from 'uniswap/src/components/activity/details/transactions/AuctionTransactionDetails'
 import { BridgeTransactionDetails } from 'uniswap/src/components/activity/details/transactions/BridgeTransactionDetails'
 import { LiquidityTransactionDetails } from 'uniswap/src/components/activity/details/transactions/LiquidityTransactionDetails'
 import { NftTransactionDetails } from 'uniswap/src/components/activity/details/transactions/NftTransactionDetails'
@@ -69,14 +68,6 @@ export function TransactionDetailsContent({
         return <LiquidityTransactionDetails typeInfo={typeInfo} onClose={onClose} />
       case TransactionType.Plan:
         return <PlanTransactionDetails status={transactionDetails.status} typeInfo={typeInfo} onClose={onClose} />
-      case TransactionType.AuctionBid:
-      case TransactionType.AuctionClaimed:
-      case TransactionType.AuctionExited:
-        return (
-          <AuctionTransactionDetails transactionDetails={transactionDetails} typeInfo={typeInfo} onClose={onClose} />
-        )
-      case TransactionType.AuctionLaunch:
-        return null
       default:
         return null
     }

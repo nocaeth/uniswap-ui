@@ -5,6 +5,7 @@ import { BASE_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/base'
 import { BLAST_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/blast'
 import { BNB_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/bnb'
 import { CELO_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/celo'
+import { GNOSIS_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/gnosis'
 import { LINEA_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/linea'
 import { MAINNET_CHAIN_INFO, SEPOLIA_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/mainnet'
 import { MEGAETH_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/megaeth'
@@ -29,6 +30,7 @@ export function getChainInfo(chainId: UniverseChainId): UniverseChainInfo {
 }
 
 export const ORDERED_CHAINS = [
+  GNOSIS_CHAIN_INFO,
   MAINNET_CHAIN_INFO,
   UNICHAIN_CHAIN_INFO,
   MONAD_CHAIN_INFO,
@@ -91,6 +93,7 @@ export const UNIVERSE_CHAIN_INFO = {
   [UniverseChainId.Blast]: BLAST_CHAIN_INFO,
   [UniverseChainId.Avalanche]: AVALANCHE_CHAIN_INFO,
   [UniverseChainId.Celo]: CELO_CHAIN_INFO,
+  [UniverseChainId.Gnosis]: GNOSIS_CHAIN_INFO,
   [UniverseChainId.WorldChain]: WORLD_CHAIN_INFO,
   [UniverseChainId.Linea]: LINEA_CHAIN_INFO,
   [UniverseChainId.MegaETH]: MEGAETH_CHAIN_INFO,
@@ -122,12 +125,3 @@ export const GQL_TESTNET_CHAINS = ORDERED_EVM_CHAINS.filter((chain) => chain.tes
 // If limit support expands beyond Mainnet, refactor to use a `supportsLimits`
 // property on chain info objects and filter chains, similar to the pattern used above
 export const LIMIT_SUPPORTED_CHAINS = [UniverseChainId.Mainnet]
-
-export const TOUCAN_AUCTION_SUPPORTED_CHAINS = [
-  UniverseChainId.Unichain,
-  UniverseChainId.Mainnet,
-  UniverseChainId.Base,
-  UniverseChainId.ArbitrumOne,
-  UniverseChainId.Sepolia,
-  UniverseChainId.UnichainSepolia,
-]

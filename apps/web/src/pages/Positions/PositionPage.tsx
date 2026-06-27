@@ -46,7 +46,6 @@ import { usePositionVisibilityCheck } from 'uniswap/src/features/visibility/hook
 import { areAddressesEqual } from 'uniswap/src/utils/addresses'
 import { buildCurrencyId, currencyId, currencyIdToAddress } from 'uniswap/src/utils/currencyId'
 import { NumberType } from 'utilities/src/format/types'
-import { useEvent } from 'utilities/src/react/hooks'
 import { BreadcrumbNavContainer, BreadcrumbNavLink } from '~/components/BreadcrumbNav'
 import { Dropdown } from '~/components/Dropdowns/Dropdown'
 import { LoadingFullscreen, LoadingRows } from '~/components/Loader/styled'
@@ -294,10 +293,6 @@ function PositionPage({ chainId }: { chainId: EVMUniverseChainId | undefined }) 
     return 620
   }, [screenWidth])
 
-  const onMigrate = useEvent(() => {
-    navigate(`/migrate/v3/${chainInfo?.urlParam}/${tokenIdFromUrl}`)
-  })
-
   if (positionLoading) {
     return (
       <BodyWrapper>
@@ -394,7 +389,7 @@ function PositionPage({ chainId }: { chainId: EVMUniverseChainId | undefined }) 
               includeNetwork
               includeLpIncentives={isLpIncentivesEnabled}
             />
-            <PositionPageActionButtons isOwner={isOwner} positionInfo={positionInfo} onMigrate={onMigrate} />
+            <PositionPageActionButtons isOwner={isOwner} positionInfo={positionInfo} />
           </Flex>
         </Flex>
         <Flex row justifyContent="space-between" pt="$padding20" $lg={{ row: false, gap: '$gap24' }}>

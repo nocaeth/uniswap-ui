@@ -1,6 +1,7 @@
 import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
 import { GasStrategy, TradingApi } from '@universe/api'
 import { FeatureFlags, getFeatureFlag } from '@universe/gating'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { getActiveGasStrategy } from 'uniswap/src/features/gas/utils'
 import {
   isZeroAmount,
@@ -142,6 +143,14 @@ export interface ParsedTradeInput {
   gasOverrides?: TradingApi.UrgencyOverrides
 }
 
+// Gnosis (100) has no Trading API and is absent from the generated TradingApi.ChainId enum,
+// but we quote/build its swaps client-side (see fetchGnosisQuote, reached via repositories.ts).
+// Allow it through quote-input validation here without changing the global
+// `toTradingApiSupportedChainId`, which other (Trading-API-only) flows rely on to skip Gnosis.
+function toQuoteSupportedChainId(chainId: number | undefined): number | undefined {
+  return chainId === UniverseChainId.Gnosis ? chainId : toTradingApiSupportedChainId(chainId)
+}
+
 export function parseTradeInputForTradingApiQuote(input: UseTradeArgs): ParsedTradeInput {
   const { currencyIn, currencyOut, requestTradeType } = parseQuoteCurrencies(input)
   return {
@@ -150,8 +159,8 @@ export function parseTradeInputForTradingApiQuote(input: UseTradeArgs): ParsedTr
     amount: input.amountSpecified,
     requestTradeType,
     activeAccountAddress: input.account?.address,
-    tokenInChainId: toTradingApiSupportedChainId(currencyIn?.chainId),
-    tokenOutChainId: toTradingApiSupportedChainId(currencyOut?.chainId),
+    tokenInChainId: toQuoteSupportedChainId(currencyIn?.chainId),
+    tokenOutChainId: toQuoteSupportedChainId(currencyOut?.chainId),
     tokenInAddress: getTokenAddressForApi(currencyIn),
     tokenOutAddress: getTokenAddressForApi(currencyOut),
     generatePermitAsTransaction: input.generatePermitAsTransaction,

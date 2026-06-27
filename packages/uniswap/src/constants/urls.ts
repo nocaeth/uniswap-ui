@@ -83,31 +83,7 @@ export const UniswapHelpUrls = {
     swapProtection: createHelpArticleUrl('18814993155853'),
     swapSlippage: createHelpArticleUrl('8643879653261-What-is-Price-Slippage-'),
     swapDeadline: createHelpArticleUrl('45320061462797'),
-    toucanBidHelp: createHelpArticleUrl(
-      '43106804833421-How-to-participate-in-token-auctions-on-Uniswap#bidding-in-an-auction',
-    ),
-    toucanBidDetailsHelp: createHelpArticleUrl(
-      '43106804833421-How-to-participate-in-token-auctions-on-Uniswap#bidding-in-an-auction',
-    ),
-    toucanIntro: createHelpArticleUrl('43107626487437'),
-    toucanFailedToLaunchHelp: createHelpArticleUrl(
-      '43107626487437-What-are-Continuous-Clearing-Auctions#what-is-a-graduation-threshold',
-    ),
-    toucanLaunchAuctionHelp: createHelpArticleUrl('46569604134157'),
-    // Deep-links into specific sections of the published CCA launch guide; anchors match the article's headings.
-    toucanLaunchAuctionConfigureAuctionHelp: createHelpArticleUrl(
-      '46569604134157-Launching-a-Continuous-Clearing-Auction',
-      { section: 'set-your-auction-details' },
-    ),
-    toucanLaunchAuctionCustomizePoolHelp: createHelpArticleUrl(
-      '46569604134157-Launching-a-Continuous-Clearing-Auction',
-      { section: 'configure-the-liquidity-pool-your-auction-will-seed-into-at-the-end' },
-    ),
-    toucanVerifiedAuctionsHelp: createHelpArticleUrl('43107250032781'),
     tokenWarning: createHelpArticleUrl('8723118437133-What-are-token-warnings-'),
-    toucanWithdrawHelp: createHelpArticleUrl(
-      '43106804833421-How-to-participate-in-token-auctions-on-Uniswap#claiming-your-tokens-and-unspent-budget',
-    ),
     transactionFailure: createHelpArticleUrl('8643975058829-Why-did-my-transaction-fail-'),
     uniswapXInfo: createHelpArticleUrl('17544708791821'),
     uniswapXFailure: createHelpArticleUrl('17515489874189-Why-can-my-swap-not-be-filled-'),

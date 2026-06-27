@@ -22,12 +22,6 @@ export interface UniswapBehaviorHistoryState {
   // whether we have shown the mismatch toast (related to wallet capabilities & wallet bytecode)
   hasShownMismatchToast?: boolean
   hasShownSmartWalletNudge?: boolean
-  /** Global flag for when user sees modal without wallet connected */
-  hasSeenToucanIntroModal?: boolean
-  /** Per-wallet tracking for Toucan intro modal */
-  toucanIntroModalSeenByWallet?: {
-    [walletAddress: string]: boolean
-  }
   hasDismissedUniswapWrapped2025Banner?: boolean
   hasDismissedCrosschainSwapsPromoBanner?: boolean
   /**
@@ -56,7 +50,6 @@ export const initialUniswapBehaviorHistoryState: UniswapBehaviorHistoryState = {
   },
   hasShownMismatchToast: false,
   hasShownSmartWalletNudge: false,
-  hasSeenToucanIntroModal: false,
   hasDismissedUniswapWrapped2025Banner: false,
   hasDismissedCrosschainSwapsPromoBanner: false,
   hasDismissedPoolsBalanceCoachmark: true,
@@ -116,13 +109,6 @@ const slice = createSlice({
     setHasShownSmartWalletNudge: (state, action: PayloadAction<boolean>) => {
       state.hasShownSmartWalletNudge = action.payload
     },
-    setHasSeenToucanIntroModal: (state, action: PayloadAction<boolean>) => {
-      state.hasSeenToucanIntroModal = action.payload
-    },
-    setToucanIntroModalSeenByWallet: (state, action: PayloadAction<{ walletAddress: string }>) => {
-      state.toucanIntroModalSeenByWallet ??= {}
-      state.toucanIntroModalSeenByWallet[action.payload.walletAddress.toLowerCase()] = true
-    },
     setHasDismissedBridgedAssetsBannerV2: (state, action: PayloadAction<boolean>) => {
       state.hasDismissedBridgedAssetsBannerV2 = action.payload
     },
@@ -154,8 +140,6 @@ export const {
   setHasViewedContractAddressExplainer,
   setHasShownMismatchToast,
   setHasShownSmartWalletNudge,
-  setHasSeenToucanIntroModal,
-  setToucanIntroModalSeenByWallet,
   setHasDismissedBridgedAssetsBannerV2,
   setHasDismissedUniswapWrapped2025Banner,
   setHasDismissedCrosschainSwapsPromoBanner,

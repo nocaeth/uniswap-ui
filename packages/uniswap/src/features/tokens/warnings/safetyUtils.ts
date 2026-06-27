@@ -70,7 +70,7 @@ export function getTokenProtectionFeeOnTransfer(currencyInfo: Maybe<CurrencyInfo
 
 export function getTokenProtectionWarning(currencyInfo?: Maybe<CurrencyInfo>): TokenProtectionWarning {
   if (!currencyInfo?.currency || !currencyInfo.safetyInfo) {
-    return TokenProtectionWarning.NonDefault
+    return TokenProtectionWarning.None
   }
   const { currency, safetyInfo } = currencyInfo
 
@@ -109,10 +109,12 @@ export function getTokenProtectionWarning(currencyInfo?: Maybe<CurrencyInfo>): T
     return TokenProtectionWarning.SpamAirdrop
   } else if (feeOnTransfer && feeOnTransfer > 0 && feeOnTransfer < TOKEN_PROTECTION_FOT_FEE_BREAKPOINT) {
     return TokenProtectionWarning.FotLow
-  } else if (safetyInfo.tokenList === TokenList.NonDefault) {
-    return TokenProtectionWarning.NonDefault
   }
 
+  // Gnosis-only build: tokens that aren't on Uniswap's default list (which is virtually all
+  // Gnosis tokens) intentionally produce no warning — we don't surface the "not traded on
+  // leading U.S. exchanges" notice. Genuine safety warnings (malicious/honeypot/fees/blocked)
+  // are handled above.
   return TokenProtectionWarning.None
 }
 

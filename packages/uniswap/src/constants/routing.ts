@@ -81,6 +81,78 @@ type ChainCurrencyList = {
  * This list is currently used as fallback list when Token GQL query fails for above list + for hardcoded tokens on testnet chains.
  */
 export const COMMON_BASES: ChainCurrencyList = {
+  // GNOSIS-ONLY: Gnosis token universe, seeded from the CoW Swap token list
+  // (https://files.cow.fi/tokens/CowSwap.json). Uniswap's backend does not serve
+  // Gnosis, so these provide both token metadata resolution (getCommonBase) and the
+  // default token-selector list when the GQL query returns empty.
+  [UniverseChainId.Gnosis]: [
+    nativeOnChain(UniverseChainId.Gnosis), // xDAI
+    new Token(UniverseChainId.Gnosis, '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d', 18, 'WXDAI', 'Wrapped XDAI'),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0x6a023ccd1ff6f2045c3309768ead9e68f978f6e1',
+      18,
+      'WETH',
+      'Wrapped Ether on Gnosis',
+    ),
+    new Token(UniverseChainId.Gnosis, '0x8e5bBbb09Ed1ebdE8674Cda39A0c169401db4252', 8, 'WBTC', 'Wrapped BTC on Gnosis'),
+    new Token(UniverseChainId.Gnosis, '0x9c58bacc331c9aa871afd802db6379a98e80cedb', 18, 'GNO', 'Gnosis'),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0x2a22f9c3b484c3629090feed35f17ff8f88f76f0',
+      6,
+      'USDC.e',
+      'Bridged USDC (Gnosis)',
+    ),
+    new Token(UniverseChainId.Gnosis, '0x4ecaba5870353805a9f068101a40e0f32ed605c6', 6, 'USDT', 'Tether USD on xDai'),
+    new Token(UniverseChainId.Gnosis, '0xaf204776c7245bf4147c2612bf6e5972ee483701', 18, 'sDAI', 'Savings xDAI'),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0x44fA8E6f47987339850636F88629646662444217',
+      18,
+      'DAI',
+      'Dai Stablecoin on Gnosis',
+    ),
+    new Token(UniverseChainId.Gnosis, '0x420ca0f9b9b604ce0fd9c18ef134c705e5fa3430', 18, 'EURe', 'Monerium EUR emoney'),
+    new Token(UniverseChainId.Gnosis, '0x5cb9073902f2035222b9749f8fb0c9bfe5527108', 18, 'GBPe', 'Monerium GBP emoney'),
+    new Token(UniverseChainId.Gnosis, '0x177127622c4A00F3d409B75571e12cB3c8973d3c', 18, 'COW', 'CoW Protocol Token'),
+    new Token(UniverseChainId.Gnosis, '0x4d18815d14fe5c3304e87b3fa18318baa5c23820', 18, 'SAFE', 'Safe Token'),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0x6c76971f98945ae98dd7d4dfca8711ebea946ea6',
+      18,
+      'wstETH',
+      'Wrapped liquid staked Ether',
+    ),
+    new Token(UniverseChainId.Gnosis, '0xc791240d1f2def5938e2031364ff4ed887133c3d', 18, 'rETH', 'Rocket Pool ETH'),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0xE2e73A1c69ecF83F464EFCE6A5be353a37cA09b2',
+      18,
+      'LINK',
+      'ChainLink Token on Gnosis',
+    ),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0xabef652195f98a91e490f047a5006b71c85f058d',
+      18,
+      'crvUSD',
+      'Curve.Fi USD Stablecoin',
+    ),
+    new Token(UniverseChainId.Gnosis, '0xca5d8f8a8d49439357d3cf46ca2e720702f132b8', 18, 'GYD', 'Gyro Dollar'),
+    new Token(UniverseChainId.Gnosis, '0x1509706a6c66ca549ff0cb464de88231ddbe213b', 18, 'AURA', 'Aura Finance'),
+    new Token(UniverseChainId.Gnosis, '0x3a97704a1b25F08aa230ae53B352e2e72ef52843', 18, 'AGVE', 'Agave Token'),
+    new Token(UniverseChainId.Gnosis, '0x71850b7E9Ee3f13Ab46d67167341E4bDc905Eef9', 18, 'HNY', 'Honey'),
+    new Token(UniverseChainId.Gnosis, '0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f', 18, 'OLAS', 'Autonolas on Gnosis'),
+    new Token(
+      UniverseChainId.Gnosis,
+      '0xb7D311E2Eb55F2f68a9440da38e7989210b9A05e',
+      18,
+      'STAKE',
+      'Stake on Gnosis Chain',
+    ),
+  ].map(buildPartialCurrencyInfo),
+
   [UniverseChainId.Mainnet]: [
     nativeOnChain(UniverseChainId.Mainnet),
     DAI,

@@ -14,10 +14,10 @@ function renderUsePositionFilters() {
 }
 
 describe('usePositionFilters', () => {
-  it('exposes default filter values', () => {
+  it('exposes Gnosis default filter values', () => {
     const { result } = renderUsePositionFilters()
 
-    expect(result.current.chainFilter).toBeNull()
+    expect(result.current.chainFilter).toBe(UniverseChainId.Gnosis)
     expect(result.current.versionFilter).toEqual(DEFAULT_LP_POSITION_PROTOCOL_FILTER)
     expect(result.current.statusFilter).toEqual(DEFAULT_LP_POSITION_STATUS_FILTER)
   })

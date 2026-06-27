@@ -79,9 +79,6 @@ vi.mock('react-native-device-info', () => ({
   },
 }))
 
-// mock initProviders to avoid creating real ethers providers for each test
-vi.mock('wallet/src/features/providers/saga')
-
 // Mock WalletConnect v2 packages
 vi.mock('@reown/walletkit', () => ({
   WalletKit: {

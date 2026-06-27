@@ -1,0 +1,18 @@
+{
+  "_comment": "UniversalRouter RouterParameters for Gnosis Chain (100), V3-only. Field names follow the modern universal-router RouterParameters struct; copy into the struct fields present in your chosen tag. Zero address / zero hash where a protocol is not deployed on Gnosis (V2, V4).",
+  "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  "weth9": "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+  "v2Factory": "0x0000000000000000000000000000000000000000",
+  "v3Factory": "0xe32F7dD7e3f098D518ff19A22d5f028e076489B1",
+  "pairInitCodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "poolInitCodeHash": "0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54",
+  "v3NFTPositionManager": "0xAE8fbE656a77519a7490054274910129c9244FA3",
+  "v4PoolManager": "0x0000000000000000000000000000000000000000",
+  "v4PositionManager": "0x0000000000000000000000000000000000000000",
+  "_notes": {
+    "weth9": "WXDAI — the wrapped native token on Gnosis",
+    "poolInitCodeHash": "standard Uniswap V3 pool init code hash (same across canonical V3 deployments)",
+    "v2": "Gnosis has no Uniswap V2; leave v2Factory zero and pairInitCodeHash zero",
+    "v4": "Gnosis has no Uniswap V4 yet; leave v4 fields zero"
+  }
+}

@@ -1,0 +1,91 @@
+/* --------------------------------------------------------------------------
+   Owl easter eggs (ported from the NOCA sDAI frontend)
+   - .owl-flight  : a single owl swoops across the screen (konami code)
+   - .owl-fountain: a 120-owl burst launched from screen centre (owl button)
+   -------------------------------------------------------------------------- */
+.owl-flight {
+  position: fixed;
+  top: 22vh;
+  left: -80px;
+  z-index: 9999;
+  font-size: 2.5rem;
+  pointer-events: none;
+  animation: owl-swoop 3.6s cubic-bezier(0.45, 0, 0.4, 1) forwards;
+}
+
+@keyframes owl-swoop {
+  0% {
+    transform: translate(0, 0) rotate(8deg) scaleX(-1);
+  }
+  30% {
+    transform: translate(35vw, 9vh) rotate(-6deg) scaleX(-1);
+  }
+  60% {
+    transform: translate(65vw, -4vh) rotate(5deg) scaleX(-1);
+  }
+  100% {
+    transform: translate(110vw, 3vh) rotate(-4deg) scaleX(-1);
+  }
+}
+
+/* Fountain owls: launch from screen centre, eased rise to an apex at
+   --hy, gravity-eased fall to --fy, drifting horizontally to --dx */
+.owl-fountain {
+  position: fixed;
+  top: 50vh;
+  left: 50vw;
+  z-index: 9999;
+  pointer-events: none;
+  animation-name: owl-fountain;
+  animation-fill-mode: both;
+}
+
+@keyframes owl-fountain {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.45, 1);
+  }
+  6% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc(-50% + var(--dx) * 0.55), calc(-50% + var(--hy))) rotate(calc(var(--rot) * 0.5));
+    animation-timing-function: cubic-bezier(0.55, 0, 0.85, 0.45);
+  }
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--fy))) rotate(var(--rot));
+  }
+}
+
+/* Centered owl button at the bottom of the page */
+.owl-btn {
+  border: none;
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  /* comfortable tap target around a small glyph */
+  padding: 0.5rem;
+}
+
+.owl-btn:hover {
+  opacity: 1;
+  transform: rotate(-12deg) scale(1.15);
+}
+
+/* Reduced motion: flying owls unmount on animationend, so hide rather than freeze */
+@media (prefers-reduced-motion: reduce) {
+  .owl-flight,
+  .owl-fountain {
+    display: none;
+  }
+}

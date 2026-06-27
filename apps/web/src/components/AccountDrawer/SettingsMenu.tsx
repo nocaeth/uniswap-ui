@@ -4,11 +4,9 @@ import { Button, Flex, Text } from 'ui/src'
 import { ChartBar } from 'ui/src/components/icons/ChartBar'
 import { Coins } from 'ui/src/components/icons/Coins'
 import { DocumentList } from 'ui/src/components/icons/DocumentList'
-import { FileListLock } from 'ui/src/components/icons/FileListLock'
 import { Gas } from 'ui/src/components/icons/Gas'
 import { Language } from 'ui/src/components/icons/Language'
 import { Power } from 'ui/src/components/icons/Power'
-import { ShieldCheck } from 'ui/src/components/icons/ShieldCheck'
 import { useAppFiatCurrency } from 'uniswap/src/features/fiatCurrency/hooks'
 import { useEnableCustomGasFeeEntry } from 'uniswap/src/features/gas/hooks/useEnableCustomGasFeeEntry'
 import { useCurrentLanguage, useLanguageInfo } from 'uniswap/src/features/language/hooks'
@@ -35,8 +33,6 @@ export function SettingsMenu({
   onClose,
   openLanguageSettings,
   openLocalCurrencySettings,
-  openPasskeySettings,
-  openRecoveryPhraseSettings,
   openPortfolioBalanceSettings,
   openStorageSettings,
   openNetworkCostSettings,
@@ -44,8 +40,6 @@ export function SettingsMenu({
   onClose: () => void
   openLanguageSettings: () => void
   openLocalCurrencySettings: () => void
-  openPasskeySettings: () => void
-  openRecoveryPhraseSettings: () => void
   openPortfolioBalanceSettings: () => void
   openStorageSettings: () => void
   openNetworkCostSettings: () => void
@@ -93,22 +87,6 @@ export function SettingsMenu({
 
         <Flex gap="$gap8">
           <SectionHeader title={t('settings.section.privacyAndSecurity')} />
-          {connectedWithEmbeddedWallet && (
-            <SettingsButton
-              icon={<ShieldCheck size="$icon.24" color="$neutral2" />}
-              title={t('settings.setting.loginMethods')}
-              onClick={openPasskeySettings}
-              testId={TestID.PasskeySettings}
-            />
-          )}
-          {connectedWithEmbeddedWallet && (
-            <SettingsButton
-              icon={<FileListLock size="$icon.24" color="$neutral2" />}
-              title={t('settings.setting.recoveryPhrase.title')}
-              onClick={openRecoveryPhraseSettings}
-              testId={TestID.WalletSettingsRecoveryPhrase}
-            />
-          )}
           <AnalyticsToggle />
         </Flex>
 

@@ -58,14 +58,12 @@ export function LiquidityPositionCardLoader() {
 export const LiquidityPositionCard = memo(function LiquidityPositionCard({
   liquidityPosition,
   showVisibilityOption,
-  showMigrateButton = false,
   disabled = false,
   isVisible = true,
   readOnly = false,
 }: {
   liquidityPosition: PositionInfo
   showVisibilityOption?: boolean
-  showMigrateButton?: boolean
   disabled?: boolean
   isVisible?: boolean
   readOnly?: boolean
@@ -172,11 +170,7 @@ export const LiquidityPositionCard = memo(function LiquidityPositionCard({
           overflow="hidden"
           $md={{ row: false, alignItems: 'flex-start', gap: '$gap20' }}
         >
-          <LiquidityPositionInfo
-            positionInfo={liquidityPosition}
-            isMiniVersion={isSmallScreen}
-            showMigrateButton={showMigrateButton}
-          />
+          <LiquidityPositionInfo positionInfo={liquidityPosition} isMiniVersion={isSmallScreen} />
           <WrappedLiquidityPositionSparkline
             version={liquidityPosition.version}
             chainId={liquidityPosition.chainId}

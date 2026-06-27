@@ -1,125 +1,43 @@
-import { isExtensionApp } from '@universe/environment'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
-import { Flex, useIsDarkMode, useShadowPropsShort, useSporeColors } from 'ui/src'
+import { Flex, useShadowPropsShort } from 'ui/src'
 import { ArrowDownCircle } from 'ui/src/components/icons/ArrowDownCircle'
-import { Buy } from 'ui/src/components/icons/Buy'
 import { useDeviceDimensions } from 'ui/src/hooks/useDeviceDimensions'
 import type { ActionCardItem } from 'uniswap/src/components/misc/ActionCard'
 import { ActionCard } from 'uniswap/src/components/misc/ActionCard'
-import type { FORServiceProvider } from 'uniswap/src/features/fiatOnRamp/types'
-import { useCexTransferProviders } from 'uniswap/src/features/fiatOnRamp/useCexTransferProviders'
-import { getOptionalServiceProviderLogo } from 'uniswap/src/features/fiatOnRamp/utils'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
 import { TestID } from 'uniswap/src/test/fixtures/testIDs'
-import { useEvent } from 'utilities/src/react/hooks'
-import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
-import { useCexTransferProviderPress } from '~/components/ReceiveCryptoModal/useCexTransferProviderPress'
 import { useOpenReceiveCryptoModal } from '~/components/ReceiveCryptoModal/useOpenReceiveCryptoModal'
 import { ReceiveModalState } from '~/types/receiveCryptoModal'
 
-const ICON_SIZE = 28
-const ICON_SHIFT = 18
 const EMPTY_WALLET_CARD_WIDTH = 464
 const APP_PADDING = 16
-
-function CEXTransferLogo({ providers }: { providers: FORServiceProvider[] }) {
-  const colors = useSporeColors()
-  const isDarkMode = useIsDarkMode()
-  const displayProviders = providers.slice(0, 3)
-  const totalLogos = displayProviders.length
-
-  return (
-    <Flex height={ICON_SIZE} width={totalLogos === 1 ? ICON_SIZE : ICON_SIZE + (totalLogos - 1) * ICON_SHIFT}>
-      {displayProviders.map((provider, index) => (
-        <Flex
-          key={provider.serviceProvider}
-          position="absolute"
-          left={totalLogos === 1 ? 0 : index * ICON_SHIFT}
-          borderRadius="$rounded8"
-          zIndex={-index}
-        >
-          <img
-            key={provider.serviceProvider}
-            width={ICON_SIZE}
-            height={ICON_SIZE}
-            src={getOptionalServiceProviderLogo(provider.logos, isDarkMode)}
-            alt={provider.name}
-            style={{
-              borderRadius: 8,
-              borderWidth: 2,
-              borderStyle: 'solid',
-              borderColor: colors.surface1.val,
-            }}
-          />
-        </Flex>
-      ))}
-    </Flex>
-  )
-}
 
 export const EmptyWalletCards = (
   {
     horizontalLayout,
     growFullWidth,
-    buyElementName,
     receiveElementName,
-    cexTransferElementName,
   }: {
     horizontalLayout?: boolean
     growFullWidth?: boolean
-    buyElementName: ElementName
     receiveElementName: ElementName
-    cexTransferElementName: ElementName
   } = {
     horizontalLayout: false,
     growFullWidth: false,
-    buyElementName: ElementName.EmptyStateBuy,
     receiveElementName: ElementName.EmptyStateReceive,
-    cexTransferElementName: ElementName.EmptyStateCEXTransfer,
   },
 ): JSX.Element => {
   const { t } = useTranslation()
-  const providers = useCexTransferProviders()
-  const accountDrawer = useAccountDrawer()
-  const navigate = useNavigate()
   const { fullWidth } = useDeviceDimensions()
   const shadowProps = useShadowPropsShort()
-
-  const handleBuyCryptoClick = useEvent(() => {
-    accountDrawer.close()
-    navigate(`/buy`, isExtensionApp ? { replace: true } : undefined)
-  })
 
   const handleReceiveCryptoClick = useOpenReceiveCryptoModal({
     modalState: ReceiveModalState.DEFAULT,
   })
-  const openCexTransferProviderList = useOpenReceiveCryptoModal({
-    modalState: ReceiveModalState.CEX_TRANSFER,
-  })
-  const singleCexProvider = providers.length === 1 ? providers[0] : undefined
-  const { onPress: onPressSingleCexProvider } = useCexTransferProviderPress(singleCexProvider, {
-    onWidgetError: openCexTransferProviderList,
-  })
-  const handleCEXTransferClick = useEvent(() => {
-    if (singleCexProvider) {
-      onPressSingleCexProvider()
-    } else {
-      openCexTransferProviderList()
-    }
-  })
 
   const options: ActionCardItem[] = useMemo(
     () => [
-      {
-        title: t('home.tokens.empty.action.buy.title'),
-        blurb: t('home.tokens.empty.action.buy.description'),
-        elementName: buyElementName,
-        icon: <Buy color="$accent1" size="$icon.28" />,
-        onPress: handleBuyCryptoClick,
-        testId: TestID.EmptyStateBuy,
-      },
       {
         title: t('home.empty.transfer'),
         blurb: t('home.empty.transfer.description'),
@@ -128,28 +46,8 @@ export const EmptyWalletCards = (
         onPress: handleReceiveCryptoClick,
         testId: TestID.WalletReceiveCrypto,
       },
-      ...(providers.length > 0
-        ? [
-            {
-              title: t('home.empty.cexTransfer'),
-              blurb: t('home.empty.cexTransfer.description'),
-              elementName: cexTransferElementName,
-              icon: <CEXTransferLogo providers={providers} />,
-              onPress: handleCEXTransferClick,
-            },
-          ]
-        : []),
     ],
-    [
-      providers,
-      handleBuyCryptoClick,
-      handleReceiveCryptoClick,
-      handleCEXTransferClick,
-      t,
-      buyElementName,
-      receiveElementName,
-      cexTransferElementName,
-    ],
+    [handleReceiveCryptoClick, t, receiveElementName],
   )
 
   // Determine layout mode
@@ -186,7 +84,7 @@ export const EmptyWalletCards = (
             horizontalLayout
               ? {
                   display: 'grid',
-                  gridTemplateColumns: providers.length > 0 ? '1fr 1fr 1fr' : '1fr 1fr',
+                  gridTemplateColumns: '1fr',
                 }
               : undefined
           }

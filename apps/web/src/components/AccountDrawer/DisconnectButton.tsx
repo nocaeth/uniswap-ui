@@ -19,21 +19,14 @@ import { useAccountsStore, useActiveConnector, useActiveWallet } from '~/feature
 import { type ExternalWallet } from '~/features/accounts/store/types'
 import { useDisconnect } from '~/hooks/useDisconnect'
 import { useIsEmbeddedWallet } from '~/hooks/useIsEmbeddedWallet'
-import { useSignOutWithPasskey } from '~/hooks/useSignOutWithPasskey'
 
 export function useOnDisconnect() {
   const disconnect = useDisconnect()
-
-  const connectedWithEmbeddedWallet = useIsEmbeddedWallet()
-  const { signOutWithPasskey } = useSignOutWithPasskey()
 
   const accountDrawer = useAccountDrawer()
   const dispatch = useDispatch()
 
   return useEvent(async () => {
-    if (connectedWithEmbeddedWallet) {
-      signOutWithPasskey()
-    }
     dispatch(setIsTestnetModeEnabled(false))
     disconnect()
     accountDrawer.close()

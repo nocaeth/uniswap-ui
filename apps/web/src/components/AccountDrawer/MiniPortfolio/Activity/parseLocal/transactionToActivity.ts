@@ -31,10 +31,6 @@ import {
   parseSwap,
 } from '~/components/AccountDrawer/MiniPortfolio/Activity/parseLocal/transactions/parseSwap'
 import {
-  parseToucanBid,
-  parseWithdrawBidAndClaimTokens,
-} from '~/components/AccountDrawer/MiniPortfolio/Activity/parseLocal/transactions/parseToucan'
-import {
   isUniswapXDetails,
   parseUniswapXOrderLocal,
 } from '~/components/AccountDrawer/MiniPortfolio/Activity/parseLocal/transactions/parseUniswapX'
@@ -143,19 +139,6 @@ export async function transactionToActivity({
         send: info,
         formatNumber,
         chainId,
-      })
-    } else if (info.type === TransactionType.ToucanBid) {
-      additionalFields = await parseToucanBid({
-        bid: info,
-        formatNumber,
-        chainId,
-      })
-    } else if (info.type === TransactionType.ToucanWithdrawBidAndClaimTokens) {
-      additionalFields = await parseWithdrawBidAndClaimTokens({
-        withdraw: info,
-        formatNumber,
-        chainId,
-        status: details.status,
       })
     } else if (info.type === TransactionType.LPIncentivesClaimRewards) {
       additionalFields = await parseLpIncentivesClaim({

@@ -74,15 +74,6 @@ export type RecoverWalletModalParams = {
   initialState: RecoverWalletModalInitialState
 }
 
-type GetTheAppModalInitialState = {
-  initialInnerPage?: 'mobile'
-}
-
-export type GetTheAppModalParams = {
-  name: typeof ModalName.GetTheApp
-  initialState: GetTheAppModalInitialState
-}
-
 type UnitagRateLimitSpeedbumpModalInitialState = {
   walletAddress: string
   walletId: string
@@ -105,7 +96,6 @@ export type OpenModalParams =
   | RemoveBackupLoginModalParams
   | DataApiOutageModalParams
   | RecoverWalletModalParams
-  | GetTheAppModalParams
   | UnitagRateLimitSpeedbumpModalParams
 
 type CloseModalParams = ModalNameType

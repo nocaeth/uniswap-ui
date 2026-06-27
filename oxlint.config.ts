@@ -131,12 +131,6 @@ export const sharedRestrictedImportPaths = [
     message: 'Do not import env vars from react-native-dotenv. Use getConfig() instead.',
   },
   {
-    name: 'wallet/src/data/apollo/usePersistedApolloClient',
-    importNames: ['usePersistedApolloClient'],
-    message:
-      "This hook should only be used once at the top level where the React app is initialized. Use `import { useApolloClient } from '@apollo/client'` to get the default apollo client elsewhere.",
-  },
-  {
     name: 'expo-localization',
     message:
       'Avoid using due to issue with unsupported locales. Use utilities/src/device/locales.ts getDeviceLocales instead',
@@ -194,10 +188,6 @@ export const sharedRestrictedImportPaths = [
     message: 'Avoid importing directly from the uniswap/src barrel which causes circular imports.',
   },
   {
-    name: 'wallet/src',
-    message: 'Avoid importing directly from the wallet/src barrel which causes circular imports.',
-  },
-  {
     name: '@uniswap/sdk-core',
     importNames: ['ChainId'],
     message: "Don't use ChainId from @uniswap/sdk-core. Use the UniverseChainId from universe/uniswap.",
@@ -221,10 +211,6 @@ export const sharedRestrictedImportPaths = [
     name: 'uniswap/src/features/dataApi/balances/balancesRest',
     importNames: ['useRESTPortfolioTotalValue'],
     message: 'Use the wrapper hooks `usePortfolioTotalValue`, `useAccountListData` or `usePortfolioBalances` instead.',
-  },
-  {
-    name: 'wallet/src/components/ErrorBoundary/restart',
-    message: 'Use `wallet/src/components/ErrorBoundary/restartApp` instead.',
   },
 ] as const
 
@@ -613,6 +599,19 @@ export default defineConfig({
     // ═══════════════════════════════════════════════════════════════════
     // SHARED OVERRIDES (apply across all projects)
     // ═══════════════════════════════════════════════════════════════════
+
+    // ── Gnosis-only fork: custom calldata builders ────────────────────
+    // The hand-written Gnosis liquidity/quote calldata builders use positional
+    // args mirroring the on-chain ABI argument order, so the 2-param cap and
+    // 500-line cap don't fit. Relax them here (same pattern as the app-dir
+    // overrides below) rather than reshaping working calldata logic.
+    {
+      files: ['packages/uniswap/src/data/apiClients/liquidityService/gnosis/**'],
+      rules: {
+        'max-params': 'off',
+        'max-lines': 'off',
+      },
+    },
 
     // ── Migration files: relax type rules ─────────────────────────────
     {

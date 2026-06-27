@@ -49,6 +49,8 @@ export function getQuicknodeChainId(chainId: UniverseChainId): string {
       return 'bsc'
     case UniverseChainId.Celo:
       return 'celo-mainnet'
+    case UniverseChainId.Gnosis:
+      return 'gnosis-mainnet'
     case UniverseChainId.Linea:
       return 'linea-mainnet'
     case UniverseChainId.MegaETH:

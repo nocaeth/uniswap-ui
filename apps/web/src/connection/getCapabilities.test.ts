@@ -1,12 +1,11 @@
 import { getFeatureFlaggedChainIds } from 'uniswap/src/features/chains/hooks/useFeatureFlaggedChainIds'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { getEnabledChains } from 'uniswap/src/features/chains/utils'
-import { getCapabilitiesCore } from 'wallet/src/features/batchedTransactions/utils'
-import type { Capability } from 'wallet/src/features/dappRequests/types'
 import { getEmbeddedWalletCapabilities } from '~/connection/getCapabilities'
+import { getCapabilitiesCore, type Capability } from '~/connection/walletCapabilities'
 
-vi.mock('wallet/src/features/batchedTransactions/utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('wallet/src/features/batchedTransactions/utils')>()),
+vi.mock('~/connection/walletCapabilities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/connection/walletCapabilities')>()),
   getCapabilitiesCore: vi.fn(),
 }))
 vi.mock('uniswap/src/features/chains/utils', async (importOriginal) => ({

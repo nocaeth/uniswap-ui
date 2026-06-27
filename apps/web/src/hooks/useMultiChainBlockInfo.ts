@@ -72,7 +72,7 @@ export interface BlockTimestampRequest {
  *
  * @example
  * ```typescript
- * const requests = auctions.flatMap(a => [
+ * const requests = items.flatMap(a => [
  *   { chainId: a.chainId, blockNumber: a.startBlock },
  *   { chainId: a.chainId, blockNumber: a.endBlock }
  * ])

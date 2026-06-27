@@ -9,7 +9,7 @@ export const getExploreTitle = (path?: string) => {
   const tabsToFind: string[] = [ExploreTab.Pools, ExploreTab.Tokens, ExploreTab.Transactions]
   const tab = parts?.find((part) => tabsToFind.includes(part)) ?? ExploreTab.Tokens
 
-  const networkPart: string = parts?.find(isChainUrlParam) ?? 'ethereum'
+  const networkPart: string = parts?.find(isChainUrlParam) ?? 'gnosis'
   const network = capitalize(networkPart)
 
   switch (tab) {
@@ -38,7 +38,7 @@ export const getExploreTitle = (path?: string) => {
 
 export const getExploreDescription = (path?: string) => {
   const parts = path?.split('/').filter((part) => part !== '')
-  const network: string = parts?.find(isChainUrlParam) ?? 'ethereum'
+  const network: string = parts?.find(isChainUrlParam) ?? 'gnosis'
 
   return i18n.t(`web.explore.description`, {
     network: capitalize(network),

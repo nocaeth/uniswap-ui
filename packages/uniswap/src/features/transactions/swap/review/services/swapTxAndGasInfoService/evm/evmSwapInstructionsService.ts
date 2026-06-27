@@ -6,7 +6,7 @@ import type {
   UnwrapQuoteResponse,
   WrapQuoteResponse,
 } from '@universe/api'
-import type { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type {
   SignDelegationAuthorizationFn,
   SwapDelegationInfo,
@@ -24,6 +24,7 @@ import {
 } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/evm/evmSwapRepository'
 import type { PresignPermitFn } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/evm/hooks'
 import { createPrepareSwapRequestParams } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/utils'
+import { createGnosisEVMSwapRepository } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/gnosisSwapRepository'
 import { ApprovalAction } from 'uniswap/src/features/transactions/swap/types/trade'
 import { tradingApiToUniverseChainId } from 'uniswap/src/features/transactions/swap/utils/tradingApi'
 
@@ -144,9 +145,19 @@ export function createEVMSwapInstructionsService(ctx: EVMSwapInstructionsService
     swapRepository: createLegacyEVMSwapRepository(),
   })
 
+  // Gnosis builds its swap tx client-side (UniversalRouter), bypassing the Trading API.
+  const gnosisInstructionsService = createLegacyEVMSwapInstructionsService({
+    ...ctx,
+    swapRepository: createGnosisEVMSwapRepository(),
+  })
+
   const service: EVMSwapInstructionsService = {
     getSwapInstructions: async (params) => {
       const chainId = tradingApiToUniverseChainId(params.swapQuoteResponse.quote.chainId)
+
+      if (chainId === UniverseChainId.Gnosis) {
+        return gnosisInstructionsService.getSwapInstructions(params)
+      }
 
       if (smartContractWalletInstructionService && ctx.getSwapDelegationInfo?.(chainId).delegationAddress) {
         if (params.swapQuoteResponse.sponsorshipInfo?.sponsored) {

@@ -24,7 +24,7 @@ describe('didUserReject', () => {
   it('detects rejection on TransactionStepFailedError.originalError', () => {
     const original = Object.assign(new Error('User rejected'), { code: 4001 })
     const wrapped = new TransactionStepFailedError({
-      message: 'swapTransaction failed during auctionLaunch',
+      message: 'swapTransaction failed',
       step: { type: TransactionStepType.SwapTransaction } as never,
       originalError: original,
     })

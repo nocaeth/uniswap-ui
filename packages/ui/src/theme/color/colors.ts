@@ -138,6 +138,10 @@ export const networkColors = {
     light: '#222222',
     dark: '#FCFF52',
   },
+  gnosis: {
+    light: '#133629',
+    dark: '#3e6957',
+  },
   monad: {
     light: '#735BF8',
     dark: '#836EF9',
@@ -214,15 +218,15 @@ const sporeLight = {
   surface4: 'rgba(255, 255, 255, 0.64)',
   surface5: 'rgba(0,0,0,0.04)',
   surface5Hovered: 'rgba(0,0,0,0.06)',
-  accent1: '#FF37C7',
-  accent1Hovered: '#E500A5',
-  accent2: 'rgba(255, 55, 199, 0.08)',
-  accent2Hovered: 'rgba(255, 55, 199, 0.12)',
-  accent2Solid: '#FFF3FC',
+  accent1: '#FF8566',
+  accent1Hovered: '#E56B4D',
+  accent2: 'rgba(255, 133, 102, 0.08)',
+  accent2Hovered: 'rgba(255, 133, 102, 0.12)',
+  accent2Solid: '#FFF4F0',
   accent3: '#222222',
   accent3Hovered: colors.black,
 
-  DEP_accentSoft: '#FC72FF33', //33 = 20%
+  DEP_accentSoft: '#FF856633', //33 = 20%
   DEP_blue400: '#4C82FB',
 
   statusSuccess: '#0C8911',
@@ -263,16 +267,16 @@ const sporeDark = {
   surface4: 'rgba(255,255,255,0.20)',
   surface5: 'rgba(0,0,0,0.04)',
   surface5Hovered: 'rgba(0,0,0,0.06)',
-  accent1: '#FF37C7',
-  accent1Hovered: '#E500A5',
+  accent1: '#FF8566',
+  accent1Hovered: '#E56B4D',
 
-  accent2: 'rgba(255, 55, 199, 0.08)',
-  accent2Hovered: 'rgba(255, 55, 199, 0.12)',
-  accent2Solid: '#261621',
+  accent2: 'rgba(255, 133, 102, 0.08)',
+  accent2Hovered: 'rgba(255, 133, 102, 0.12)',
+  accent2Solid: '#261A16',
   accent3: colors.white,
   accent3Hovered: '#F5F5F5',
 
-  DEP_accentSoft: '#FC72FF33', //33 = 20%
+  DEP_accentSoft: '#FF856633', //33 = 20%
   DEP_blue400: '#4C82FB',
 
   statusSuccess: '#21C95E',
@@ -360,6 +364,7 @@ export const colorsLight = {
   chain_81457: networkColors.blast.light,
   chain_56: networkColors.bnb.light,
   chain_42220: networkColors.celo.light,
+  chain_100: networkColors.gnosis.light,
   chain_43114: networkColors.avalanche.light,
   chain_324: networkColors.zksync.light,
   chain_480: networkColors.worldchain.light,
@@ -456,6 +461,7 @@ export const colorsDark = {
   chain_81457: networkColors.blast.dark,
   chain_56: networkColors.bnb.dark,
   chain_42220: networkColors.celo.dark,
+  chain_100: networkColors.gnosis.dark,
   chain_43114: networkColors.avalanche.dark,
   chain_324: networkColors.zksync.dark,
   chain_480: networkColors.worldchain.dark,

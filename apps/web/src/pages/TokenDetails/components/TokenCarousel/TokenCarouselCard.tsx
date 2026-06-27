@@ -11,7 +11,7 @@ import { SparklineMap } from '~/appGraphql/data/types'
 import { SparklineChart } from '~/components/Charts/SparklineChart'
 import { DeltaArrow } from '~/components/DeltaArrow/DeltaArrow'
 import { multichainTokenToDisplayToken } from '~/features/Explore/state/listTokens/utils/multichainTokenToDisplayToken'
-import { useNavigateToTokenDetails } from '~/pages/Portfolio/Tokens/hooks/useNavigateToTokenDetails'
+import { useNavigateToTokenDetails } from '~/hooks/useNavigateToTokenDetails'
 import type { TokenStat } from '~/types/explore'
 
 export const TOKEN_CARD_WIDTH = 168

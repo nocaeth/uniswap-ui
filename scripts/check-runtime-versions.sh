@@ -15,6 +15,13 @@ IS_VERCEL=${VERCEL:-0}
 # Track if any errors occurred
 HAS_ERROR=0
 
+# Allow skipping the gate in environments that provide their own pinned runtime and
+# shouldn't hinge on exact version-string matching — e.g. container image builds.
+if [ "${SKIP_RUNTIME_VERSION_CHECK:-0}" = "1" ]; then
+    echo -e "${YELLOW}Skipping runtime version check (SKIP_RUNTIME_VERSION_CHECK=1)${NC}"
+    exit 0
+fi
+
 # ============================================
 # Check Bun Version
 # ============================================

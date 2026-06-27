@@ -12,7 +12,6 @@ const ConnectedAccountBlocked = createLazy(() => import('~/components/ConnectedA
 const PendingWalletConnectionModal = createLazy(
   () => import('~/components/WalletModal/PendingWalletConnectionModal/PendingWalletConnectionModal'),
 )
-const UniwalletModal = createLazy(() => import('~/components/AccountDrawer/UniwalletModal'))
 const OffchainActivityModal = createLazy(() => import('~/components/modals/OffchainActivityModal'))
 const TransactionDetailsModalDispatcher = createLazy(() =>
   import('~/app/layout/TopLevelModals/TransactionDetailsModalDispatcher').then((module) => ({
@@ -23,17 +22,11 @@ const UkDisclaimerModal = createLazy(() => import('~/app/layout/TopLevelModals/U
 const TestnetModeModal = createLazy(() =>
   import('uniswap/src/features/testnets/TestnetModeModal').then((module) => ({ default: module.TestnetModeModal })),
 )
-const GetTheAppModal = createLazy(() =>
-  import('~/components/NavBar/DownloadApp/Modal').then((module) => ({ default: module.GetTheAppModal })),
-)
 const PrivacyPolicyModal = createLazy(() =>
   import('~/components/PrivacyPolicy').then((module) => ({ default: module.PrivacyPolicyModal })),
 )
 const PrivacyChoicesModal = createLazy(() =>
   import('~/components/PrivacyChoices').then((module) => ({ default: module.PrivacyChoicesModal })),
-)
-const DisclosuresModal = createLazy(() =>
-  import('~/components/Disclosures').then((module) => ({ default: module.DisclosuresModal })),
 )
 const FeatureFlagModal = createLazy(() => import('~/components/FeatureFlagModal/FeatureFlagModal'))
 const DevFlagsBox = createLazy(() => import('~/dev/DevFlagsBox'))
@@ -55,16 +48,9 @@ const DelegationMismatchModal = createLazy(() =>
     default: module.default,
   })),
 )
-const HelpModal = createLazy(() =>
-  import('~/components/HelpModal/HelpModal').then((module) => ({ default: module.HelpModal })),
-)
 
 const ReceiveCryptoModal = createLazy(() =>
   import('~/components/ReceiveCryptoModal').then((module) => ({ default: module.ReceiveCryptoModal })),
-)
-
-const SendModal = createLazy(() =>
-  import('~/pages/Swap/Send/SendFormModal').then((module) => ({ default: module.SendFormModal })),
 )
 
 const BridgedAssetModal = createLazy(() =>
@@ -95,38 +81,6 @@ const DataApiOutageModal = createLazy(() =>
   import('~/components/DataApiOutageModal').then((module) => ({ default: module.DataApiOutageModal })),
 )
 
-const AddBackupLoginModal = createLazy(() =>
-  import('~/components/Passkey/AddBackupLoginModal').then((module) => ({ default: module.AddBackupLoginModal })),
-)
-
-const AddPasskeyModal = createLazy(() =>
-  import('~/components/Passkey/AddPasskeyModal').then((module) => ({ default: module.AddPasskeyModal })),
-)
-const RecoverWalletModal = createLazy(() =>
-  import('~/components/Passkey/RecoverWalletModal').then((module) => ({ default: module.RecoverWalletModal })),
-)
-
-const RemovePasskeyModal = createLazy(() =>
-  import('~/components/Passkey/RemovePasskeyModal').then((module) => ({ default: module.RemovePasskeyModal })),
-)
-
-const RemoveBackupLoginModal = createLazy(() =>
-  import('~/components/Passkey/RemoveBackupLoginModal').then((module) => ({
-    default: module.RemoveBackupLoginModal,
-  })),
-)
-
-const UnitagRateLimitSpeedbumpModal = createLazy(() =>
-  import('~/components/UnitagRateLimitSpeedbump/UnitagRateLimitSpeedbumpModal').then((module) => ({
-    default: module.UnitagRateLimitSpeedbumpModal,
-  })),
-)
-
-const UnsupportedBrowserModal = createLazy(() =>
-  import('~/components/Passkey/UnsupportedBrowserModal').then((module) => ({
-    default: module.UnsupportedBrowserModal,
-  })),
-)
 function ModalLoadingFallback(): null {
   return null
 }
@@ -162,11 +116,6 @@ export const modalRegistry: ModalRegistry = {
     component: ConnectedAccountBlocked,
     shouldMount: (state) => state.application.openModal?.name === ModalName.BlockedAccount,
   },
-  [ModalName.UniWalletConnect]: {
-    component: UniwalletModal,
-    // This modal is opened via WalletConnect Uri, not redux state, so it should always be mounted
-    shouldMount: () => true,
-  },
   [ModalName.OffchainActivity]: {
     component: OffchainActivityModal,
     shouldMount: () => true,
@@ -183,10 +132,6 @@ export const modalRegistry: ModalRegistry = {
     component: TestnetModeModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.TestnetMode,
   },
-  [ModalName.GetTheApp]: {
-    component: GetTheAppModal,
-    shouldMount: () => true,
-  },
   [ModalName.PendingWalletConnection]: {
     component: PendingWalletConnectionModal,
     shouldMount: () => true,
@@ -194,10 +139,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.PrivacyPolicy]: {
     component: PrivacyPolicyModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.PrivacyPolicy,
-  },
-  [ModalName.Disclosures]: {
-    component: DisclosuresModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.Disclosures,
   },
   [ModalName.PrivacyChoices]: {
     component: PrivacyChoicesModal,
@@ -235,17 +176,9 @@ export const modalRegistry: ModalRegistry = {
     component: DelegationMismatchModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.DelegationMismatch,
   },
-  [ModalName.Help]: {
-    component: HelpModal,
-    shouldMount: () => true,
-  },
   [ModalName.ReceiveCryptoModal]: {
     component: ReceiveCryptoModal,
     shouldMount: () => true,
-  },
-  [ModalName.Send]: {
-    component: SendModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.Send,
   },
   [ModalName.BridgedAsset]: {
     component: BridgedAssetModal,
@@ -266,34 +199,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.DataApiOutage]: {
     component: DataApiOutageModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.DataApiOutage,
-  },
-  [ModalName.AddBackupLogin]: {
-    component: AddBackupLoginModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.AddBackupLogin,
-  },
-  [ModalName.AddPasskey]: {
-    component: AddPasskeyModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.AddPasskey,
-  },
-  [ModalName.RecoverWallet]: {
-    component: RecoverWalletModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.RecoverWallet,
-  },
-  [ModalName.DeletePasskey]: {
-    component: RemovePasskeyModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.DeletePasskey,
-  },
-  [ModalName.RemoveBackupLogin]: {
-    component: RemoveBackupLoginModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.RemoveBackupLogin,
-  },
-  [ModalName.UnitagRateLimitSpeedbump]: {
-    component: UnitagRateLimitSpeedbumpModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.UnitagRateLimitSpeedbump,
-  },
-  [ModalName.UnsupportedBrowser]: {
-    component: UnsupportedBrowserModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.UnsupportedBrowser,
   },
 } as const
 

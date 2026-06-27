@@ -76,11 +76,19 @@ export function useTokenSectionsForSwap({
 
   const recentlySearchedTokenOptions = useRecentlySearchedTokens(chainFilter)
 
-  const error =
-    (!portfolioTokenOptions && portfolioTokenOptionsError) ||
-    (!trendingTokenOptions && trendingTokenOptionsError) ||
-    (!commonTokenOptions && commonTokenOptionsError) ||
-    (!bridgingTokenOptions && bridgingTokenOptionsError)
+  // GNOSIS-ONLY: don't fail the whole selector when only backend-dependent sections
+  // (trending/portfolio/bridging) error — Gnosis is not served by Uniswap's token backend.
+  // Render whatever sections loaded (e.g. the local COMMON_BASES list); only surface an
+  // error when nothing loaded at all.
+  const hasAnyOptions = Boolean(
+    portfolioTokenOptions?.length ||
+    trendingTokenOptions?.length ||
+    commonTokenOptions?.length ||
+    bridgingTokenOptions?.length,
+  )
+  const error = hasAnyOptions
+    ? undefined
+    : portfolioTokenOptionsError || trendingTokenOptionsError || commonTokenOptionsError || bridgingTokenOptionsError
 
   const loading =
     (!portfolioTokenOptions && portfolioTokenOptionsLoading) ||

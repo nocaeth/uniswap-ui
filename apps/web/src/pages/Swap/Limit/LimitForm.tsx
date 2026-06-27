@@ -37,13 +37,11 @@ import { useOnSwitchTokens } from '~/features/Swap/state/hooks'
 import type { CurrencyState } from '~/features/Swap/state/types'
 import { useSwapAndLimitContext } from '~/features/Swap/state/useSwapContext'
 import { ArrowContainer, ArrowWrapper, SwapSection } from '~/features/Swap/styled'
-import { useAccount } from '~/hooks/useAccount'
 import { usePermit2Allowance, AllowanceState } from '~/hooks/usePermit2Allowance'
 import { ConfirmLimitOrderModal } from '~/pages/Swap/Limit/ConfirmLimitOrderModal'
 import { LimitExpirySection } from '~/pages/Swap/Limit/LimitExpirySection'
 import { LimitOrdersNotSupportedBanner } from '~/pages/Swap/Limit/LimitOrdersNotSupportedBanner'
 import { LimitPriceError } from '~/pages/Swap/Limit/LimitPriceError'
-import { OpenLimitOrdersButton } from '~/pages/Swap/Limit/OpenLimitOrdersButton'
 import { getDefaultPriceInverted } from '~/pages/Swap/Limit/state/hooks'
 import { LimitContextProvider, useLimitContext } from '~/pages/Swap/Limit/state/LimitContext'
 import { useLimitOrderCallback } from '~/pages/Swap/Limit/useLimitOrderCallback'
@@ -81,7 +79,6 @@ type LimitFormProps = {
 // oxlint-disable-next-line complexity
 function LimitForm({ onCurrencyChange }: LimitFormProps) {
   const { t } = useTranslation()
-  const account = useAccount()
   const { chainId } = useMultichainContext()
   const {
     currencyState: { inputCurrency, outputCurrency },
@@ -480,14 +477,6 @@ function LimitForm({ onCurrencyChange }: LimitFormProps) {
             )}
           </Text>
         </Flex>
-      )}
-      {account.address && (
-        <OpenLimitOrdersButton
-          account={account.address}
-          openLimitsMenu={() => {
-            window.open('/portfolio', '_blank')
-          }}
-        />
       )}
       {limitOrderTrade && showConfirm && (
         <ConfirmLimitOrderModal

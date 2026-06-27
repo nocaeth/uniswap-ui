@@ -5,13 +5,11 @@ import { Button, Flex, Switch, Text, TouchableArea } from 'ui/src'
 import { CopyAlt } from 'ui/src/components/icons/CopyAlt'
 import { RotatableChevron } from 'ui/src/components/icons/RotatableChevron'
 import { CopyToClipboard } from 'uniswap/src/components/CopyHelper/CopyHelper'
-import { UniswapHelpUrls } from 'uniswap/src/constants/urls'
 import { logger } from 'utilities/src/logger/logger'
 import { useIsMobile } from '~/hooks/screenSize/useIsMobile'
 import { deprecatedStyled } from '~/lib/deprecated-styled'
 import { persistor } from '~/state'
 import { useAppStateResetter } from '~/state/reset/appResetter'
-import { ExternalLink } from '~/theme/components/Links'
 
 const Code = deprecatedStyled.code`
   font-weight: 485;
@@ -94,18 +92,6 @@ const Fallback = ({ error, eventId }: { error: Error; eventId: string | null }) 
           </Text>
         </Flex>
         <Flex width="100%" row gap="$gap12">
-          <ExternalLink
-            style={{ flexGrow: 1, flexBasis: 0 }}
-            id="get-support-on-discord"
-            href={UniswapHelpUrls.requestUrl}
-            target="_blank"
-          >
-            <Flex row>
-              <Button emphasis="secondary" size="small">
-                {t('common.getSupport.button')}
-              </Button>
-            </Flex>
-          </ExternalLink>
           <Flex row flexBasis={0} flexGrow={1}>
             <Button
               emphasis="primary"

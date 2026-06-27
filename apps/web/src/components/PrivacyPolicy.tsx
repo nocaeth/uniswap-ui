@@ -11,7 +11,6 @@ import { ModalName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import { Card, DarkGrayCard } from '~/components/Card/cards'
 import { useModalState } from '~/hooks/useModalState'
-import { ExternalLink } from '~/theme/components/Links'
 
 export function PrivacyPolicyModal() {
   const node = useRef<HTMLDivElement>(undefined)
@@ -81,10 +80,7 @@ function PrivacyPolicy() {
         name: 'TRM Labs',
         description: (
           <>
-            {t('privacy.trm')}{' '}
-            <ExternalLink href="https://support.uniswap.org/hc/en-us/articles/8671777747597-Address-Screening-Guide">
-              {t('common.button.learn')}
-            </ExternalLink>
+            {t('privacy.trm')}
           </>
         ),
       },
@@ -132,14 +128,6 @@ function PrivacyPolicy() {
               </Flex>
             </DarkGrayCard>
           ))}
-          <Flex row width="100%" justifyContent="center" mb="$spacing16">
-            <ExternalLink
-              href="https://help.uniswap.org/en/articles/5675203-terms-of-service-faq"
-              style={{ fontSize: 12 }}
-            >
-              {t('common.button.learn')}
-            </ExternalLink>
-          </Flex>
         </Flex>
       </Flex>
     </Flex>

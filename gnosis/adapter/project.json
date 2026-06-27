@@ -1,0 +1,15 @@
+{
+  "name": "gnosis-analytics-adapter",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "gnosis/adapter/src",
+  "projectType": "application",
+  "tags": ["scope:gnosis", "type:service"],
+  "targets": {
+    "typecheck": {
+      "command": "bun run typecheck",
+      "options": {
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}

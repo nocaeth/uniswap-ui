@@ -1,0 +1,30 @@
+{
+  "name": "gnosis-analytics-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Serves Uniswap's Data API (ExploreStats, ConnectRPC) + GraphQL contract on top of a SQLite store backfilled from Gnosis via Envio HyperSync.",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "backfill": "bun src/backfill.ts",
+    "sync-schema": "cp ../../packages/api/src/clients/graphql/schema.graphql ./schema.graphql"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^1.10.0",
+    "@connectrpc/connect": "^1.4.0",
+    "@connectrpc/connect-node": "^1.4.0",
+    "@uniswap/client-data-api": "0.0.113",
+    "@uniswap/client-explore": "0.0.18",
+    "@uniswap/sdk-core": "7.17.0",
+    "@uniswap/v3-sdk": "3.29.1",
+    "graphql": "^16.9.0",
+    "graphql-yoga": "^5.7.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -226,9 +226,7 @@ export function useHasInjectedWallets(): boolean {
 }
 
 /**
- * These wallets do not include Uniswap Wallets because those are
- * handled separately unless the embedded wallet is enabled. See <UniswapWalletOptions />
- * Primary wallets are displayed on the first page of the modal, this included injected wallets and recent wallets
+ * Primary wallets are displayed on the first page of the modal; this includes injected wallets and recent wallets.
  */
 export function useOrderedWallets({
   showSecondaryConnectors,

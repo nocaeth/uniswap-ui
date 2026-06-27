@@ -27,6 +27,11 @@ const webConfigValues = {
   /** AWS_API_ENDPOINT — Apollo GraphQL API */
   awsApiEndpoint: process.env.AWS_API_ENDPOINT ?? process.env.REACT_APP_AWS_API_ENDPOINT,
 
+  /** GRAPHQL_URL_OVERRIDE — Gnosis-only: point the Apollo GraphQL client at the
+   * self-hosted analytics adapter (which serves Gnosis tokens/pools/transactions)
+   * instead of Uniswap's gateway, which does not serve Gnosis. */
+  graphqlUrlOverride: process.env.GRAPHQL_URL_OVERRIDE,
+
   /** UNISWAP_GATEWAY_DNS — gateway v2 (routing, order status, UniswapX) */
   uniswapGatewayDns: process.env.UNISWAP_GATEWAY_DNS ?? process.env.REACT_APP_UNISWAP_GATEWAY_DNS,
 

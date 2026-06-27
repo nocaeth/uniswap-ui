@@ -3,8 +3,7 @@ import { getFeatureFlaggedChainIds } from 'uniswap/src/features/chains/hooks/use
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { getEnabledChains } from 'uniswap/src/features/chains/utils'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
-import { getCapabilitiesCore } from 'wallet/src/features/batchedTransactions/utils'
-import type { Capability } from 'wallet/src/features/dappRequests/types'
+import { getCapabilitiesCore, type Capability } from '~/connection/walletCapabilities'
 
 /**
  * EIP-5792 `wallet_getCapabilities` for the embedded wallet. Reports atomic

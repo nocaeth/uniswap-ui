@@ -1,16 +1,10 @@
-import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Flex, Separator, Text } from 'ui/src'
-import { ChevronsIn } from 'ui/src/components/icons/ChevronsIn'
-import { ChevronsOut } from 'ui/src/components/icons/ChevronsOut'
-import { UniswapWalletOptions } from '~/components/WalletModal/UniswapWalletOptions'
+import { Flex, Text } from 'ui/src'
 import { WalletModalLayout } from '~/components/WalletModal/WalletModalLayout'
 import { WalletOptionsGrid } from '~/components/WalletModal/WalletOptionsGrid'
-import { ClickableTamaguiStyle } from '~/theme/components/styles'
 
 export function StandardWalletModal(): JSX.Element {
   const { t } = useTranslation()
-  const [expandMoreWallets, toggleExpandMoreWallets] = useReducer((s) => !s, true)
 
   const header = (
     <Flex row justifyContent="space-between" width="100%">
@@ -18,41 +12,13 @@ export function StandardWalletModal(): JSX.Element {
     </Flex>
   )
 
-  const uniswapOptions = <UniswapWalletOptions />
-
-  const expandToggle = (
-    <Flex row alignItems="center" py={8} userSelect="none" onPress={toggleExpandMoreWallets} {...ClickableTamaguiStyle}>
-      <Separator />
-      <Flex row alignItems="center" mx={18}>
-        <Text variant="body3" color="$neutral2" whiteSpace="nowrap">
-          {t('wallet.other')}
-        </Text>
-        {expandMoreWallets ? <ChevronsIn size={20} color="$neutral3" /> : <ChevronsOut size={20} color="$neutral3" />}
-      </Flex>
-      <Separator />
-    </Flex>
-  )
-
-  const walletOptions = (
-    <WalletOptionsGrid
-      showMobileConnector={false}
-      showOtherWallets={false}
-      maxHeight={expandMoreWallets ? '100vh' : '0'}
-      opacity={expandMoreWallets ? 1 : 0}
-    />
-  )
-
+  // Gnosis-only: external wallets only — the Uniswap Wallet promo/extension/download
+  // section is removed. The grid itself is unchanged from upstream: with the embedded
+  // wallet disabled, buildPrimaryConnectorsList already lists injected + WalletConnect +
+  // Coinbase, so no separate "other wallets" navigation is needed.
   return (
-    <WalletModalLayout
-      header={
-        <Flex gap="$gap16">
-          {header}
-          {uniswapOptions}
-          {expandToggle}
-        </Flex>
-      }
-    >
-      {walletOptions}
+    <WalletModalLayout header={header}>
+      <WalletOptionsGrid showMobileConnector={false} showOtherWallets={false} maxHeight="100vh" opacity={1} />
     </WalletModalLayout>
   )
 }

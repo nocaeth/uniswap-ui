@@ -11,10 +11,6 @@ const buildSwapUrl = createTestUrlBuilder({
   basePath: '/swap',
 })
 
-const buildLimitUrl = createTestUrlBuilder({
-  basePath: '/limit',
-})
-
 test.describe(
   'TokenSelector',
   {
@@ -82,18 +78,6 @@ test.describe(
       await page.getByTestId(TestID.ChooseOutputToken).click()
 
       await expect(page.getByText('Crosschain swaps are here')).toBeVisible()
-    })
-
-    test('limit - should NOT show crosschain swaps promo banner in limit order flow', async ({ page }) => {
-      await page.goto(buildLimitUrl({ featureFlags: { [FeatureFlags.ChainedActions]: true } }))
-      // Limit page uses SwapCurrencyInputPanel which has a different selector
-      await page.locator('.open-currency-select-button').last().click()
-
-      // Verify token selector is open
-      await expect(
-        page.getByTestId(`${TestID.SectionHeaderPrefix}${OnchainItemSectionName.TrendingTokens}`),
-      ).toBeVisible()
-      await expect(page.getByText('Crosschain swaps are here')).not.toBeVisible()
     })
 
     test('output - should NOT show crosschain swaps promo banner when filtering to unsupported chain', async ({

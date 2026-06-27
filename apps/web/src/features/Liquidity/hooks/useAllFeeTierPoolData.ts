@@ -12,8 +12,9 @@ import {
   MAX_FEE_TIER_DECIMALS,
   mergeFeeTiers,
 } from '~/features/Liquidity/utils/feeTiers'
-import { NEW_TOKEN_PLACEHOLDER_ADDRESS } from '~/pages/Liquidity/CreateAuction/types'
 import { FeeTierData } from '~/types/liquidity'
+
+const NEW_TOKEN_PLACEHOLDER_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 /**
  * @returns map of fee tier (in hundredths of bips) to more data about the Pool

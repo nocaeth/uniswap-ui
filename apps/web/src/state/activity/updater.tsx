@@ -3,8 +3,6 @@ import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useCallback } from 'react'
 import { isL2ChainId } from 'uniswap/src/features/chains/utils'
 import { getDisplayedPriceSource } from 'uniswap/src/features/prices/getDisplayedPriceSource'
-import { AuctionEventName } from 'uniswap/src/features/telemetry/constants'
-import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
 import {
   finalizeTransaction,
   interfaceApplyTransactionHashToBatch,
@@ -230,18 +228,6 @@ function useOnActivityUpdate(): OnActivityUpdate {
               chainId: bridgeChainIn,
               isCentralizedPricesEnabled,
             }),
-          })
-        } else if (
-          original.typeInfo.type === TransactionType.AuctionLaunch &&
-          update.status === TransactionStatus.Success &&
-          original.typeInfo.analytics &&
-          hash
-        ) {
-          // Launch confirmed on-chain: emit Completed with the exact property snapshot taken at
-          // Submitted time, so the two events always agree.
-          sendAnalyticsEvent(AuctionEventName.AuctionCreateCompleted, {
-            ...original.typeInfo.analytics,
-            transaction_hash: hash,
           })
         }
 

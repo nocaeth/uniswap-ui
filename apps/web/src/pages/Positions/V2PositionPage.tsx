@@ -2,7 +2,7 @@ import { ProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes
 import { useMemo } from 'react'
 import { Helmet } from 'react-helmet-async/lib/index'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { Button, Circle, Flex, Main, Shine, styled, Text } from 'ui/src'
 import { RotatableChevron } from 'ui/src/components/icons/RotatableChevron'
 import { ZERO_ADDRESS } from 'uniswap/src/constants/misc'
@@ -16,7 +16,6 @@ import { parseRestPosition } from 'uniswap/src/features/positions/parseRestPosit
 import { useUSDCValue } from 'uniswap/src/features/transactions/hooks/useUSDCPrice'
 import { shortenAddress } from 'utilities/src/addresses'
 import { NumberType } from 'utilities/src/format/types'
-import { useEvent } from 'utilities/src/react/hooks'
 import { BreadcrumbNavContainer, BreadcrumbNavLink } from '~/components/BreadcrumbNav'
 import { DoubleCurrencyLogo } from '~/components/Logo/DoubleLogo'
 import { useEntryPointBreadcrumb } from '~/features/Liquidity/Create/hooks/useEntryPointBreadcrumb'
@@ -101,7 +100,6 @@ function V2PositionPage() {
   const position = data?.position
   const positionInfo = useMemo(() => parseRestPosition(position), [position])
   const navigate = useNavigate()
-  const location = useLocation()
   const { formatCurrencyAmount, formatPercent } = useLocalizationContext()
   const { t } = useTranslation()
 
@@ -132,14 +130,6 @@ function V2PositionPage() {
     account: account.address,
     address: liquidityTokenAddress,
     chainId: positionInfo?.chainId,
-  })
-
-  const onMigrate = useEvent(() => {
-    navigate(`/migrate/v2/${chainInfo.urlParam}/${pairAddress}`, {
-      state: {
-        from: location.pathname,
-      },
-    })
   })
 
   if (!positionLoading && (!positionInfo || !liquidityAmount || !currency0Amount || !currency1Amount)) {
@@ -196,7 +186,7 @@ function V2PositionPage() {
             <LiquidityPositionInfo positionInfo={positionInfo} />
           )}
           <Flex>
-            <PositionPageActionButtons buttonFill isOwner={isOwner} positionInfo={positionInfo} onMigrate={onMigrate} />
+            <PositionPageActionButtons buttonFill isOwner={isOwner} positionInfo={positionInfo} />
           </Flex>
           <Flex borderColor="$surface3" borderWidth="$spacing1" p="$spacing24" gap="$gap12" borderRadius="$rounded20">
             {positionLoading || !currency0Amount || !currency1Amount ? (

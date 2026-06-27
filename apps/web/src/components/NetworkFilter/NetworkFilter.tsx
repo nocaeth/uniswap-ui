@@ -176,7 +176,7 @@ export function NetworkFilter({
                   <NetworkLogo size={NetworkLogoSizes[size]} chainId={null} transition={transition} />
                 ) : (
                   <ChainLogo
-                    chainId={currentChainId ?? UniverseChainId.Mainnet}
+                    chainId={currentChainId ?? UniverseChainId.Gnosis}
                     size={NetworkLogoSizes[size]}
                     testId={TestID.TokensNetworkFilterSelected}
                     transition={transition}

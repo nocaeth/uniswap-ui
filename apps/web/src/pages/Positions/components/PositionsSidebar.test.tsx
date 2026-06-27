@@ -10,26 +10,20 @@ vi.mock('~/pages/Positions/TopPools', () => ({
 
 describe('PositionsSidebar', () => {
   it('always renders TopPools with the provided chainFilter', () => {
-    render(<PositionsSidebar chainFilter={UniverseChainId.Mainnet} isConnected={false} />)
+    render(<PositionsSidebar chainFilter={UniverseChainId.Mainnet} />)
 
     expect(screen.getByTestId('top-pools-mock')).toHaveTextContent(`chain-${UniverseChainId.Mainnet}`)
   })
 
   it('renders TopPools with all-chains marker when chainFilter is null', () => {
-    render(<PositionsSidebar chainFilter={null} isConnected={false} />)
+    render(<PositionsSidebar chainFilter={null} />)
 
     expect(screen.getByTestId('top-pools-mock')).toHaveTextContent('all-chains')
   })
 
-  it('hides the learn-more block when isConnected is false', () => {
-    render(<PositionsSidebar chainFilter={null} isConnected={false} />)
+  it('does not render the Uniswap learn-more block', () => {
+    render(<PositionsSidebar chainFilter={null} />)
 
     expect(screen.queryByText('Learn about liquidity provision')).not.toBeInTheDocument()
-  })
-
-  it('shows the learn-more block when isConnected is true', () => {
-    render(<PositionsSidebar chainFilter={null} isConnected={true} />)
-
-    expect(screen.getByText('Learn about liquidity provision')).toBeInTheDocument()
   })
 })

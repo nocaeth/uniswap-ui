@@ -79,9 +79,6 @@ jest.mock('@amplitude/analytics-react-native', () => ({
 jest.mock('react-native/Libraries/EventEmitter/NativeEventEmitter')
 jest.mock('react-native-device-info', () => mockRNDeviceInfo)
 
-// mock initProviders to avoid creating real ethers providers for each test
-jest.mock('wallet/src/features/providers/saga')
-
 // Mock WalletConnect v2 packages
 jest.mock('@reown/walletkit', () => ({
   WalletKit: {

@@ -87,7 +87,6 @@ export enum DynamicConfigs {
   // Web
   AllowedV4WethHookAddresses = 'allowed_v4_weth_hook_addresses',
   AstroChain = 'astro_chain',
-  CreateAuction = 'create_auction_config',
   EmbeddedWalletBetaPassphrases = 'embedded_wallet_beta_passphrases',
   ExternallyConnectableExtension = 'externally_connectable_extension',
   LiquidityApprovalSimulation = 'liquidity_approval_simulation',
@@ -95,8 +94,6 @@ export enum DynamicConfigs {
   LPConfig = 'lp_config',
   OutageBannerChainId = 'outage_banner_chain_id',
   RWAIssuerLogos = 'rwa_issuer_logos',
-  VerifiedAuctions = 'verified_auctions',
-  AuctionFdvWarning = 'auction_fdv_warning',
 }
 
 // Config values go here for easy access
@@ -247,23 +244,8 @@ export enum AllowedV4WethHookAddressesConfigKey {
   HookAddresses = 'hookAddresses',
 }
 
-export enum VerifiedAuctionsConfigKey {
-  VerifiedAuctionIds = 'verifiedAuctionIds',
-}
-
-export enum AuctionFdvWarningConfigKey {
-  CommittedVolumeUsdThreshold = 'committedVolumeUsdThreshold',
-  BidCountThreshold = 'bidCountThreshold',
-  FdvUsdThreshold = 'fdvUsdThreshold',
-}
-
 export enum OutageBannerChainIdConfigKey {
   ChainId = 'chainId',
-}
-
-export enum CreateAuctionConfigKey {
-  AllowedNetworks = 'allowedNetworks',
-  AllowedTokenCreationNetworks = 'allowedTokenCreationNetworks',
 }
 
 export enum LiquidityGasPreEstimationConfigKey {
@@ -303,9 +285,7 @@ export type DynamicConfigKeys = {
 
   // Web
   [DynamicConfigs.AllowedV4WethHookAddresses]: AllowedV4WethHookAddressesConfigKey
-  [DynamicConfigs.AuctionFdvWarning]: AuctionFdvWarningConfigKey
   [DynamicConfigs.AstroChain]: AstroChainConfigKey
-  [DynamicConfigs.CreateAuction]: CreateAuctionConfigKey
   [DynamicConfigs.EmbeddedWalletBetaPassphrases]: EmbeddedWalletBetaPassphrasesKey
   [DynamicConfigs.ExternallyConnectableExtension]: ExternallyConnectableExtensionConfigKey
   [DynamicConfigs.LiquidityApprovalSimulation]: LiquidityApprovalSimulationConfigKey
@@ -313,7 +293,6 @@ export type DynamicConfigKeys = {
   [DynamicConfigs.LPConfig]: LPConfigKey
   [DynamicConfigs.OutageBannerChainId]: OutageBannerChainIdConfigKey
   [DynamicConfigs.RWAIssuerLogos]: RWAIssuerLogosConfigKey
-  [DynamicConfigs.VerifiedAuctions]: VerifiedAuctionsConfigKey
 }
 
 // This type must match the format in the statsig dynamic config for rwa_issuer_logos.

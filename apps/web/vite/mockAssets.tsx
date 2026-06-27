@@ -28,6 +28,7 @@ vi.mock('ui/src/assets/logos/png/uniswap-logo.png', () => createAssetModuleMock(
 vi.mock('ui/src/assets/logos/png/arbitrum-logo.png', () => createAssetModuleMock('png'))
 vi.mock('ui/src/assets/logos/png/eth-logo.png', () => createAssetModuleMock('png'))
 vi.mock('ui/src/assets/logos/png/ethereum-logo.png', () => createAssetModuleMock('png'))
+vi.mock('ui/src/assets/logos/png/gnosis-logo.png', () => createAssetModuleMock('png'))
 vi.mock('ui/src/assets/graphics/unitag-light-small.png', () => createAssetModuleMock('png'))
 vi.mock('ui/src/assets/logos/png/uniswap-logo-large.png', () => createAssetModuleMock('png'))
 vi.mock('ui/src/components/Unicon', () => ({
@@ -39,6 +40,7 @@ vi.mock('ui/src/components/Unicon', () => ({
 vi.mock('ui/src/assets', () => ({
   ALL_NETWORKS_LOGO: 'all-networks-logo.png',
   ETHEREUM_LOGO: 'ethereum-logo.png',
+  GNOSIS_LOGO: 'gnosis-logo.png',
   OPTIMISM_LOGO: 'optimism-logo.png',
   ARBITRUM_LOGO: 'arbitrum-logo.png',
   BASE_LOGO: 'base-logo.png',

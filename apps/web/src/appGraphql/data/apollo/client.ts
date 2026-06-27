@@ -4,7 +4,9 @@ import { getDatadogApolloLink } from 'utilities/src/logger/datadog/datadogLink'
 import { getRetryLink } from '~/appGraphql/data/apollo/retryLink'
 import { getConfig } from '~/config'
 
-const httpLink = new HttpLink({ uri: getConfig().awsApiEndpoint })
+// Gnosis-only: GRAPHQL_URL_OVERRIDE (the self-hosted adapter) wins over the Uniswap
+// gateway, which does not serve Gnosis. Falls back to awsApiEndpoint when unset.
+const httpLink = new HttpLink({ uri: getConfig().graphqlUrlOverride || getConfig().awsApiEndpoint })
 const datadogLink = getDatadogApolloLink()
 const retryLink = getRetryLink()
 

@@ -9,7 +9,6 @@ export enum ExploreTab {
   Tokens = 'tokens',
   Pools = 'pools',
   Transactions = 'transactions',
-  Toucan = 'auctions',
 }
 
 type PricePoint = { timestamp: number; value: number }

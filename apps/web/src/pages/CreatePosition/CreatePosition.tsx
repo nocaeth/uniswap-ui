@@ -151,7 +151,8 @@ const Toolbar = () => {
 
   const versionOptions = useMemo(
     () =>
-      [ProtocolVersion.V4, ProtocolVersion.V3, ProtocolVersion.V2]
+      // Gnosis-only: V3 is the only deployed protocol version.
+      [ProtocolVersion.V3]
         .filter((version) => version !== protocolVersion)
         .map((version) => (
           <TouchableArea key={`version-${version}`} onPress={() => handleVersionChange(version)}>
@@ -251,7 +252,10 @@ function CreatePositionContent({
   paramsProtocolVersion: ProtocolVersion | undefined
   autoSlippageTolerance: number
 }) {
-  const initialProtocolVersion = paramsProtocolVersion ?? ProtocolVersion.V4
+  // Gnosis-only: V3 is the only deployed protocol version. Coerce a missing or V4 URL param to V3
+  // so the "/positions/create/v4" route can never put the flow into an unsupported V4 state.
+  const initialProtocolVersion =
+    !paramsProtocolVersion || paramsProtocolVersion === ProtocolVersion.V4 ? ProtocolVersion.V3 : paramsProtocolVersion
 
   const [currencyInputs, setCurrencyInputs] = useState<{ tokenA: Maybe<Currency>; tokenB: Maybe<Currency> }>({
     tokenA: initialInputs.tokenA,

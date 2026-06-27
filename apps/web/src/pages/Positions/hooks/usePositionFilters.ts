@@ -3,7 +3,8 @@ import { atom, useAtom } from 'jotai'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { DEFAULT_LP_POSITION_PROTOCOL_FILTER, DEFAULT_LP_POSITION_STATUS_FILTER } from '~/features/Liquidity/constants'
 
-const chainFilterAtom = atom<UniverseChainId | null>(null)
+// GNOSIS-ONLY: default the positions chain filter to Gnosis instead of null ("all networks").
+const chainFilterAtom = atom<UniverseChainId | null>(UniverseChainId.Gnosis)
 const versionFilterAtom = atom<ProtocolVersion[]>([...DEFAULT_LP_POSITION_PROTOCOL_FILTER])
 const statusFilterAtom = atom<PositionStatus[]>([...DEFAULT_LP_POSITION_STATUS_FILTER])
 

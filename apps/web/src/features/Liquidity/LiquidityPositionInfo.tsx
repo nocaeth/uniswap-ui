@@ -1,9 +1,6 @@
-import { PositionStatus, ProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
+import { ProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
 import { Anchor, Circle, Flex, Text, useMedia } from 'ui/src'
-import { ArrowRight } from 'ui/src/components/icons/ArrowRight'
 import { StatusIndicatorCircle } from 'ui/src/components/icons/StatusIndicatorCircle'
 import { NetworkLogo } from 'uniswap/src/components/CurrencyLogo/NetworkLogo'
 import { SplitLogo } from 'uniswap/src/components/CurrencyLogo/SplitLogo'
@@ -18,7 +15,6 @@ import { LiquidityPositionInfoBadges } from '~/features/Liquidity/LiquidityPosit
 import { TextLoader } from '~/features/Liquidity/Loader'
 import { LpIncentivesAprDisplay } from '~/features/Liquidity/LPIncentives/LpIncentivesAprDisplay'
 import { ClickableTamaguiStyle } from '~/theme/components/styles'
-import { isV4UnsupportedChain } from '~/utils/networkSupportsV4'
 
 function LiquidityPositionStatusIndicatorLoader() {
   return (
@@ -33,7 +29,6 @@ interface LiquidityPositionInfoProps {
   positionInfo: PositionInfo
   currencyLogoSize?: number
   hideStatusIndicator?: boolean
-  showMigrateButton?: boolean
   isMiniVersion?: boolean
   linkToPool?: boolean
   includeLpIncentives?: boolean
@@ -59,46 +54,19 @@ export function LiquidityPositionInfo({
   positionInfo,
   currencyLogoSize = 44,
   hideStatusIndicator = false,
-  showMigrateButton = false,
   isMiniVersion = false,
   linkToPool = false,
   includeLpIncentives = false,
   includeNetwork = false,
 }: LiquidityPositionInfoProps) {
   const { currency0Amount, currency1Amount, status, feeTier, v4hook, version, chainId } = positionInfo
-  const navigate = useNavigate()
   const chainInfo = getChainInfo(positionInfo.chainId)
   const media = useMedia()
-  const { t } = useTranslation()
   const { formatPercent: _ } = useLocalizationContext()
   const lpIncentiveRewardApr =
     positionInfo.version === ProtocolVersion.V4 && Boolean(positionInfo.boostedApr)
       ? positionInfo.boostedApr
       : undefined
-
-  const migrateButtonConfig = useMemo(() => {
-    if (!showMigrateButton) {
-      return undefined
-    }
-
-    if (positionInfo.version === ProtocolVersion.V3 && !isV4UnsupportedChain(positionInfo.chainId)) {
-      return {
-        fullLabel: t('pool.migrateToV4'),
-        shortLabel: t('common.migrate'),
-        path: `/migrate/v3/${chainInfo.urlParam}/${positionInfo.tokenId}`,
-      }
-    }
-
-    if (positionInfo.version === ProtocolVersion.V2 && positionInfo.status !== PositionStatus.CLOSED) {
-      return {
-        fullLabel: t('pool.migrateToV3'),
-        shortLabel: t('common.migrate'),
-        path: `/migrate/v2/${positionInfo.liquidityToken.address}`,
-      }
-    }
-
-    return undefined
-  }, [positionInfo, showMigrateButton, chainInfo.urlParam, t])
 
   const [currency0Info, currency1Info] = useCurrencyInfos([
     currencyId(currency0Amount.currency),
@@ -136,21 +104,7 @@ export function LiquidityPositionInfo({
             )}
           </Flex>
           <Flex row gap={2} alignItems="center" flexWrap="wrap">
-            <LiquidityPositionInfoBadges
-              size="small"
-              version={version}
-              v4hook={v4hook}
-              feeTier={feeTier}
-              cta={
-                migrateButtonConfig
-                  ? {
-                      label: media.lg ? migrateButtonConfig.shortLabel : migrateButtonConfig.fullLabel,
-                      iconAfter: <ArrowRight color="current" />,
-                      onPress: () => navigate(migrateButtonConfig.path),
-                    }
-                  : undefined
-              }
-            />
+            <LiquidityPositionInfoBadges size="small" version={version} v4hook={v4hook} feeTier={feeTier} />
           </Flex>
         </Flex>
 

@@ -54,12 +54,7 @@ export function SwapBottomCard() {
     if (shouldShowWebFORNudge) {
       return (
         <AnimatePresence>
-          <EmptyWalletCards
-            horizontalLayout
-            buyElementName={ElementName.ForEmptyStateBuy}
-            receiveElementName={ElementName.ForEmptyStateReceive}
-            cexTransferElementName={ElementName.ForEmptyStateCEXTransfer}
-          />
+          <EmptyWalletCards horizontalLayout receiveElementName={ElementName.ForEmptyStateReceive} />
         </AnimatePresence>
       )
     }
@@ -122,6 +117,7 @@ const CHAIN_THEME_LIGHT: Record<UniverseChainId, ChainTheme> = {
   [UniverseChainId.Blast]: { bgColor: 'rgba(252, 252, 3, 0.16)', textColor: 'rgba(17, 20, 12, 1)' },
   [UniverseChainId.Bnb]: { bgColor: '#EAB20033', textColor: '#EAB200' },
   [UniverseChainId.Celo]: { bgColor: '#FCFF5233', textColor: '#222222' },
+  [UniverseChainId.Gnosis]: { bgColor: 'rgba(19, 54, 41, 0.12)', textColor: '#133629' },
   [UniverseChainId.Linea]: { bgColor: 'rgba(97, 223, 255, 0.12)', textColor: '#121212' },
   [UniverseChainId.MegaETH]: { bgColor: 'rgba(25, 25, 26, 0.08)', textColor: '#19191A' },
   [UniverseChainId.Monad]: { bgColor: 'rgba(115, 91, 248, 0.08)', textColor: '#735BF8' },
@@ -144,6 +140,7 @@ const CHAIN_THEME_DARK: Record<UniverseChainId, ChainTheme> = {
   ...CHAIN_THEME_LIGHT,
   [UniverseChainId.Blast]: { bgColor: 'rgba(252, 252, 3, 0.12)', textColor: 'rgba(252, 252, 3, 1) ' },
   [UniverseChainId.Celo]: { bgColor: '#FCFF5299', textColor: '#655947' },
+  [UniverseChainId.Gnosis]: { bgColor: 'rgba(62, 105, 87, 0.16)', textColor: '#3e6957' },
   [UniverseChainId.Monad]: { bgColor: 'rgba(131, 110, 249, 0.14)', textColor: '#836EF9' },
   [UniverseChainId.Linea]: { bgColor: 'rgba(97, 223, 255, 0.12)', textColor: '#61DFFF' },
   [UniverseChainId.MegaETH]: { bgColor: 'rgba(255, 255, 255, 0.12)', textColor: '#FFFFFF' },

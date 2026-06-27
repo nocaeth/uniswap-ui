@@ -1,0 +1,38 @@
+# Build context for the web image. Takes precedence over the repo-root
+# .dockerignore (which is scoped to other images and excludes apps/web).
+# NOTE: keep apps/web AND .git — vite.config.mts runs `git rev-parse HEAD` at
+# config load, so the build fails without the git metadata.
+
+# Dependencies (reinstalled in the image)
+**/node_modules
+
+# Build outputs (rebuilt in the image)
+**/build
+**/dist
+**/.vercel
+**/.nx
+**/.turbo
+**/*.tsbuildinfo
+
+# Generated (gitignored) code — regenerated in-build via `nx run-many -t prepare`.
+# Excluded so the build context matches a clean CI checkout (and no stale codegen
+# is shipped); the build below regenerates these.
+**/__generated__
+packages/uniswap/src/abis/types
+
+# Apps not needed to build the web bundle
+apps/mobile
+apps/extension
+apps/cli
+
+# Local-only env overrides (deployment values come via build args)
+**/.env.local
+**/.env.*.local
+
+# Tests / tooling noise
+**/coverage
+# NOTE: do NOT exclude __mocks__/.storybook — vite.config.mts aliases `expo-blur` to
+# apps/web/.storybook/__mocks__/expo-blur.jsx, which the production web build requires.
+**/storybook-static
+**/.DS_Store
+*.log

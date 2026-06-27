@@ -103,7 +103,6 @@ describe(LogoWithTxStatus, () => {
         TransactionType.NFTApprove,
         TransactionType.Send,
         TransactionType.Deposit,
-        TransactionType.ToucanBid,
         TransactionType.OnRampPurchase,
         TransactionType.OnRampTransfer,
         TransactionType.OffRampSale,

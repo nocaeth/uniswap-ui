@@ -15,20 +15,52 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { logger } from 'utilities/src/logger/logger'
 
+// Gnosis-only build: flags pinned OFF regardless of Statsig so behaviour can't change
+// out from under the deployment.
+//
+// V2EndpointsPools/Tokens: the self-hosted analytics adapter serves Explore (tokens &
+// pools) only via the V1 GraphQL path — it does not implement the V2 Data API endpoints
+// for them. If Uniswap flips these ON, the UI would call V2 endpoints the adapter lacks
+// and Explore would break. (Positions are intentionally NOT pinned — the adapter DOES
+// implement V2 ListPositions/GetPosition.)
+//
+// RWA* (real-world assets: stocks/commodities/ETFs): no such assets exist on Gnosis, so
+// the entire RWA UX is removed (Explore category chips + asset-shelf carousel, the RWA
+// token-selector categories, RWA search sections, and RWA token-detail surfaces). Pinning
+// OFF reverts to the well-tested legacy non-RWA path everywhere.
+const FORCE_DISABLED_FLAGS = new Set<FeatureFlags>([
+  FeatureFlags.V2EndpointsPools,
+  FeatureFlags.V2EndpointsTokens,
+  FeatureFlags.RWAUX,
+  FeatureFlags.RWAUXExplore,
+  FeatureFlags.RWAUXExploreCarousel,
+  FeatureFlags.RwaUxTokenSelector,
+  FeatureFlags.RwaUxTokenSelectorCategoryLabels,
+  FeatureFlags.RwaUxSearch,
+  FeatureFlags.RwaUxSearchTop24hSection,
+  FeatureFlags.RWATdp,
+  FeatureFlags.RWATdpRelatedTokens,
+  FeatureFlags.RWATdpSiblings,
+  FeatureFlags.RWACoinGeckoData,
+])
+
 export function useFeatureFlag(flag: FeatureFlags): boolean {
   const name = getFeatureFlagName(flag)
   const value = useGateValue(name)
-  return value
+  return FORCE_DISABLED_FLAGS.has(flag) ? false : value
 }
 
 export function useFeatureFlagWithLoading(flag: FeatureFlags): { value: boolean; isLoading: boolean } {
   const { isStatsigLoading } = useStatsigClientStatus()
   const name = getFeatureFlagName(flag)
   const { value } = useFeatureGate(name)
-  return { value, isLoading: isStatsigLoading }
+  return { value: FORCE_DISABLED_FLAGS.has(flag) ? false : value, isLoading: isStatsigLoading }
 }
 
 export function getFeatureFlag(flag: FeatureFlags): boolean {
+  if (FORCE_DISABLED_FLAGS.has(flag)) {
+    return false
+  }
   try {
     const name = getFeatureFlagName(flag)
     return getStatsigClient().checkGate(name)
@@ -41,10 +73,13 @@ export function getFeatureFlag(flag: FeatureFlags): boolean {
 export function useFeatureFlagWithExposureLoggingDisabled(flag: FeatureFlags): boolean {
   const name = getFeatureFlagName(flag)
   const value = useGateValue(name, { disableExposureLog: true })
-  return value
+  return FORCE_DISABLED_FLAGS.has(flag) ? false : value
 }
 
 export function getFeatureFlagWithExposureLoggingDisabled(flag: FeatureFlags): boolean {
+  if (FORCE_DISABLED_FLAGS.has(flag)) {
+    return false
+  }
   const name = getFeatureFlagName(flag)
   return getStatsigClient().checkGate(name, { disableExposureLog: true })
 }

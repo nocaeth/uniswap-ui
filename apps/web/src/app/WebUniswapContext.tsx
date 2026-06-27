@@ -1,14 +1,12 @@
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import React, { PropsWithChildren, useCallback, useEffect } from 'react'
 import { useSelector } from 'react-redux'
-import { useLocation, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { UniswapProvider } from 'uniswap/src/contexts/UniswapContext'
 import { useOnchainDisplayName } from 'uniswap/src/features/accounts/useOnchainDisplayName'
-import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
-import { FiatOnRampCurrency } from 'uniswap/src/features/fiatOnRamp/types'
 import { useNavigateToNftExplorerLink } from 'uniswap/src/features/nfts/hooks/useNavigateToNftExplorerLink'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import { useSetActiveChainId } from 'uniswap/src/features/smartWallet/delegation/hooks/useSetActiveChainId'
@@ -19,29 +17,24 @@ import { ModalName } from 'uniswap/src/features/telemetry/constants'
 import { useGetCanSignPermits } from 'uniswap/src/features/transactions/hooks/useGetCanSignPermits'
 import { CurrencyField } from 'uniswap/src/types/currency'
 import { currencyIdToAddress, currencyIdToChain } from 'uniswap/src/utils/currencyId'
-import { getFiatOnRampURL, getPoolDetailsURL, type TdpChainSelection } from 'uniswap/src/utils/linking'
+import { getPoolDetailsURL, type TdpChainSelection } from 'uniswap/src/utils/linking'
 import { useEvent, usePrevious } from 'utilities/src/react/hooks'
 import { noop } from 'utilities/src/react/noop'
 import { getTokenDetailsURL } from '~/appGraphql/data/util'
 import { MenuStateVariant, useMenuState } from '~/components/AccountDrawer/menuState'
 import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
-import { useOpenReceiveCryptoModal } from '~/components/ReceiveCryptoModal/useOpenReceiveCryptoModal'
 import { useConnectionStatus } from '~/features/accounts/store/hooks'
 import { useAccountsStoreContext } from '~/features/accounts/store/provider'
 import { useAccount } from '~/hooks/useAccount'
 import { useEthersProvider } from '~/hooks/useEthersProvider'
 import { useEthersSigner } from '~/hooks/useEthersSigner'
-import { PageType } from '~/hooks/useIsPage'
 import { useModalState } from '~/hooks/useModalState'
-import { buildPortfolioUrl } from '~/pages/Portfolio/utils/portfolioUrls'
 import { useOneClickSwapSetting } from '~/pages/Swap/Swap/settings/OneClickSwap'
 import { serializeSwapAddressesToURLParameters } from '~/pages/Swap/Swap/state/tradeQueryParams'
-import { useMultichainContext } from '~/state/multichain/useMultichainContext'
 import { SwitchNetworkAction } from '~/state/popups/types'
 import { useHasAlternateGasFeesByChainIdCallback } from '~/state/walletCapabilities/hooks/useHasAlternateGasFees'
 import { useIsAtomicBatchingSupportedByChainIdCallback } from '~/state/walletCapabilities/hooks/useIsAtomicBatchingSupportedByChain'
 import { useHasMismatchCallback, useShowMismatchToast } from '~/state/walletCapabilities/hooks/useMismatchAccount'
-import { ReceiveModalState } from '~/types/receiveCryptoModal'
 import { getTdpChainQueryParam } from '~/utils/params/chainQueryParam'
 import { showSwitchNetworkNotification } from '~/utils/showSwitchNetworkNotification'
 
@@ -61,14 +54,10 @@ export function WebUniswapProvider({ children }: PropsWithChildren): JSX.Element
 // Abstracts web-specific transaction flow objects for usage in cross-platform flows in the `uniswap` package.
 function WebUniswapProviderInner({ children }: PropsWithChildren) {
   const signer = useEthersSigner()
-  const location = useLocation()
   const accountDrawer = useAccountDrawer()
   const navigate = useNavigate()
-  const { chainId } = useMultichainContext()
 
-  const { closeModal: closeSendModal } = useModalState(ModalName.Send)
   const { closeModal: closeSearchModal } = useModalState(ModalName.Search)
-  const { openModal: openSendModal } = useModalState(ModalName.Send)
 
   const navigateToSwapFlow = useCallback(
     ({
@@ -98,7 +87,6 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
   )
 
   const navigateToPoolDetails = useCallback(
-    // oxlint-disable-next-line no-shadow
     ({ poolId, chainId }: { poolId: Address; chainId: UniverseChainId }) => {
       const url = getPoolDetailsURL(poolId, chainId)
       navigate(url)
@@ -107,61 +95,15 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
     [navigate, closeSearchModal],
   )
 
-  const navigateToFiatOnRamp = useCallback(
-    ({ prefilledCurrency }: { prefilledCurrency?: FiatOnRampCurrency } = {}) => {
-      const currencyInfo = prefilledCurrency?.currencyInfo
-      navigate(
-        getFiatOnRampURL({
-          chainId: currencyInfo?.currency.chainId,
-          currencyCode: prefilledCurrency?.meldCurrencyCode,
-          currencyId: currencyInfo?.currencyId,
-        }),
-      )
-    },
-    [navigate],
-  )
+  // Gnosis: fiat on-ramp / buy / send / receive flows removed. These props are still
+  // required by the UniswapProvider contract, so they are wired to safe no-ops.
+  const navigateToFiatOnRamp = useCallback(() => {}, [])
 
-  const navigateToBuyOrReceiveWithEmptyWallet = useCallback(() => {
-    const url = getFiatOnRampURL(chainId ?? undefined)
-    navigate(url)
-    closeSendModal()
-  }, [navigate, chainId, closeSendModal])
+  const navigateToBuyOrReceiveWithEmptyWallet = useCallback(() => {}, [])
 
-  const navigateToSendFlow = useCallback(
-    ({
-      // oxlint-disable-next-line no-shadow
-      chainId,
-      currencyAddress,
-      recipient,
-    }: {
-      chainId: UniverseChainId
-      currencyAddress?: Address
-      recipient?: Address
-    }) => {
-      const chainUrlParam = getChainInfo(chainId).urlParam
-      const params = new URLSearchParams(location.search)
+  const navigateToSendFlow = useCallback(() => {}, [])
 
-      openSendModal()
-      closeSearchModal()
-
-      // When we are in portfolio, we want to keep the previous state of selected network.
-      // Thus, we keep the state of the `chain` parameter and append it to the new URL.
-      const openingInPortfolio = location.pathname.includes(PageType.PORTFOLIO)
-      const retainedNetworkParam = openingInPortfolio && params.has('chain') ? `chain=${params.get('chain')}&` : ''
-
-      const newPathname = location.pathname === '/' ? '/send' : location.pathname
-      const currencyAddressParam = currencyAddress ? `&sendCurrency=${currencyAddress}` : ''
-      const recipientParam = recipient ? `&sendRecipient=${recipient}` : ''
-      navigate(
-        `${newPathname}?${retainedNetworkParam}sendChain=${chainUrlParam}${currencyAddressParam}${recipientParam}`,
-      )
-    },
-    [openSendModal, closeSearchModal, navigate, location.pathname, location.search],
-  )
-
-  const navigateToReceive = useOpenReceiveCryptoModal({
-    modalState: ReceiveModalState.DEFAULT,
-  })
+  const navigateToReceive = useCallback(() => {}, [])
 
   // no-op until we have a share token screen on web
   const handleShareToken = useCallback((_: { currencyId: string }) => {
@@ -193,13 +135,11 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
   })
   const getCanSignPermits = useGetCanSignPermits()
 
-  const navigateToExternalProfile = useCallback(
-    ({ address }: { address: Address }) => {
-      navigate(buildPortfolioUrl({ externalAddress: address }))
-      closeSearchModal()
-    },
-    [navigate, closeSearchModal],
-  )
+  // Portfolio/profile pages are not part of this Gnosis-only build, so viewing an
+  // external address' profile is a no-op beyond dismissing the search modal.
+  const navigateToExternalProfile = useCallback(() => {
+    closeSearchModal()
+  }, [closeSearchModal])
 
   const { openModal } = useModalState(ModalName.DelegationMismatch)
 
@@ -228,7 +168,6 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
 
   const onSwapChainsChanged = useEvent(
     ({
-      // oxlint-disable-next-line no-shadow
       chainId,
       prevChainId,
       outputChainId,
