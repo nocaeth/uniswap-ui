@@ -19,6 +19,7 @@ import { type CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { buildCurrency, buildCurrencyInfo } from 'uniswap/src/features/dataApi/utils/buildCurrency'
 import { getCurrencySafetyInfo } from 'uniswap/src/features/dataApi/utils/getCurrencySafetyInfo'
 import { PoolSearchHistoryResult, SearchHistoryResultType } from 'uniswap/src/features/search/SearchHistoryResult'
+import { isLegacyGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import type { CurrencyId } from 'uniswap/src/types/currency'
 import { buildCurrencyId, currencyId, isNativeCurrencyAddress } from 'uniswap/src/utils/currencyId'
 import { createLogger } from 'utilities/src/logger/logger'
@@ -120,7 +121,12 @@ export function searchTokenToCurrencyInfo(token: SearchToken): CurrencyInfo | nu
     return null
   }
 
-  return buildCurrencyInfo({ currency, currencyId: currencyId(currency), logoUrl, safetyInfo })
+  return buildCurrencyInfo({
+    currency,
+    currencyId: currencyId(currency),
+    logoUrl,
+    safetyInfo,
+  })
 }
 
 /**
@@ -166,6 +172,13 @@ export function chainTokenToCurrencyInfo(
  */
 export function multichainTokenToCurrencyInfos(multichainToken: MultichainToken): CurrencyInfo[] {
   const infos = multichainToken.chainTokens
+    .filter(
+      (chainToken) =>
+        !isLegacyGnosisDiscoveryTokenAddress({
+          chainId: chainToken.chainId,
+          address: chainToken.address,
+        }),
+    )
     .map((chainToken) => chainTokenToCurrencyInfo(chainToken, multichainToken))
     .filter((c): c is CurrencyInfo => c !== null)
 
@@ -174,7 +187,10 @@ export function multichainTokenToCurrencyInfos(multichainToken: MultichainToken)
   }
 
   const tokenCurrencyIds = infos.map((i) => i.currencyId) as CurrencyId[]
-  const searchMultichainParent = { id: multichainToken.multichainId, tokenCurrencyIds }
+  const searchMultichainParent = {
+    id: multichainToken.multichainId,
+    tokenCurrencyIds,
+  }
 
   return infos.map((info) => ({
     ...info,

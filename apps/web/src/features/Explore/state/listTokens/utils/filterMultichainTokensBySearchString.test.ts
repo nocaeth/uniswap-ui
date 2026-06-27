@@ -1,17 +1,26 @@
 import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import {
+  GNOSIS_GBPE_CANONICAL_ADDRESS,
+  GNOSIS_GBPE_LEGACY_ADDRESSES,
+} from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { createDataApiMultichainToken } from 'uniswap/src/test/fixtures/dataApi/multichainToken'
 import { describe, expect, it, vi } from 'vitest'
 import { filterMultichainTokensBySearchString } from '~/features/Explore/state/listTokens/utils/filterMultichainTokensBySearchString'
 
 vi.mock('uniswap/src/data/cache', () => ({
-  normalizeTokenAddressForCache: vi.fn((addr: string | null) => (addr === null ? null : addr.toLowerCase())),
+  normalizeTokenAddressForCache: vi.fn((addr: string | null) =>
+    addr === null ? null : addr.replace(/[A-F]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 32)),
+  ),
 }))
 
 const mockNormalize = vi.mocked(normalizeTokenAddressForCache)
+const normalizeHexForTest = (addr: string | null): string | null =>
+  addr === null ? null : addr.replace(/[A-F]/g, (char) => String.fromCharCode(char.charCodeAt(0) + 32))
 
 describe('filterMultichainTokensBySearchString', () => {
   beforeEach(() => {
-    mockNormalize.mockImplementation((addr: string | null) => (addr === null ? null : addr.toLowerCase()))
+    mockNormalize.mockImplementation(normalizeHexForTest)
   })
 
   it('should return tokens unchanged when filterString is empty', () => {
@@ -55,7 +64,10 @@ describe('filterMultichainTokensBySearchString', () => {
   it('should filter by multichainId (case-insensitive)', () => {
     const tokens = [
       createDataApiMultichainToken({ multichainId: 'mc:1_0xABC', symbol: 'A' }),
-      createDataApiMultichainToken({ multichainId: 'mc:8453_0xDEF', symbol: 'B' }),
+      createDataApiMultichainToken({
+        multichainId: 'mc:8453_0xDEF',
+        symbol: 'B',
+      }),
     ]
     const result = filterMultichainTokensBySearchString(tokens, '0xdef')
     expect(result).toHaveLength(1)
@@ -63,16 +75,11 @@ describe('filterMultichainTokensBySearchString', () => {
   })
 
   it('should filter by chain token address using normalizeTokenAddressForCache', () => {
-    mockNormalize.mockImplementation((addr: string | null) => {
-      if (addr === null) {
-        return null
-      }
-      return addr.toLowerCase()
-    })
+    mockNormalize.mockImplementation(normalizeHexForTest)
     const tokens = [
       createDataApiMultichainToken({
         multichainId: 'mc:1_0xUSDC',
-        address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+        address: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
         symbol: 'USDC',
       }),
       createDataApiMultichainToken({
@@ -84,11 +91,17 @@ describe('filterMultichainTokensBySearchString', () => {
     const result = filterMultichainTokensBySearchString(tokens, '0xa0b869')
     expect(result).toHaveLength(1)
     expect(result[0]?.symbol).toBe('USDC')
-    expect(mockNormalize).toHaveBeenCalledWith('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48')
+    expect(mockNormalize).toHaveBeenCalledWith('0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48')
   })
 
   it('should exclude token when no field matches', () => {
-    const tokens = [createDataApiMultichainToken({ name: 'USD Coin', symbol: 'USDC', projectName: 'Circle' })]
+    const tokens = [
+      createDataApiMultichainToken({
+        name: 'USD Coin',
+        symbol: 'USDC',
+        projectName: 'Circle',
+      }),
+    ]
     const result = filterMultichainTokensBySearchString(tokens, 'xyz')
     expect(result).toHaveLength(0)
   })
@@ -110,5 +123,22 @@ describe('filterMultichainTokensBySearchString', () => {
   it('should return empty array when no tokens match', () => {
     const tokens = [createDataApiMultichainToken({ symbol: 'A' }), createDataApiMultichainToken({ symbol: 'B' })]
     expect(filterMultichainTokensBySearchString(tokens, 'nonexistent')).toEqual([])
+  })
+
+  it('should match canonical GBPe when filtering by the legacy GBPe address', () => {
+    const tokens = [
+      createDataApiMultichainToken({
+        multichainId: 'mc:canonical-gbpe',
+        chainId: UniverseChainId.Gnosis,
+        address: GNOSIS_GBPE_CANONICAL_ADDRESS,
+        symbol: 'GBPe',
+        name: 'Monerium GBP emoney',
+      }),
+    ]
+
+    const result = filterMultichainTokensBySearchString(tokens, GNOSIS_GBPE_LEGACY_ADDRESSES[0])
+
+    expect(result).toHaveLength(1)
+    expect(result[0]?.chainTokens[0]?.address).toBe(GNOSIS_GBPE_CANONICAL_ADDRESS)
   })
 })

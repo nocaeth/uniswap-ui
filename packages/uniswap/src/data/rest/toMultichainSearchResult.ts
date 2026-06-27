@@ -7,6 +7,7 @@ import {
   type SearchMultichainParent,
 } from 'uniswap/src/features/dataApi/types'
 import { getCurrencySafetyInfo } from 'uniswap/src/features/dataApi/utils/getCurrencySafetyInfo'
+import { isLegacyGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import type { CurrencyId } from 'uniswap/src/types/currency'
 
 /**
@@ -18,6 +19,15 @@ export function toMultichainSearchResult(multichainToken: MultichainToken): Mult
   const tokens: CurrencyInfo[] = []
 
   for (const chainToken of multichainToken.chainTokens) {
+    if (
+      isLegacyGnosisDiscoveryTokenAddress({
+        chainId: chainToken.chainId,
+        address: chainToken.address,
+      })
+    ) {
+      continue
+    }
+
     const currencyInfo = chainTokenToCurrencyInfo(chainToken, multichainToken)
     if (currencyInfo) {
       tokens.push(currencyInfo)
