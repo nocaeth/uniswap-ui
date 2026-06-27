@@ -58,6 +58,17 @@ export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, F
 // quoted in a single eth_call, but we still cap to bound calldata size and decode work.
 export const GNOSIS_MAX_CANDIDATE_ROUTES = 96
 
+// Firm quotes try these hop limits in order, stopping at the first whose best route is viable
+// (non-absurd price impact). The deep v3 graph is a near-linear chain
+// (WETH–wstETH–sDAI–EURe–USDC.e–WXDAI), so cluster-crossing pairs need up to 5 hops; common pairs
+// resolve at 3 and never pay for the longer passes. Indicative (keystroke) quotes use only the first.
+export const GNOSIS_ROUTE_HOP_TIERS = [3, 4, 5] as const
+// Hard clamp on hops in candidate generation; must cover the largest tier above.
+export const GNOSIS_MAX_ROUTE_HOPS: number = Math.max(...GNOSIS_ROUTE_HOP_TIERS)
+// Per token-pair, expand only the N deepest-liquidity pools (fee tiers) into candidate routes. Bounds
+// the candidate count as the hop limit grows so deep long routes survive the GNOSIS_MAX_CANDIDATE_ROUTES cap.
+export const GNOSIS_MAX_POOLS_PER_PAIR = 2
+
 // Preferred routing pass ignores dust pools. If that produces no usable quote,
 // swaps fall back to the full initialized-pool graph.
 export const GNOSIS_MIN_CANDIDATE_POOL_TVL_USD = 1_000

@@ -53,6 +53,7 @@ function buildRoutes(args: {
   tokenOut?: string
   poolEdges: readonly GnosisPoolGraphEdge[]
   maxRoutes?: number
+  maxHops?: number
   routingHubs?: readonly string[]
 }): CandidateRoute[] {
   return buildGnosisRouteCandidatesFromPoolEdges({
@@ -60,6 +61,7 @@ function buildRoutes(args: {
     tokenOut: args.tokenOut ?? TOKEN_B,
     poolEdges: args.poolEdges,
     maxRoutes: args.maxRoutes,
+    maxHops: args.maxHops,
     routingHubs: args.routingHubs,
   })
 }
@@ -136,6 +138,41 @@ describe('Gnosis route candidates', () => {
       tokens: [TOKEN_A, GNOSIS_USDCE, GNOSIS_SDAI, TOKEN_B],
       fees: [FeeAmount.LOW, FeeAmount.LOWEST, FeeAmount.MEDIUM],
     })
+  })
+
+  it('finds a deep 4-hop route only when the hop limit is raised above the default 3', () => {
+    const chain = [
+      poolEdge(TOKEN_A, GNOSIS_USDCE, { fee: FeeAmount.LOW }),
+      poolEdge(GNOSIS_USDCE, GNOSIS_SDAI, { fee: FeeAmount.LOWEST }),
+      poolEdge(GNOSIS_SDAI, GNOSIS_WXDAI, { fee: FeeAmount.LOW }),
+      poolEdge(GNOSIS_WXDAI, TOKEN_B, { fee: FeeAmount.MEDIUM }),
+    ]
+    const fourHop = {
+      tokens: [TOKEN_A, GNOSIS_USDCE, GNOSIS_SDAI, GNOSIS_WXDAI, TOKEN_B],
+      fees: [FeeAmount.LOW, FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM],
+    }
+
+    expect(buildRoutes({ poolEdges: chain })).toEqual([]) // default cap of 3 cannot reach it
+    expect(buildRoutes({ poolEdges: chain, maxHops: 4 })).toContainEqual(fourHop)
+  })
+
+  it('expands only the two deepest fee tiers per pair (fan-out cap)', () => {
+    const routes = buildRoutes({
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOWEST, liquidity: '10' }),
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOW, liquidity: '500' }),
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.MEDIUM, liquidity: '100' }),
+      ],
+    })
+
+    expect(routes).toEqual(
+      expect.arrayContaining([
+        { tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.LOW] },
+        { tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] },
+      ]),
+    )
+    expect(routes).toHaveLength(2)
+    expect(routes).not.toContainEqual({ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.LOWEST] })
   })
 
   it('drops missing, zero-liquidity, and uninitialized edges', () => {

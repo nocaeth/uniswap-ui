@@ -5,6 +5,8 @@ import {
   GNOSIS_BASE_TOKENS,
   GNOSIS_ETH_CORRELATED_ROUTE_TOKENS,
   GNOSIS_MAX_CANDIDATE_ROUTES,
+  GNOSIS_MAX_POOLS_PER_PAIR,
+  GNOSIS_MAX_ROUTE_HOPS,
   GNOSIS_PREFERRED_ETH_ROUTE_HUBS,
   GNOSIS_PREFERRED_STABLE_ROUTE_HUBS,
   GNOSIS_STABLE_ROUTE_TOKENS,
@@ -26,6 +28,9 @@ export interface GnosisPoolGraphEdge {
   initialized: boolean
   poolAddress?: string
   tvlUSD?: number
+  // Pool spot state (from slot0), retained for cheap (no extra RPC) price-impact estimation.
+  sqrtPriceX96?: BigNumber
+  tick?: number
 }
 
 export interface GnosisViablePoolGraphEdge {
@@ -238,7 +243,7 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
     return []
   }
 
-  const maxHops = Math.min(3, Math.max(1, Math.trunc(args.maxHops ?? 3)))
+  const maxHops = Math.min(GNOSIS_MAX_ROUTE_HOPS, Math.max(1, Math.trunc(args.maxHops ?? 3)))
   const tokenIns = getGnosisRouteEquivalentAddresses(args.tokenIn)
   const tokenOuts = getGnosisRouteEquivalentAddresses(args.tokenOut)
   const routeHubCandidates = [...getGnosisRouteEquivalentAddressSet(args.routingHubs ?? GNOSIS_BASE_TOKENS)]
@@ -314,7 +319,8 @@ function buildRankedGnosisRouteCandidates(args: {
         continue
       }
 
-      for (const poolEdge of poolEdges) {
+      // Only the deepest few fee tiers per pair; edges are pre-sorted by liquidity (compareViablePoolEdges).
+      for (const poolEdge of poolEdges.slice(0, GNOSIS_MAX_POOLS_PER_PAIR)) {
         const nextRouteTokens = [
           ...routeTokens,
           isOutputToken

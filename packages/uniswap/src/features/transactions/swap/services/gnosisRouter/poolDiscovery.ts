@@ -47,6 +47,7 @@ interface ExistingGnosisPool extends GnosisPoolDiscoveryCandidate {
 
 interface PoolStateRead {
   sqrtPriceX96?: BigNumber
+  tick?: number
   liquidity?: BigNumber
 }
 
@@ -223,7 +224,9 @@ async function readPoolGraphEdges({
       }
 
       if (tag.kind === 'slot0') {
-        read.sqrtPriceX96 = BigNumber.from(poolInterface.decodeFunctionResult('slot0', result.returnData)[0])
+        const decoded = poolInterface.decodeFunctionResult('slot0', result.returnData)
+        read.sqrtPriceX96 = BigNumber.from(decoded[0])
+        read.tick = Number(decoded[1])
       } else {
         read.liquidity = BigNumber.from(poolInterface.decodeFunctionResult('liquidity', result.returnData)[0])
       }
@@ -243,6 +246,8 @@ async function readPoolGraphEdges({
       liquidity,
       initialized: sqrtPriceX96.gt(0),
       poolAddress: pool.poolAddress,
+      sqrtPriceX96,
+      tick: read?.tick,
     }
   })
 }

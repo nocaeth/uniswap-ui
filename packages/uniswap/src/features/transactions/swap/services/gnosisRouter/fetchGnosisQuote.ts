@@ -33,6 +33,7 @@ import {
   GNOSIS_MULTICALL3_ADDRESS,
   GNOSIS_QUOTE_TIMEOUT_MS,
   GNOSIS_QUOTER_ADDRESS,
+  GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_SDAI,
   GNOSIS_SPLIT_GRID_STEPS,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
@@ -58,7 +59,9 @@ import {
   buildGnosisRouteCandidates,
   filterGnosisPoolGraphEdgesByTvl,
   getGnosisRouteKey,
+  getPoolKey,
   hasGnosisPoolTvlMetadata,
+  normalizeGnosisRouteTokenAddress,
   type CandidateRoute,
   type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
@@ -170,11 +173,13 @@ function buildCandidateRoutesFromPoolEdges(args: {
   tokenIn: string
   tokenOut: string
   poolEdges: readonly GnosisPoolGraphEdge[]
+  maxHops?: number
 }): CandidateRoute[] {
   return buildGnosisRouteCandidates({
     tokenIn: args.tokenIn,
     tokenOut: args.tokenOut,
     graph: buildGnosisPoolGraph(args.poolEdges),
+    maxHops: args.maxHops,
   })
 }
 
@@ -199,6 +204,7 @@ export function buildCandidateRouteSets(args: {
   tokenIn: string
   tokenOut: string
   poolEdges: readonly GnosisPoolGraphEdge[]
+  maxHops?: number
 }): CandidateRouteSets {
   if (!hasGnosisPoolTvlMetadata(args.poolEdges)) {
     return {
@@ -288,6 +294,108 @@ async function quoteCandidateRoutes(args: {
   // Best first: smallest input for exact-output, largest output for exact-input.
   successful.sort((a, b) => (exactOutput ? ascending(a.amountIn, b.amountIn) : ascending(b.amountOut, a.amountOut)))
   return successful
+}
+
+/** Pool spot state keyed by canonical pool key, from discovery — no extra RPC. */
+function buildPoolStateByKey(poolEdges: readonly GnosisPoolGraphEdge[]): Map<string, PoolState> {
+  const byKey = new Map<string, PoolState>()
+  for (const edge of poolEdges) {
+    if (!edge.sqrtPriceX96 || edge.tick === undefined || edge.sqrtPriceX96.isZero()) {
+      continue
+    }
+    const key = getPoolKey({
+      tokenA: normalizeGnosisRouteTokenAddress(edge.tokenA),
+      tokenB: normalizeGnosisRouteTokenAddress(edge.tokenB),
+      fee: edge.fee,
+    })
+    byKey.set(key, { sqrtPriceX96: edge.sqrtPriceX96, tick: edge.tick, liquidity: BigNumber.from(edge.liquidity) })
+  }
+  return byKey
+}
+
+/** Per-hop pool state for a route from the discovery map, or undefined if any hop is missing. */
+function poolStatesForRoute(route: CandidateRoute, byKey: Map<string, PoolState>): PoolState[] | undefined {
+  const states: PoolState[] = []
+  for (let i = 0; i < route.fees.length; i++) {
+    const a = route.tokens[i]
+    const b = route.tokens[i + 1]
+    const fee = route.fees[i]
+    if (a === undefined || b === undefined || fee === undefined) {
+      return undefined
+    }
+    const state = byKey.get(
+      getPoolKey({ tokenA: normalizeGnosisRouteTokenAddress(a), tokenB: normalizeGnosisRouteTokenAddress(b), fee }),
+    )
+    if (!state) {
+      return undefined
+    }
+    states.push(state)
+  }
+  return states
+}
+
+/** Token metadata for a route from the static known-token table, or undefined for any unknown token. */
+function knownMetasForRoute(route: CandidateRoute): Map<string, TokenMeta> | undefined {
+  const metas = new Map<string, TokenMeta>()
+  for (const raw of route.tokens) {
+    const known = KNOWN_TOKENS[raw.toLowerCase()]
+    if (!known) {
+      return undefined
+    }
+    metas.set(raw.toLowerCase(), { address: raw, symbol: known.symbol, decimals: known.decimals })
+  }
+  return metas
+}
+
+/**
+ * Cheap price-impact estimate (%) for a quoted route from discovery state alone (no extra RPC),
+ * reusing the same impact math as the firm path. Used to gate hop expansion and indicative quotes.
+ * Returns 0 (treated as viable) when pool state or token metadata is unavailable, so it never
+ * over-rejects — the firm path re-checks with freshly read pool state before a quote is emitted.
+ */
+function estimateRouteImpactPct(args: {
+  quoted: QuotedRoute
+  byKey: Map<string, PoolState>
+  tradeType: TradingApi.TradeType
+}): number {
+  const states = poolStatesForRoute(args.quoted.route, args.byKey)
+  const metas = knownMetasForRoute(args.quoted.route)
+  if (!states || !metas) {
+    return 0
+  }
+  return computeAggregatePriceImpact({
+    legs: [args.quoted],
+    poolStatesByRoute: [states],
+    metas,
+    tradeType: args.tradeType,
+    totalAmountIn: args.quoted.amountIn,
+  })
+}
+
+/** Builds + quotes the candidate set for one hop limit, returning the ranked successful quotes. */
+async function quoteRankedAtHops(args: {
+  provider: JsonRpcProvider
+  tokenIn: string
+  tokenOut: string
+  poolEdges: readonly GnosisPoolGraphEdge[]
+  amount: BigNumber
+  tradeType: TradingApi.TradeType
+  maxHops: number
+}): Promise<QuotedRoute[]> {
+  const { provider, tokenIn, tokenOut, poolEdges, amount, tradeType, maxHops } = args
+  const { preferredRoutes, getFallbackRoutes } = buildCandidateRouteSets({ tokenIn, tokenOut, poolEdges, maxHops })
+  let fallbackRoutes = preferredRoutes.length ? [] : getFallbackRoutes()
+  const preferredRanked = preferredRoutes.length
+    ? await quoteCandidateRoutes({ provider, routes: preferredRoutes, amount, tradeType })
+    : []
+  if (!preferredRanked.length && !fallbackRoutes.length) {
+    fallbackRoutes = getFallbackRoutes()
+  }
+  return preferredRanked.length
+    ? preferredRanked
+    : fallbackRoutes.length
+      ? await quoteCandidateRoutes({ provider, routes: fallbackRoutes, amount, tradeType })
+      : []
 }
 
 interface SplitResult {
@@ -755,35 +863,34 @@ async function fetchGnosisQuoteInner(
     tokenOut: resolvedOut,
   })
   const poolEdges = await annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges)
-  const { preferredRoutes, getFallbackRoutes } = buildCandidateRouteSets({
-    tokenIn: resolvedIn,
-    tokenOut: resolvedOut,
-    poolEdges,
-  })
-  let fallbackRoutes: CandidateRoute[] = []
-  if (!preferredRoutes.length) {
-    fallbackRoutes = getFallbackRoutes()
-  }
-  if (!preferredRoutes.length && !fallbackRoutes.length) {
+  if (!poolEdges.length) {
     throw new Error(`No initialized Gnosis V3 pools found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
+  const poolStateByKey = buildPoolStateByKey(poolEdges)
 
-  // Quote the preferred (TVL-cleared) routes first. A successful preferred quote wins without
-  // quoting the fallback set: routes through confirmed sub-threshold pools are intentionally
-  // not compared, since their thin liquidity would surface as price impact in the quote anyway.
-  // Fallback is only quoted when no preferred route exists or none of them quote successfully.
-  const preferredRanked = preferredRoutes.length
-    ? await quoteCandidateRoutes({ provider, routes: preferredRoutes, amount, tradeType })
-    : []
-  if (!preferredRanked.length && !fallbackRoutes.length) {
-    fallbackRoutes = getFallbackRoutes()
+  // Expand the hop limit only as needed: quote the cheapest (fewest-hop) candidate set first and stop
+  // as soon as its best route is viable; widen to longer routes only when shorter ones are not (e.g. a
+  // deep cluster-crossing path needs >3 hops). Indicative quotes use only the first tier to keep
+  // keystroke latency flat. quoteRankedAtHops keeps the preferred-then-fallback (TVL) behavior per tier;
+  // the firm path re-checks viability with freshly read pool state before emitting a quote.
+  const hopTiers = indicative ? GNOSIS_ROUTE_HOP_TIERS.slice(0, 1) : GNOSIS_ROUTE_HOP_TIERS
+  let ranked: QuotedRoute[] = []
+  let best: QuotedRoute | undefined
+  for (const maxHops of hopTiers) {
+    ranked = await quoteRankedAtHops({
+      provider,
+      tokenIn: resolvedIn,
+      tokenOut: resolvedOut,
+      poolEdges,
+      amount,
+      tradeType,
+      maxHops,
+    })
+    best = ranked[0]
+    if (best && isGnosisQuotePriceImpactViable(estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType }))) {
+      break
+    }
   }
-  const ranked = preferredRanked.length
-    ? preferredRanked
-    : fallbackRoutes.length
-      ? await quoteCandidateRoutes({ provider, routes: fallbackRoutes, amount, tradeType })
-      : []
-  const best = ranked[0]
   if (!best) {
     throw new Error(`No Gnosis V3 route found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
@@ -793,8 +900,16 @@ async function fetchGnosisQuoteInner(
   const inputToken = nativeIn ? params.tokenIn : resolvedIn
   const outputToken = nativeOut ? params.tokenOut : resolvedOut
 
-  // Indicative quotes only need input/output amounts; skip all the extra reads.
+  // Indicative quotes only need input/output amounts; skip all the extra reads. Apply the same
+  // absurd-quote guard as the firm path here too, using the cheap discovery-state impact estimate,
+  // so a thin/over-cap route doesn't flash a phantom output while typing then get rejected on commit.
   if (indicative) {
+    const indicativeImpact = estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType })
+    if (!isGnosisQuotePriceImpactViable(indicativeImpact)) {
+      throw new Error(
+        `No viable Gnosis V3 route for ${params.tokenIn} -> ${params.tokenOut}: price impact ${indicativeImpact}% exceeds ${GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT}%`,
+      )
+    }
     const quote: TradingApi.ClassicQuote = {
       chainId: GNOSIS_CHAIN_ID,
       swapper: params.swapper,
@@ -806,7 +921,7 @@ async function fetchGnosisQuoteInner(
       routeString: '',
       quoteId: 'gnosis-local',
       gasUseEstimate: best.gasEstimate.toString(),
-      priceImpact: 0,
+      priceImpact: indicativeImpact,
       portionBips: 0,
     }
     return {
