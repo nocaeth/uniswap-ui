@@ -505,7 +505,7 @@ export async function runBackfill(): Promise<void> {
   const db = getDb(true)
   initSchema(db)
   db.exec(
-    'DELETE FROM tokens; DELETE FROM pools; DELETE FROM token_day_data; DELETE FROM token_hour_data; DELETE FROM pool_day_data; DELETE FROM protocol_day_data; DELETE FROM transactions; DELETE FROM meta;',
+    'DELETE FROM tokens; DELETE FROM pools; DELETE FROM token_day_data; DELETE FROM token_hour_data; DELETE FROM pool_day_data; DELETE FROM pool_hour_data; DELETE FROM protocol_day_data; DELETE FROM transactions; DELETE FROM meta;',
   )
 
   const insTokenDay = db.prepare('INSERT OR REPLACE INTO token_day_data (tokenId,day,priceUSD,volumeUSD,tvlUSD) VALUES (?,?,?,?,?)')
@@ -514,6 +514,9 @@ export async function runBackfill(): Promise<void> {
   )
   const insProtoDay = db.prepare('INSERT OR REPLACE INTO protocol_day_data (day,tvlUSD,volumeUSD) VALUES (?,?,?)')
   const insTokenHour = db.prepare('INSERT OR REPLACE INTO token_hour_data (tokenId,hour,priceUSD,volumeUSD) VALUES (?,?,?,?)')
+  const insPoolHour = db.prepare(
+    'INSERT OR REPLACE INTO pool_hour_data (poolId,hour,volumeUSD,token0Price,token1Price) VALUES (?,?,?,?,?)',
+  )
 
   // keep day-price per token for the tx USD pass + percent-change snapshot
   const tokenDayPrice = new Map<string, Map<number, number>>()
@@ -555,7 +558,8 @@ export async function runBackfill(): Promise<void> {
         const amt1 = a.dayAmt1.get(day) ?? 0
         const vol = p0 != null ? amt0 * p0 : p1 != null ? amt1 * p1 : 0
         const spot = pd.price1per0[i]
-        insPoolDay.run(p.pool, day, vol, tvl, vol * (p.fee / 1e6), spot, spot > 0 ? 1 / spot : 0, a.dayTx.get(day) ?? 0)
+        // token0Price = token0 per token1 (1/spot); token1Price = token1 per token0 (spot)
+        insPoolDay.run(p.pool, day, vol, tvl, vol * (p.fee / 1e6), spot > 0 ? 1 / spot : 0, spot, a.dayTx.get(day) ?? 0)
         protoTvl += tvl
         protoVol += vol
         addMap2(tokenTvl, p.token0, (p0 ?? 0) * r0)
@@ -619,6 +623,9 @@ export async function runBackfill(): Promise<void> {
         const amt0 = a.hourAmt0.get(h) ?? 0
         const amt1 = a.hourAmt1.get(h) ?? 0
         const vol = p0 != null ? amt0 * p0 : p1 != null ? amt1 * p1 : 0
+        // hourly pool price/volume: token0Price = token0 per token1 (1/spot); token1Price = token1 per token0 (spot)
+        const spot = price1per0.get(p.pool) ?? 0
+        insPoolHour.run(p.pool, h, vol, spot > 0 ? 1 / spot : 0, spot)
         addMap2(tokenVol, p.token0, vol)
         addMap2(tokenVol, p.token1, vol)
       }
@@ -793,8 +800,9 @@ export async function runBackfill(): Promise<void> {
         v30,
         v1 * (p.fee / 1e6),
         tx,
-        spot,
+        // token0Price = token0 per token1 (1/spot); token1Price = token1 per token0 (spot)
         spot > 0 ? 1 / spot : 0,
+        spot,
         st.reserve0,
         st.reserve1,
       )

@@ -26,7 +26,7 @@ on:
         default: both
         options: [both, adapter, web]
   push:
-    branches: [gnosis-only-ui]
+    branches: [main]
     tags: ['v*']
 
 concurrency:

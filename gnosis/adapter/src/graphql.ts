@@ -36,6 +36,7 @@ import {
   type EnvioToken,
   type EnvioTransaction,
 } from './envio.js'
+import { feeToTickSpacing, getPoolTicks } from './onchain.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SCHEMA_PATH =
@@ -311,22 +312,42 @@ export const schema = createSchema({
       totalLiquidityPercentChange24h: (p: PoolSource) => amt(`${p.__pool.id}-tlc`, p.__pool.tvlChange1d, ''),
       cumulativeVolume: (p: PoolSource, args: { duration: string }) =>
         amt(`${p.__pool.id}-cv-${args.duration}`, getPoolCumulativeVolume(p.__pool.id, durationWindow(args.duration).fromTs)),
-      historicalVolume: (p: PoolSource, args: { duration: string }) =>
-        getPoolVolumeHistory(p.__pool.id, durationWindow(args.duration).fromTs).map((x) => ({
+      historicalVolume: (p: PoolSource, args: { duration: string }) => {
+        const w = durationWindow(args.duration)
+        return getPoolVolumeHistory(p.__pool.id, w.fromTs, w.hourly).map((x) => ({
           id: `${p.__pool.id}-hv-${x.timestamp}`,
           timestamp: x.timestamp,
           value: x.value,
           currency: 'USD',
-        })),
-      priceHistory: (p: PoolSource, args: { duration: string }) =>
-        getPoolPriceHistory(p.__pool.id, durationWindow(args.duration).fromTs).map((x) => ({
+        }))
+      },
+      priceHistory: (p: PoolSource, args: { duration: string }) => {
+        const w = durationWindow(args.duration)
+        return getPoolPriceHistory(p.__pool.id, w.fromTs, w.hourly).map((x) => ({
           id: `${p.__pool.id}-pp-${x.timestamp}`,
           timestamp: x.timestamp,
           token0Price: x.token0Price,
           token1Price: x.token1Price,
-        })),
+        }))
+      },
       transactions: (p: PoolSource, args: { first: number; timestampCursor?: number | null }) =>
         getPoolTransactions(p.__pool.id, args.first ?? 100, args.timestampCursor ?? undefined),
+      // Per-tick liquidity distribution for the depth/range chart (AllV3Ticks).
+      // Enumerated on-chain (no indexed tick data). price0/price1 are unused by
+      // the chart (it recomputes prices from tickIdx), so left as '0'.
+      ticks: async (p: PoolSource, args: { skip?: number | null; first?: number | null }) => {
+        const all = await getPoolTicks(p.__pool.id, feeToTickSpacing(p.__pool.feeTier))
+        const skip = args.skip ?? 0
+        const first = args.first ?? all.length
+        return all.slice(skip, skip + first).map((t) => ({
+          id: `${p.__pool.id}-tick-${t.tickIdx}`,
+          tickIdx: t.tickIdx,
+          liquidityGross: t.liquidityGross.toString(),
+          liquidityNet: t.liquidityNet.toString(),
+          price0: '0',
+          price1: '0',
+        }))
+      },
     },
 
     PoolTransaction: {

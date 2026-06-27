@@ -34,8 +34,10 @@ import {
   buildGnosisCreatePosition,
   buildGnosisDecreasePosition,
   buildGnosisIncreasePosition,
+  buildGnosisPoolInfo,
   isGnosisLiquidityChain,
 } from 'uniswap/src/data/apiClients/liquidityService/gnosis/buildGnosisLiquidityCalldata'
+import { buildGnosisListPools } from 'uniswap/src/data/apiClients/liquidityService/gnosis/buildGnosisListPools'
 import {
   V1LiquidityServiceClient,
   V2LiquidityServiceClient,
@@ -53,6 +55,9 @@ function getPoolInfoQueryOptions(
     queryFn: async () => {
       if (!params) {
         throw new Error('params required')
+      }
+      if (isGnosisLiquidityChain(Number(params.chainId))) {
+        return buildGnosisPoolInfo(params)
       }
       return client.poolInfo(params)
     },
@@ -247,6 +252,9 @@ function getListPoolsQueryOptions(
     queryFn: async ({ pageParam }: { pageParam: ListPoolsPageParam }): Promise<ListPoolsResponse> => {
       if (!params) {
         throw new Error('params required')
+      }
+      if (isGnosisLiquidityChain(Number(params.chainIds?.[0]))) {
+        return buildGnosisListPools(params)
       }
       return client.listPools({ ...params, cursor: pageParam })
     },
