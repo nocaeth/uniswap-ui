@@ -51,16 +51,16 @@ describe('getTokenWarningSeverity', () => {
     expect(getTokenWarningSeverity(undefined)).toBe(WarningSeverity.None)
   })
 
-  it('should return Low when currencyInfo is defined but safetyInfo is undefined', () => {
-    expect(getTokenWarningSeverity({ ...mockCurrencyInfo, safetyInfo: undefined })).toBe(WarningSeverity.Low)
+  it('should return None when currencyInfo is defined but safetyInfo is undefined', () => {
+    expect(getTokenWarningSeverity({ ...mockCurrencyInfo, safetyInfo: undefined })).toBe(WarningSeverity.None)
   })
 
-  it('should return Low for non-default token', () => {
+  it('should return None for non-default token', () => {
     const nonDefaultCurrencyInfo = {
       ...mockCurrencyInfo,
       safetyInfo: { ...mockSafetyInfo, tokenList: TokenList.NonDefault },
     }
-    expect(getTokenWarningSeverity(nonDefaultCurrencyInfo)).toBe(WarningSeverity.Low)
+    expect(getTokenWarningSeverity(nonDefaultCurrencyInfo)).toBe(WarningSeverity.None)
   })
 
   it('should return Medium for spam airdrop', () => {
@@ -170,12 +170,12 @@ describe('getShouldHaveCombinedPluralTreatment', () => {
     expect(getShouldHaveCombinedPluralTreatment(mockCurrencyInfo)).toBe(false)
   })
 
-  it('should return true when both currencyInfos have Low warning', () => {
-    const lowCurrencyInfo = {
+  it('should return true when both currencyInfos have Blocked warning', () => {
+    const blockedCurrencyInfo = {
       ...mockCurrencyInfo,
-      safetyInfo: { ...mockSafetyInfo, tokenList: TokenList.NonDefault },
+      safetyInfo: { ...mockSafetyInfo, tokenList: TokenList.Blocked },
     }
-    expect(getShouldHaveCombinedPluralTreatment(lowCurrencyInfo, lowCurrencyInfo)).toBe(true)
+    expect(getShouldHaveCombinedPluralTreatment(blockedCurrencyInfo, blockedCurrencyInfo)).toBe(true)
   })
 
   it('should return false when one has low warning and the other has high warning', () => {
@@ -206,11 +206,11 @@ describe('getFeeColor', () => {
 describe('getTokenProtectionWarning', () => {
   it.each([
     // Basic cases
-    [undefined, TokenProtectionWarning.NonDefault, 'undefined currencyInfo -> NonDefault'],
+    [undefined, TokenProtectionWarning.None, 'undefined currencyInfo -> None'],
     [
       { ...mockCurrencyInfo, safetyInfo: undefined },
-      TokenProtectionWarning.NonDefault,
-      'missing safetyInfo -> NonDefault',
+      TokenProtectionWarning.None,
+      'missing safetyInfo -> None',
     ],
     [mockNativeCurrencyInfo, TokenProtectionWarning.None, 'native currency -> None'],
     [mockCurrencyInfo, TokenProtectionWarning.None, 'default token -> None'],
@@ -229,8 +229,8 @@ describe('getTokenProtectionWarning', () => {
         ...mockCurrencyInfo,
         safetyInfo: { ...mockSafetyInfo, tokenList: TokenList.NonDefault },
       },
-      TokenProtectionWarning.NonDefault,
-      'non-default token -> NonDefault',
+      TokenProtectionWarning.None,
+      'non-default token -> None',
     ],
 
     // Fee-based cases

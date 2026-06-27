@@ -3,7 +3,7 @@ import { PropsWithChildren, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Flex, Text } from 'ui/src'
 import { Flag } from 'ui/src/components/icons/Flag'
-import { CurrencyInfo, TokenList } from 'uniswap/src/features/dataApi/types'
+import { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { getFeeColor } from 'uniswap/src/features/tokens/warnings/safetyUtils'
 import { TokenProtectionWarning } from 'uniswap/src/features/tokens/warnings/types'
@@ -96,10 +96,6 @@ function getWarningFlags({
     flags.push(
       <WarningFlag key="potential-honeypot-warning">{t('token.safety.warning.flaggedAsSuspicious')}</WarningFlag>,
     )
-  }
-
-  if (currencyInfo.safetyInfo?.tokenList === TokenList.NonDefault) {
-    flags.push(<WarningFlag key="exchange-warning">{t('token.safety.warning.notListedOnExchanges')}</WarningFlag>)
   }
 
   return flags
