@@ -170,7 +170,7 @@ export function Pool() {
             </Flex>
           )}
         </Flex>
-        <PositionsSidebar chainFilter={chainFilter} isConnected={isConnected} />
+        <PositionsSidebar chainFilter={chainFilter} />
       </Flex>
       {isLPIncentivesEnabled && (
         <LpIncentiveClaimModal
