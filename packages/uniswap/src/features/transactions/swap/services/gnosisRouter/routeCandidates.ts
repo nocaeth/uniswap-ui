@@ -9,6 +9,7 @@ import {
   GNOSIS_MAX_ROUTE_HOPS,
   GNOSIS_PREFERRED_ETH_ROUTE_HUBS,
   GNOSIS_PREFERRED_STABLE_ROUTE_HUBS,
+  GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_STABLE_ROUTE_TOKENS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -105,6 +106,15 @@ export function getPoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: st
   const first = tokenA < tokenB ? tokenA : tokenB
   const second = tokenA < tokenB ? tokenB : tokenA
   return `${first}:${second}:${fee}`
+}
+
+/** Canonical pool key for a route hop, normalizing both token addresses first (getPoolKey does not). */
+export function getRoutePoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: string; fee: FeeAmount }): string {
+  return getPoolKey({
+    tokenA: normalizeGnosisRouteTokenAddress(tokenA),
+    tokenB: normalizeGnosisRouteTokenAddress(tokenB),
+    fee,
+  })
 }
 
 function addAdjacencyEdge({
@@ -243,7 +253,7 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
     return []
   }
 
-  const maxHops = Math.min(GNOSIS_MAX_ROUTE_HOPS, Math.max(1, Math.trunc(args.maxHops ?? 3)))
+  const maxHops = Math.min(GNOSIS_MAX_ROUTE_HOPS, Math.max(1, Math.trunc(args.maxHops ?? GNOSIS_ROUTE_HOP_TIERS[0])))
   const tokenIns = getGnosisRouteEquivalentAddresses(args.tokenIn)
   const tokenOuts = getGnosisRouteEquivalentAddresses(args.tokenOut)
   const routeHubCandidates = [...getGnosisRouteEquivalentAddressSet(args.routingHubs ?? GNOSIS_BASE_TOKENS)]

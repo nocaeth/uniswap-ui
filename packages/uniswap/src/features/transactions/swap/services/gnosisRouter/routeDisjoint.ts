@@ -1,5 +1,5 @@
 import {
-  getPoolKey,
+  getRoutePoolKey,
   normalizeGnosisRouteTokenAddress,
   type CandidateRoute,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
@@ -25,13 +25,7 @@ export function routePoolKeys(route: CandidateRoute): Set<string> {
     if (a === undefined || b === undefined || fee === undefined) {
       continue
     }
-    keys.add(
-      getPoolKey({
-        tokenA: normalizeGnosisRouteTokenAddress(a),
-        tokenB: normalizeGnosisRouteTokenAddress(b),
-        fee,
-      }),
-    )
+    keys.add(getRoutePoolKey({ tokenA: a, tokenB: b, fee }))
   }
   return keys
 }
