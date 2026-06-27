@@ -1,3 +1,4 @@
+// oxlint-disable eslint-js/no-restricted-syntax -- Vite statically replaces this Gnosis deployment env var at build time.
 import { QUOTER_ADDRESSES, V3_CORE_FACTORY_ADDRESSES } from '@uniswap/sdk-core'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -24,6 +25,9 @@ export const GNOSIS_SDAI = '0xaf204776c7245bf4147c2612bf6e5972ee483701'
 export const GNOSIS_EURE_V2 = '0x420CA0f9B9b604cE0fd9C18EF134C705e5Fa3430'
 // EURe v1 is intentionally not a routing hub.
 export const GNOSIS_EURE_V1 = '0xcB444e90D8198415266c6a2724b7900fb12FC56E'
+export const GNOSIS_GBPE_V2 = '0x8E34bfEC4f6Eb781f9743D9b4af99CD23F9b7053'
+// GBPe v1 is intentionally not a routing hub.
+export const GNOSIS_GBPE_V1 = '0x5Cb9073902F2035222B9749F8fB0c9BFe5527108'
 
 // Intermediate tokens tried when there is no good direct pool. Keep this bounded:
 // pool-aware route generation prunes missing/empty pools before quote calls.
@@ -45,7 +49,7 @@ export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, F
 
 // Upper bound on candidate routes quoted per request. With Multicall3 every route is
 // quoted in a single eth_call, but we still cap to bound calldata size and decode work.
-export const GNOSIS_MAX_CANDIDATE_ROUTES = 40
+export const GNOSIS_MAX_CANDIDATE_ROUTES = 96
 
 // Multicall3 is deployed at the same canonical address on Gnosis as everywhere else.
 export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11'
