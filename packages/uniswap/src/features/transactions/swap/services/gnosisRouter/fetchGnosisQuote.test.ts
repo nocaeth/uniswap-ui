@@ -1,9 +1,26 @@
+import { Interface } from '@ethersproject/abi'
 import { FeeAmount } from '@uniswap/v3-sdk'
-import { buildCandidateRouteSets } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
+import { TradingApi } from '@universe/api'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { SDAI_ERC4626_PREVIEW_ABI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
+import { GNOSIS_SDAI, GNOSIS_WXDAI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
+import {
+  buildCandidateRouteSets,
+  fetchGnosisQuote,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
+import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
 import type { GnosisPoolGraphEdge } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
+import { GNOSIS_SDAI_ADAPTER_QUOTE_ID } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
+
+vi.mock('uniswap/src/features/transactions/swap/services/gnosisRouter/provider', () => ({
+  getGnosisProvider: vi.fn(),
+}))
 
 const TOKEN_A = '0x1000000000000000000000000000000000000001'
 const TOKEN_B = '0x2000000000000000000000000000000000000002'
+const SWAPPER = '0x1111111111111111111111111111111111111111'
+const NATIVE_XDAI_SENTINEL = '0x0000000000000000000000000000000000000000'
+const previewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
 
 // Mirrors GNOSIS_MIN_CANDIDATE_POOL_TVL_USD (1_000) so edges straddle the real floor.
 const ABOVE_FLOOR = 5_000
@@ -85,5 +102,80 @@ describe('buildCandidateRouteSets', () => {
 
     // A non-empty fallback returns the same memoized array reference across calls.
     expect(getFallbackRoutes()).toBe(getFallbackRoutes())
+  })
+})
+
+describe('fetchGnosisQuote sDAI adapter path', () => {
+  const provider = {
+    call: vi.fn(),
+    getBlockNumber: vi.fn(),
+    getGasPrice: vi.fn(),
+  }
+
+  beforeEach(() => {
+    vi.mocked(getGnosisProvider).mockReturnValue(provider as unknown as ReturnType<typeof getGnosisProvider>)
+    provider.call.mockReset()
+    provider.getBlockNumber.mockReset()
+    provider.getGasPrice.mockReset()
+  })
+
+  it('quotes native xDAI -> sDAI directly from ERC4626 previewDeposit', async () => {
+    provider.call.mockResolvedValueOnce(previewInterface.encodeFunctionResult('previewDeposit', ['950']))
+    provider.getBlockNumber.mockResolvedValueOnce(123)
+    provider.getGasPrice.mockResolvedValueOnce('10')
+
+    const response = await fetchGnosisQuote({
+      type: TradingApi.TradeType.EXACT_INPUT,
+      amount: '1000',
+      tokenInChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      tokenOutChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      tokenIn: NATIVE_XDAI_SENTINEL,
+      tokenOut: GNOSIS_SDAI,
+      swapper: SWAPPER,
+    })
+
+    expect(provider.call).toHaveBeenCalledWith({
+      to: GNOSIS_SDAI,
+      data: previewInterface.encodeFunctionData('previewDeposit', ['1000']),
+    })
+    expect(response.routing).toBe(TradingApi.Routing.CLASSIC)
+    if (response.routing !== TradingApi.Routing.CLASSIC) {
+      throw new Error('Expected classic quote')
+    }
+    expect(response.quote.quoteId).toBe(GNOSIS_SDAI_ADAPTER_QUOTE_ID)
+    expect(response.quote.input?.amount).toBe('1000')
+    expect(response.quote.output?.amount).toBe('950')
+    expect(response.quote.route).toEqual([])
+    expect(response.quote.gasFee).toBe('1800000')
+  })
+
+  it('quotes sDAI -> WXDAI exact output directly from ERC4626 previewWithdraw', async () => {
+    provider.call.mockResolvedValueOnce(previewInterface.encodeFunctionResult('previewWithdraw', ['1050']))
+
+    const response = await fetchGnosisQuote(
+      {
+        type: TradingApi.TradeType.EXACT_OUTPUT,
+        amount: '1000',
+        tokenInChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+        tokenOutChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+        tokenIn: GNOSIS_SDAI,
+        tokenOut: GNOSIS_WXDAI,
+        swapper: SWAPPER,
+      },
+      { indicative: true },
+    )
+
+    expect(provider.call).toHaveBeenCalledWith({
+      to: GNOSIS_SDAI,
+      data: previewInterface.encodeFunctionData('previewWithdraw', ['1000']),
+    })
+    expect(response.routing).toBe(TradingApi.Routing.CLASSIC)
+    if (response.routing !== TradingApi.Routing.CLASSIC) {
+      throw new Error('Expected classic quote')
+    }
+    expect(response.quote.quoteId).toBe(GNOSIS_SDAI_ADAPTER_QUOTE_ID)
+    expect(response.quote.input?.amount).toBe('1050')
+    expect(response.quote.output?.amount).toBe('1000')
+    expect(response.quote.gasFee).toBeUndefined()
   })
 })

@@ -186,6 +186,107 @@ export const ERC20_ALLOWANCE_ABI = [
   },
 ] as const
 
+export const SDAI_ERC4626_PREVIEW_ABI = [
+  {
+    inputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    name: 'previewDeposit',
+    outputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    name: 'previewMint',
+    outputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    name: 'previewRedeem',
+    outputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    name: 'previewWithdraw',
+    outputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const
+
+export const SDAI_ADAPTER_ABI = [
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'assets', type: 'uint256' },
+      { internalType: 'address', name: 'receiver', type: 'address' },
+    ],
+    name: 'deposit',
+    outputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'receiver', type: 'address' }],
+    name: 'depositXDAI',
+    outputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'shares', type: 'uint256' },
+      { internalType: 'address', name: 'receiver', type: 'address' },
+    ],
+    name: 'mint',
+    outputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'shares', type: 'uint256' },
+      { internalType: 'address', name: 'receiver', type: 'address' },
+    ],
+    name: 'redeem',
+    outputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'shares', type: 'uint256' },
+      { internalType: 'address', name: 'receiver', type: 'address' },
+    ],
+    name: 'redeemXDAI',
+    outputs: [{ internalType: 'uint256', name: 'assets', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'assets', type: 'uint256' },
+      { internalType: 'address', name: 'receiver', type: 'address' },
+    ],
+    name: 'withdraw',
+    outputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'uint256', name: 'assets', type: 'uint256' },
+      { internalType: 'address', name: 'receiver', type: 'address' },
+    ],
+    name: 'withdrawXDAI',
+    outputs: [{ internalType: 'uint256', name: 'shares', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+] as const
+
 export const V3_POOL_STATE_ABI = [
   {
     inputs: [],
