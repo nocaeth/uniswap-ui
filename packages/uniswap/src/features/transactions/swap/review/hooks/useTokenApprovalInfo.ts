@@ -47,7 +47,7 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
 
   // Gnosis has no Trading API; resolve ERC20 -> Permit2 approval client-side instead.
   const isGnosis = chainId === UniverseChainId.Gnosis
-  const gnosisApprovalInfo = useGnosisApprovalInfo({ address, chainId, wrapType, currencyInAmount })
+  const gnosisApprovalInfo = useGnosisApprovalInfo({ address, chainId, wrapType, currencyInAmount, currencyOutAmount })
 
   const isWrap = wrapType !== WrapType.NotApplicable
   /** Approval is included elsewhere for Chained Actions so it can be skipped */

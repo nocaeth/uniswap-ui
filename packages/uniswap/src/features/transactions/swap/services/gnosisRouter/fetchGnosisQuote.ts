@@ -12,6 +12,7 @@ import {
   MULTICALL3_ABI,
   PERMIT2_ABI,
   QUOTER_V2_ABI,
+  SDAI_ERC4626_PREVIEW_ABI,
   V3_POOL_STATE_ABI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
 import {
@@ -49,6 +50,12 @@ import {
   type CandidateRoute,
   type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
+import {
+  GnosisSdaiAdapterDirection,
+  GNOSIS_SDAI_ADAPTER_QUOTE_ID,
+  getGnosisSdaiAdapterDirection,
+  isGnosisNativeAddress,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
 
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
 
@@ -70,6 +77,7 @@ const quoterInterface = new Interface(QUOTER_V2_ABI)
 const poolInterface = new Interface(V3_POOL_STATE_ABI)
 const erc20MetaInterface = new Interface(ERC20_METADATA_ABI)
 const permit2Interface = new Interface(PERMIT2_ABI)
+const sdaiPreviewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
 
 interface TokenMeta {
   address: string
@@ -420,6 +428,75 @@ export interface FetchGnosisQuoteOptions {
   indicative?: boolean
 }
 
+const SDAI_ADAPTER_GAS_ESTIMATE = BigNumber.from(180_000)
+
+async function fetchGnosisSdaiAdapterQuote(args: {
+  provider: JsonRpcProvider
+  params: TradingApi.QuoteRequest & { isUSDQuote?: boolean }
+  tradeType: TradingApi.TradeType
+  amount: BigNumber
+  indicative: boolean
+}): Promise<DiscriminatedQuoteResponse | undefined> {
+  const { provider, params, tradeType, amount, indicative } = args
+  const direction = getGnosisSdaiAdapterDirection({ tokenIn: params.tokenIn, tokenOut: params.tokenOut })
+  if (!direction) {
+    return undefined
+  }
+
+  const exactOutput = tradeType === TradingApi.TradeType.EXACT_OUTPUT
+  if (direction === GnosisSdaiAdapterDirection.AssetToSdai && exactOutput && isGnosisNativeAddress(params.tokenIn)) {
+    return undefined
+  }
+
+  const previewFunction =
+    direction === GnosisSdaiAdapterDirection.AssetToSdai
+      ? exactOutput
+        ? 'previewMint'
+        : 'previewDeposit'
+      : exactOutput
+        ? 'previewWithdraw'
+        : 'previewRedeem'
+  const result = await provider.call({
+    to: GNOSIS_SDAI,
+    data: sdaiPreviewInterface.encodeFunctionData(previewFunction, [amount]),
+  })
+  const quotedAmount = BigNumber.from(sdaiPreviewInterface.decodeFunctionResult(previewFunction, result)[0])
+  if (quotedAmount.isZero()) {
+    throw new Error(`No Gnosis sDAI adapter quote found for ${params.tokenIn} -> ${params.tokenOut}`)
+  }
+
+  const amountIn = exactOutput ? quotedAmount : amount
+  const amountOut = exactOutput ? amount : quotedAmount
+  const recipient = params.recipient ?? params.swapper
+  const quote: TradingApi.ClassicQuote = {
+    chainId: GNOSIS_CHAIN_ID,
+    swapper: params.swapper,
+    input: { token: params.tokenIn, amount: amountIn.toString() },
+    output: { token: params.tokenOut, amount: amountOut.toString(), recipient },
+    tradeType,
+    slippage: params.slippageTolerance,
+    route: [],
+    routeString: 'sDAI adapter',
+    quoteId: GNOSIS_SDAI_ADAPTER_QUOTE_ID,
+    gasUseEstimate: SDAI_ADAPTER_GAS_ESTIMATE.toString(),
+    priceImpact: 0,
+    portionBips: 0,
+  }
+
+  if (!indicative) {
+    const [blockNumber, gasPrice] = await Promise.all([provider.getBlockNumber(), provider.getGasPrice()])
+    quote.blockNumber = String(blockNumber)
+    quote.gasFee = SDAI_ADAPTER_GAS_ESTIMATE.mul(gasPrice).toString()
+  }
+
+  return {
+    requestId: GNOSIS_SDAI_ADAPTER_QUOTE_ID,
+    routing: TradingApi.Routing.CLASSIC,
+    permitData: null,
+    quote,
+  } as DiscriminatedQuoteResponse
+}
+
 /**
  * Client-side Gnosis V3 quote provider conforming to `TradingApiClient['fetchQuote']`.
  * Quotes candidate routes via QuoterV2 (batched through Multicall3) and returns a CLASSIC
@@ -450,6 +527,11 @@ async function fetchGnosisQuoteInner(
   const nativeOut = isNativeSentinel(params.tokenOut)
   const resolvedIn = nativeIn ? GNOSIS_WXDAI : params.tokenIn
   const resolvedOut = nativeOut ? GNOSIS_WXDAI : params.tokenOut
+
+  const sdaiAdapterQuote = await fetchGnosisSdaiAdapterQuote({ provider, params, tradeType, amount, indicative })
+  if (sdaiAdapterQuote) {
+    return sdaiAdapterQuote
+  }
 
   const discoveredPoolEdges = await discoverGnosisPoolGraphEdges({
     provider,
