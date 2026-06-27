@@ -45,7 +45,6 @@ export function TopLevelModals() {
       <>
         <ModalRenderer modalName={ModalName.PrivacyPolicy} />
         <ModalRenderer modalName={ModalName.PrivacyChoices} />
-        <ModalRenderer modalName={ModalName.Disclosures} />
         <ModalRenderer modalName={ModalName.FeatureFlags} />
         <ModalRenderer modalName={ModalName.BlockedAccount} />
         {shouldShowDevFlags && <ModalRenderer modalName={ModalName.DevFlags} />}
@@ -68,7 +67,6 @@ export function TopLevelModals() {
       <ModalRenderer modalName={ModalName.TestnetMode} componentProps={{ showCloseButton: true }} />
       <ModalRenderer modalName={ModalName.PrivacyPolicy} />
       <ModalRenderer modalName={ModalName.PrivacyChoices} />
-      <ModalRenderer modalName={ModalName.Disclosures} />
       <ModalRenderer modalName={ModalName.FeatureFlags} />
       {shouldShowDevFlags && <ModalRenderer modalName={ModalName.DevFlags} />}
       {shouldShowDevFlags && <AnalyticsDebugOverlayLazy />}

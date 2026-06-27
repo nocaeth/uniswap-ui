@@ -28,9 +28,6 @@ const PrivacyPolicyModal = createLazy(() =>
 const PrivacyChoicesModal = createLazy(() =>
   import('~/components/PrivacyChoices').then((module) => ({ default: module.PrivacyChoicesModal })),
 )
-const DisclosuresModal = createLazy(() =>
-  import('~/components/Disclosures').then((module) => ({ default: module.DisclosuresModal })),
-)
 const FeatureFlagModal = createLazy(() => import('~/components/FeatureFlagModal/FeatureFlagModal'))
 const DevFlagsBox = createLazy(() => import('~/dev/DevFlagsBox'))
 const TokenNotFoundModal = createLazy(() => import('~/components/NotFoundModal/TokenNotFoundModal'))
@@ -142,10 +139,6 @@ export const modalRegistry: ModalRegistry = {
   [ModalName.PrivacyPolicy]: {
     component: PrivacyPolicyModal,
     shouldMount: (state) => state.application.openModal?.name === ModalName.PrivacyPolicy,
-  },
-  [ModalName.Disclosures]: {
-    component: DisclosuresModal,
-    shouldMount: (state) => state.application.openModal?.name === ModalName.Disclosures,
   },
   [ModalName.PrivacyChoices]: {
     component: PrivacyChoicesModal,
