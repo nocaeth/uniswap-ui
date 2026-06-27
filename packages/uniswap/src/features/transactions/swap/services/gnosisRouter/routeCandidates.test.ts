@@ -11,6 +11,8 @@ import {
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import {
   buildGnosisRouteCandidatesFromPoolEdges,
+  filterGnosisPoolGraphEdgesByTvl,
+  hasGnosisPoolTvlMetadata,
   normalizeGnosisRouteTokenAddress,
   type CandidateRoute,
   type GnosisPoolGraphEdge,
@@ -31,6 +33,7 @@ function poolEdge(
     fee?: FeeAmount
     liquidity?: string | number
     initialized?: boolean
+    tvlUSD?: number
   } = {},
 ): GnosisPoolGraphEdge {
   return {
@@ -39,6 +42,7 @@ function poolEdge(
     fee: overrides.fee ?? FeeAmount.LOW,
     liquidity: overrides.liquidity ?? '100',
     initialized: overrides.initialized ?? true,
+    tvlUSD: overrides.tvlUSD,
   }
 }
 
@@ -128,6 +132,19 @@ describe('Gnosis route candidates', () => {
     })
 
     expect(routes).toEqual([])
+  })
+
+  it('filters dust pool edges by TVL for the preferred route pass', () => {
+    const poolEdges = [
+      poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOW, tvlUSD: 999 }),
+      poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.MEDIUM, tvlUSD: 1_000 }),
+      poolEdge(TOKEN_A, GNOSIS_USDCE),
+    ]
+
+    expect(hasGnosisPoolTvlMetadata(poolEdges)).toBe(true)
+    expect(buildRoutes({ poolEdges: filterGnosisPoolGraphEdgesByTvl(poolEdges, 1_000) })).toEqual([
+      { tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] },
+    ])
   })
 
   it('does not generate repeated-token loops', () => {

@@ -22,6 +22,8 @@ export interface GnosisPoolGraphEdge {
   fee: FeeAmount
   liquidity: BigNumberish
   initialized: boolean
+  poolAddress?: string
+  tvlUSD?: number
 }
 
 export interface GnosisViablePoolGraphEdge {
@@ -29,6 +31,8 @@ export interface GnosisViablePoolGraphEdge {
   tokenB: string
   fee: FeeAmount
   liquidity: BigNumber
+  poolAddress?: string
+  tvlUSD?: number
 }
 
 export interface GnosisPoolGraph {
@@ -137,6 +141,8 @@ export function buildGnosisPoolGraph(poolEdges: readonly GnosisPoolGraphEdge[]):
       tokenB: tokensByAddress.get(tokenB) ?? poolEdge.tokenB,
       fee: poolEdge.fee,
       liquidity,
+      poolAddress: poolEdge.poolAddress,
+      tvlUSD: poolEdge.tvlUSD,
     })
   }
 
@@ -169,6 +175,24 @@ export function buildGnosisPoolGraph(poolEdges: readonly GnosisPoolGraphEdge[]):
   }
 
   return { edges: viableEdges, tokensByAddress, adjacency }
+}
+
+export function hasGnosisPoolTvlMetadata(poolEdges: readonly GnosisPoolGraphEdge[]): boolean {
+  return poolEdges.some((poolEdge) => typeof poolEdge.tvlUSD === 'number' && Number.isFinite(poolEdge.tvlUSD))
+}
+
+export function filterGnosisPoolGraphEdgesByTvl(
+  poolEdges: readonly GnosisPoolGraphEdge[],
+  minimumTvlUSD: number,
+): GnosisPoolGraphEdge[] {
+  if (minimumTvlUSD <= 0) {
+    return [...poolEdges]
+  }
+
+  return poolEdges.filter(
+    (poolEdge) =>
+      typeof poolEdge.tvlUSD === 'number' && Number.isFinite(poolEdge.tvlUSD) && poolEdge.tvlUSD >= minimumTvlUSD,
+  )
 }
 
 export function buildGnosisRouteCandidatesFromPoolEdges(

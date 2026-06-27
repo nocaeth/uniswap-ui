@@ -234,6 +234,7 @@ async function readPoolGraphEdges({
       fee: pool.fee,
       liquidity,
       initialized: sqrtPriceX96.gt(0),
+      poolAddress: pool.poolAddress,
     }
   })
 }

@@ -24,6 +24,7 @@ import {
   GNOSIS_GBPE_V1,
   GNOSIS_GBPE_V2,
   GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS,
+  GNOSIS_MIN_CANDIDATE_POOL_TVL_USD,
   GNOSIS_MULTICALL3_ADDRESS,
   GNOSIS_QUOTE_TIMEOUT_MS,
   GNOSIS_QUOTER_ADDRESS,
@@ -37,11 +38,16 @@ import {
   GNOSIS_WXDAI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import { discoverGnosisPoolGraphEdges } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolDiscovery'
+import { annotateGnosisPoolGraphEdgesWithTvl } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolTvl'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
 import {
   buildGnosisPoolGraph,
   buildGnosisRouteCandidates,
+  filterGnosisPoolGraphEdgesByTvl,
+  hasGnosisPoolTvlMetadata,
+  normalizeGnosisRouteTokenAddress,
   type CandidateRoute,
+  type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
 
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
@@ -133,6 +139,55 @@ interface QuotedRoute {
   amountIn: BigNumber
   amountOut: BigNumber
   gasEstimate: BigNumber
+}
+
+interface CandidateRouteSets {
+  preferredRoutes: CandidateRoute[]
+  fallbackRoutes: CandidateRoute[]
+}
+
+function buildCandidateRoutesFromPoolEdges(args: {
+  tokenIn: string
+  tokenOut: string
+  poolEdges: readonly GnosisPoolGraphEdge[]
+}): CandidateRoute[] {
+  return buildGnosisRouteCandidates({
+    tokenIn: args.tokenIn,
+    tokenOut: args.tokenOut,
+    graph: buildGnosisPoolGraph(args.poolEdges),
+  })
+}
+
+function getCandidateRouteKey(route: CandidateRoute): string {
+  return `${route.tokens.map(normalizeGnosisRouteTokenAddress).join(':')}|${route.fees.join(':')}`
+}
+
+function haveSameCandidateRoutes(a: readonly CandidateRoute[], b: readonly CandidateRoute[]): boolean {
+  if (a.length !== b.length) {
+    return false
+  }
+
+  const bRouteKeys = new Set(b.map(getCandidateRouteKey))
+  return a.every((route) => bRouteKeys.has(getCandidateRouteKey(route)))
+}
+
+function buildCandidateRouteSets(args: {
+  tokenIn: string
+  tokenOut: string
+  poolEdges: readonly GnosisPoolGraphEdge[]
+}): CandidateRouteSets {
+  const fallbackRoutes = buildCandidateRoutesFromPoolEdges(args)
+  if (!hasGnosisPoolTvlMetadata(args.poolEdges)) {
+    return { preferredRoutes: fallbackRoutes, fallbackRoutes: [] }
+  }
+
+  const tvlFilteredPoolEdges = filterGnosisPoolGraphEdgesByTvl(args.poolEdges, GNOSIS_MIN_CANDIDATE_POOL_TVL_USD)
+  const preferredRoutes = buildCandidateRoutesFromPoolEdges({ ...args, poolEdges: tvlFilteredPoolEdges })
+
+  return {
+    preferredRoutes,
+    fallbackRoutes: haveSameCandidateRoutes(preferredRoutes, fallbackRoutes) ? [] : fallbackRoutes,
+  }
 }
 
 /** Quotes every candidate route in a single Multicall3 eth_call via the path-based quoter. */
@@ -386,17 +441,29 @@ async function fetchGnosisQuoteInner(
   const resolvedIn = nativeIn ? GNOSIS_WXDAI : params.tokenIn
   const resolvedOut = nativeOut ? GNOSIS_WXDAI : params.tokenOut
 
-  const poolEdges = await discoverGnosisPoolGraphEdges({ provider, tokenIn: resolvedIn, tokenOut: resolvedOut })
-  const candidates = buildGnosisRouteCandidates({
+  const discoveredPoolEdges = await discoverGnosisPoolGraphEdges({
+    provider,
     tokenIn: resolvedIn,
     tokenOut: resolvedOut,
-    graph: buildGnosisPoolGraph(poolEdges),
   })
-  if (!candidates.length) {
+  const poolEdges = await annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges)
+  const { preferredRoutes, fallbackRoutes } = buildCandidateRouteSets({
+    tokenIn: resolvedIn,
+    tokenOut: resolvedOut,
+    poolEdges,
+  })
+  if (!preferredRoutes.length && !fallbackRoutes.length) {
     throw new Error(`No initialized Gnosis V3 pools found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
 
-  const best = await quoteCandidateRoutes({ provider, routes: candidates, amount, tradeType })
+  const preferredBest = preferredRoutes.length
+    ? await quoteCandidateRoutes({ provider, routes: preferredRoutes, amount, tradeType })
+    : undefined
+  const best =
+    preferredBest ??
+    (fallbackRoutes.length
+      ? await quoteCandidateRoutes({ provider, routes: fallbackRoutes, amount, tradeType })
+      : undefined)
   if (!best) {
     throw new Error(`No Gnosis V3 route found for ${params.tokenIn} -> ${params.tokenOut}`)
   }

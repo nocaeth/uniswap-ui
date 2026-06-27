@@ -51,6 +51,10 @@ export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, F
 // quoted in a single eth_call, but we still cap to bound calldata size and decode work.
 export const GNOSIS_MAX_CANDIDATE_ROUTES = 96
 
+// Preferred routing pass ignores dust pools. If that produces no usable quote,
+// swaps fall back to the full initialized-pool graph.
+export const GNOSIS_MIN_CANDIDATE_POOL_TVL_USD = 1_000
+
 // Multicall3 is deployed at the same canonical address on Gnosis as everywhere else.
 export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11'
 
