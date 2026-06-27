@@ -53,7 +53,7 @@ export function ProviderOption({
   )
 
   const widgetOnRampQueryParams = useMemo(() => {
-    const redirectUrl = new URL('/buy', window.location.origin)
+    const redirectUrl = new URL('/swap', window.location.origin)
 
     return {
       serviceProvider: quote.serviceProviderDetails?.serviceProvider ?? '',

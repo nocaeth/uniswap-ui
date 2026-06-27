@@ -54,11 +54,7 @@ export function SwapBottomCard() {
     if (shouldShowWebFORNudge) {
       return (
         <AnimatePresence>
-          <EmptyWalletCards
-            horizontalLayout
-            receiveElementName={ElementName.ForEmptyStateReceive}
-            cexTransferElementName={ElementName.ForEmptyStateCEXTransfer}
-          />
+          <EmptyWalletCards horizontalLayout receiveElementName={ElementName.ForEmptyStateReceive} />
         </AnimatePresence>
       )
     }
