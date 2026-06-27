@@ -4,6 +4,7 @@ import type { ConnectRouter } from '@connectrpc/connect'
 import { createYoga } from 'graphql-yoga'
 import { registerDataApiRoutes } from './dataApiService.js'
 import { registerExploreRoutes } from './exploreService.js'
+import { registerSearchRoutes } from './searchService.js'
 import { schema } from './graphql.js'
 
 const PORT = Number(process.env.PORT ?? 8081)
@@ -15,6 +16,7 @@ const connectHandler = connectNodeAdapter({
   routes: (router: ConnectRouter) => {
     registerExploreRoutes(router)
     registerDataApiRoutes(router)
+    registerSearchRoutes(router)
   },
 })
 

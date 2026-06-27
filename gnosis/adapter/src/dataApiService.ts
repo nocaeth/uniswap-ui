@@ -2,10 +2,16 @@ import { DataApiService } from '@uniswap/client-data-api/dist/data/v1/api_connec
 import {
   GetPositionRequest,
   GetPositionResponse,
+  GetTokenPricesRequest,
+  GetTokenPricesResponse,
+  ListPoolsRequest,
+  ListPoolsResponse,
   ListPositionsRequest,
   ListPositionsResponse,
+  TokenPrice,
 } from '@uniswap/client-data-api/dist/data/v1/api_pb.js'
 import {
+  Pool as RestPool,
   PoolPosition,
   Position,
   PositionStatus,
@@ -14,6 +20,7 @@ import {
 } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb.js'
 import { Token } from '@uniswap/sdk-core'
 import { FeeAmount, Pool, Position as V3Position, TICK_SPACINGS } from '@uniswap/v3-sdk'
+import { getTokenRow } from './envio.js'
 import type { ServiceType } from '@bufbuild/protobuf'
 import type { ConnectRouter, ServiceImpl } from '@connectrpc/connect'
 import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem'
@@ -27,6 +34,7 @@ const GNOSIS_CHAIN_ID = 100
 // Confirmed in @uniswap/sdk-core (patched) for chain 100.
 const NPM_ADDRESS = getAddress('0xAE8fbE656a77519a7490054274910129c9244FA3')
 const FACTORY_ADDRESS = getAddress('0xe32F7dD7e3f098D518ff19A22d5f028e076489B1')
+const WXDAI_ADDRESS = getAddress('0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d')
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 // Read from the same node the wallet transacts against. In dev that's the anvil
@@ -556,17 +564,91 @@ async function getPosition(req: GetPositionRequest): Promise<GetPositionResponse
   return new GetPositionResponse({ position: positions[0] })
 }
 
+// USD spot prices for the swap UI ($ values, gas, fiat<->token). Uniswap's hosted
+// price backend has no Gnosis coverage, so serve the indexer's priceUSD (the same
+// value Explore shows). Native xDAI (zero address) maps to WXDAI.
+function getTokenPrices(req: GetTokenPricesRequest): GetTokenPricesResponse {
+  const tokenPrices: TokenPrice[] = []
+  for (const t of req.tokens) {
+    if (Number(t.chainId) !== GNOSIS_CHAIN_ID) {
+      continue
+    }
+    const lookup = !t.address || t.address.toLowerCase() === ZERO_ADDRESS ? WXDAI_ADDRESS : t.address
+    const row = getTokenRow(lookup)
+    if (row && row.priceUSD > 0) {
+      tokenPrices.push(new TokenPrice({ chainId: GNOSIS_CHAIN_ID, address: t.address, priceUsd: row.priceUSD }))
+    }
+  }
+  return new GetTokenPricesResponse({ tokenPrices })
+}
+
+const STANDARD_FEES: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH]
+
+function toPoolToken(address: string | undefined): Address | undefined {
+  if (!address) {
+    return undefined
+  }
+  return address.toLowerCase() === ZERO_ADDRESS ? WXDAI_ADDRESS : getAddress(address)
+}
+
+// Sort to canonical V3 token0/token1 order (ascending address).
+function sortTokens(a: Address, b: Address): [Address, Address] {
+  return a.toLowerCase() < b.toLowerCase() ? [a, b] : [b, a]
+}
+
+// Pool state for the active-liquidity/depth chart (useGetPoolsByTokens). Reads
+// getPool + slot0 + liquidity on-chain for the requested token pair; resolves all
+// standard fee tiers when no fee is given (fee-tier selector). Gnosis is V3-only.
+async function listPools(req: ListPoolsRequest): Promise<ListPoolsResponse> {
+  if (Number(req.chainId) !== GNOSIS_CHAIN_ID) {
+    return new ListPoolsResponse({ pools: [] })
+  }
+  const tokenA = toPoolToken(req.token0)
+  const tokenB = toPoolToken(req.token1)
+  if (!tokenA || !tokenB) {
+    return new ListPoolsResponse({ pools: [] })
+  }
+  const fees = req.fee !== undefined ? [req.fee] : STANDARD_FEES
+  const states = await fetchPoolStates(fees.map((fee) => ({ token0: tokenA, token1: tokenB, fee })))
+  const [token0, token1] = sortTokens(tokenA, tokenB)
+
+  const pools: RestPool[] = []
+  for (const fee of fees) {
+    const st = states.get(`${tokenA}-${tokenB}-${fee}`)
+    if (!st) {
+      continue
+    }
+    pools.push(
+      new RestPool({
+        poolId: st.address,
+        token0,
+        token1,
+        tick: st.tick,
+        liquidity: st.liquidity.toString(),
+        sqrtPriceX96: st.sqrtPriceX96.toString(),
+        fee,
+        tickSpacing: isStandardFee(fee) ? TICK_SPACINGS[fee] : 0,
+        protocolVersion: ProtocolVersion.V3,
+        chainId: GNOSIS_CHAIN_ID,
+      }),
+    )
+  }
+  return new ListPoolsResponse({ pools })
+}
+
 // @uniswap/client-data-api ships CJS-compiled type decls; under NodeNext the
 // DataApiService value carries @bufbuild/protobuf types resolved in CJS mode,
 // which TS treats as distinct from connect's ESM-mode view. Cast through
 // ServiceType to bridge the dual resolution-mode views (runtime types identical),
-// mirroring exploreService.ts. Only ListPositions/GetPosition are implemented;
-// every other DataApiService method stays Unimplemented (connect handles that).
+// mirroring exploreService.ts. Other DataApiService methods stay Unimplemented
+// (connect handles that).
 const Service = DataApiService as unknown as ServiceType
 
 export function registerDataApiRoutes(router: ConnectRouter): void {
   router.service(Service, {
     listPositions,
     getPosition,
+    getTokenPrices,
+    listPools,
   } as unknown as ServiceImpl<ServiceType>)
 }
