@@ -13,7 +13,7 @@ import {
 } from '@uniswap/client-data-api/dist/data/v1/searchTypes_pb'
 import { parseProtectionInfo, parseRestProtocolVersion, parseSafetyLevel, SharedQueryClient } from '@universe/api'
 import { getNativeAddress } from 'uniswap/src/constants/addresses'
-import { entryGatewayProdPostTransport } from 'uniswap/src/data/rest/base'
+import { dataApiPostTransport } from 'uniswap/src/data/rest/base'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { type CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { buildCurrency, buildCurrencyInfo } from 'uniswap/src/features/dataApi/utils/buildCurrency'
@@ -43,7 +43,9 @@ export function useSearchTokensAndPoolsQuery<TSelectType>({
   select?: ((data: SearchTokensResponse) => TSelectType) | undefined
 }): UseQueryResult<TSelectType, ConnectError> {
   return useQuery(searchTokens, input, {
-    transport: entryGatewayProdPostTransport,
+    // Gnosis fork: SearchService is served same-origin by the adapter
+    // (API_BASE_URL_V2_OVERRIDE), not Uniswap's hosted entry gateway.
+    transport: dataApiPostTransport,
     enabled: !!input && enabled,
     select,
   })
@@ -75,7 +77,7 @@ export async function fetchTokenByAddress({
           size: 1,
           page: 1,
         },
-        { transport: entryGatewayProdPostTransport },
+        { transport: dataApiPostTransport },
       ),
       // Token data does not change often, so we can use stale data here.
       // This data will be refreshed when fetching the portfolio balances anyway.
