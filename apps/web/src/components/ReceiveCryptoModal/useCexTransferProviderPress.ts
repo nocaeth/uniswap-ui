@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { UNISWAP_WEB_URL } from 'uniswap/src/constants/urls'
 import { useFiatOnRampAggregatorTransferWidgetQuery } from 'uniswap/src/features/fiatOnRamp/hooks/useFiatOnRampQueries'
 import type { FORServiceProvider } from 'uniswap/src/features/fiatOnRamp/types'
 import { FiatOnRampEventName } from 'uniswap/src/features/telemetry/constants'
@@ -34,7 +33,7 @@ export function useCexTransferProviderPress(
       serviceProvider: serviceProvider?.serviceProvider ?? '',
       walletAddress: walletAddress ?? '', // satisfy typecheck: useFiatOnRampAggregatorTransferWidgetQuery will only query if walletAddress is defined
       externalSessionId: externalTransactionId,
-      redirectUrl: `${UNISWAP_WEB_URL}/buy`,
+      redirectUrl: `${window.location.origin}/swap`,
     }
   }, [walletAddress, serviceProvider, externalTransactionId])
 
