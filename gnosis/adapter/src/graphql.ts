@@ -36,6 +36,7 @@ import {
   type EnvioToken,
   type EnvioTransaction,
 } from './envio.js'
+import { feeToTickSpacing, getPoolTicks } from './onchain.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SCHEMA_PATH =
@@ -331,6 +332,22 @@ export const schema = createSchema({
       },
       transactions: (p: PoolSource, args: { first: number; timestampCursor?: number | null }) =>
         getPoolTransactions(p.__pool.id, args.first ?? 100, args.timestampCursor ?? undefined),
+      // Per-tick liquidity distribution for the depth/range chart (AllV3Ticks).
+      // Enumerated on-chain (no indexed tick data). price0/price1 are unused by
+      // the chart (it recomputes prices from tickIdx), so left as '0'.
+      ticks: async (p: PoolSource, args: { skip?: number | null; first?: number | null }) => {
+        const all = await getPoolTicks(p.__pool.id, feeToTickSpacing(p.__pool.feeTier))
+        const skip = args.skip ?? 0
+        const first = args.first ?? all.length
+        return all.slice(skip, skip + first).map((t) => ({
+          id: `${p.__pool.id}-tick-${t.tickIdx}`,
+          tickIdx: t.tickIdx,
+          liquidityGross: t.liquidityGross.toString(),
+          liquidityNet: t.liquidityNet.toString(),
+          price0: '0',
+          price1: '0',
+        }))
+      },
     },
 
     PoolTransaction: {
