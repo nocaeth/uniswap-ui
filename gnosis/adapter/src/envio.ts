@@ -354,21 +354,37 @@ export interface EnvioPoolPrice {
   token1Price: number
 }
 
-export function getPoolPriceHistory(address: string, fromTs: number): EnvioPoolPrice[] {
+export function getPoolPriceHistory(address: string, fromTs: number, hourly: boolean): EnvioPoolPrice[] {
   const db = getDb()
+  const a = address.toLowerCase()
+  if (hourly) {
+    return db
+      .query<{ hour: number; token0Price: number; token1Price: number }>(
+        'SELECT hour,token0Price,token1Price FROM pool_hour_data WHERE poolId = ? AND hour >= ? ORDER BY hour ASC',
+      )
+      .all(a, fromTs)
+      .map((r) => ({ timestamp: r.hour, token0Price: r.token0Price, token1Price: r.token1Price }))
+  }
   return db
     .query<{ day: number; token0Price: number; token1Price: number }>(
       'SELECT day,token0Price,token1Price FROM pool_day_data WHERE poolId = ? AND day >= ? ORDER BY day ASC',
     )
-    .all(address.toLowerCase(), fromTs)
+    .all(a, fromTs)
     .map((r) => ({ timestamp: r.day, token0Price: r.token0Price, token1Price: r.token1Price }))
 }
 
-export function getPoolVolumeHistory(address: string, fromTs: number): EnvioTimestamped[] {
+export function getPoolVolumeHistory(address: string, fromTs: number, hourly: boolean): EnvioTimestamped[] {
   const db = getDb()
+  const a = address.toLowerCase()
+  if (hourly) {
+    return db
+      .query<{ hour: number; volumeUSD: number }>('SELECT hour,volumeUSD FROM pool_hour_data WHERE poolId = ? AND hour >= ? ORDER BY hour ASC')
+      .all(a, fromTs)
+      .map((r) => ({ timestamp: r.hour, value: r.volumeUSD }))
+  }
   return db
     .query<{ day: number; volumeUSD: number }>('SELECT day,volumeUSD FROM pool_day_data WHERE poolId = ? AND day >= ? ORDER BY day ASC')
-    .all(address.toLowerCase(), fromTs)
+    .all(a, fromTs)
     .map((r) => ({ timestamp: r.day, value: r.volumeUSD }))
 }
 

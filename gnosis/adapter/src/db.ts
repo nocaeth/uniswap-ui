@@ -60,8 +60,8 @@ CREATE TABLE IF NOT EXISTS pools (
   volume30d        REAL,
   feesUSD          REAL,
   txCount          INTEGER,
-  token0Price      REAL,             -- token1 per token0 (spot)
-  token1Price      REAL,             -- token0 per token1 (spot)
+  token0Price      REAL,             -- token0 per token1 (Uniswap convention)
+  token1Price      REAL,             -- token1 per token0 (Uniswap convention)
   token0Supply     REAL,             -- current reserve token0 (human)
   token1Supply     REAL              -- current reserve token1 (human)
 );
@@ -88,10 +88,18 @@ CREATE TABLE IF NOT EXISTS pool_day_data (
   volumeUSD   REAL,
   tvlUSD      REAL,
   feesUSD     REAL,
-  token0Price REAL,
-  token1Price REAL,
+  token0Price REAL,                  -- token0 per token1 (Uniswap convention)
+  token1Price REAL,                  -- token1 per token0 (Uniswap convention)
   txCount     INTEGER,
   PRIMARY KEY (poolId, day)
+);
+CREATE TABLE IF NOT EXISTS pool_hour_data (
+  poolId      TEXT,
+  hour        INTEGER,               -- unix seconds, start of hour (UTC)
+  volumeUSD   REAL,
+  token0Price REAL,                  -- token0 per token1 (Uniswap convention)
+  token1Price REAL,                  -- token1 per token0 (Uniswap convention)
+  PRIMARY KEY (poolId, hour)
 );
 CREATE TABLE IF NOT EXISTS protocol_day_data (
   day       INTEGER PRIMARY KEY,

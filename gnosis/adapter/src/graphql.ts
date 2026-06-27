@@ -311,20 +311,24 @@ export const schema = createSchema({
       totalLiquidityPercentChange24h: (p: PoolSource) => amt(`${p.__pool.id}-tlc`, p.__pool.tvlChange1d, ''),
       cumulativeVolume: (p: PoolSource, args: { duration: string }) =>
         amt(`${p.__pool.id}-cv-${args.duration}`, getPoolCumulativeVolume(p.__pool.id, durationWindow(args.duration).fromTs)),
-      historicalVolume: (p: PoolSource, args: { duration: string }) =>
-        getPoolVolumeHistory(p.__pool.id, durationWindow(args.duration).fromTs).map((x) => ({
+      historicalVolume: (p: PoolSource, args: { duration: string }) => {
+        const w = durationWindow(args.duration)
+        return getPoolVolumeHistory(p.__pool.id, w.fromTs, w.hourly).map((x) => ({
           id: `${p.__pool.id}-hv-${x.timestamp}`,
           timestamp: x.timestamp,
           value: x.value,
           currency: 'USD',
-        })),
-      priceHistory: (p: PoolSource, args: { duration: string }) =>
-        getPoolPriceHistory(p.__pool.id, durationWindow(args.duration).fromTs).map((x) => ({
+        }))
+      },
+      priceHistory: (p: PoolSource, args: { duration: string }) => {
+        const w = durationWindow(args.duration)
+        return getPoolPriceHistory(p.__pool.id, w.fromTs, w.hourly).map((x) => ({
           id: `${p.__pool.id}-pp-${x.timestamp}`,
           timestamp: x.timestamp,
           token0Price: x.token0Price,
           token1Price: x.token1Price,
-        })),
+        }))
+      },
       transactions: (p: PoolSource, args: { first: number; timestampCursor?: number | null }) =>
         getPoolTransactions(p.__pool.id, args.first ?? 100, args.timestampCursor ?? undefined),
     },
