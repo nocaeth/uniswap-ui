@@ -45,7 +45,7 @@ import {
 import { discoverGnosisPoolGraphEdges } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolDiscovery'
 import { annotateGnosisPoolGraphEdgesWithTvl } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolTvl'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
-import { pickDisjointSet } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
+import { haveSameEndpoints, pickDisjointSet } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
 import {
   activeLegCount,
   enumerateAllocations,
@@ -314,8 +314,16 @@ async function computeBestSplit(args: {
   if (tradeType === TradingApi.TradeType.EXACT_OUTPUT) {
     return undefined // split allocation is defined over input; exact-output keeps the single best
   }
+  const bestRoute = ranked[0]?.route
+  if (!bestRoute) {
+    return undefined
+  }
+  // Only split across routes that share the single best route's concrete input and output token.
+  // Shared-state aliases (EURe v1/v2) are pool-disjoint and would otherwise be combined, but the swap
+  // pulls one tokenIn via Permit2 and the UR reads tokenIn/tokenOut from route[0] only, so a mixed-
+  // alias leg would revert for lack of a Permit2 allowance. See routeDisjoint.haveSameEndpoints.
   const legs = pickDisjointSet(
-    ranked.map((r) => r.route),
+    ranked.map((r) => r.route).filter((route) => haveSameEndpoints(route, bestRoute)),
     GNOSIS_MAX_SPLIT_LEGS,
   )
   if (legs.length < 2) {

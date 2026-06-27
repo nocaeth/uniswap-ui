@@ -47,6 +47,28 @@ export function arePoolDisjoint(a: CandidateRoute, b: CandidateRoute): boolean {
   return true
 }
 
+/** The normalized concrete first/last token a route starts and ends at. */
+export function routeEndpoints(route: CandidateRoute): { first: string; last: string } {
+  return {
+    first: normalizeGnosisRouteTokenAddress(route.tokens[0] ?? ''),
+    last: normalizeGnosisRouteTokenAddress(route.tokens[route.tokens.length - 1] ?? ''),
+  }
+}
+
+/**
+ * True iff both routes start and end at the SAME concrete token. A split's legs must share one
+ * concrete input and one concrete output: the swap pulls a single `tokenIn` via Permit2 (whose
+ * allowance is keyed per concrete ERC20 address) and the UniversalRouter derives `tokenIn`/`tokenOut`
+ * from `route[0]` only. Shared-state aliases (EURe v1/v2) are pool-disjoint and so look splittable,
+ * but combining them across legs would leave the non-`route[0]` leg without a Permit2 allowance and
+ * revert — so they must not be combined even though `arePoolDisjoint` is true.
+ */
+export function haveSameEndpoints(a: CandidateRoute, b: CandidateRoute): boolean {
+  const ea = routeEndpoints(a)
+  const eb = routeEndpoints(b)
+  return ea.first === eb.first && ea.last === eb.last
+}
+
 /**
  * Greedily pick up to `maxLegs` mutually pool-disjoint routes from a ranked list (best first),
  * always keeping the best route. Each candidate is added only if it is disjoint from every route

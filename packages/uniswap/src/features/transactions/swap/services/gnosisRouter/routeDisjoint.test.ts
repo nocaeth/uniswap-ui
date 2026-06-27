@@ -2,6 +2,7 @@ import { FeeAmount } from '@uniswap/v3-sdk'
 import type { CandidateRoute } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
 import {
   arePoolDisjoint,
+  haveSameEndpoints,
   pickDisjointSet,
   routePoolKeys,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
@@ -87,6 +88,39 @@ describe('routeDisjoint', () => {
       const r2 = route([A, B], [FeeAmount.HIGH])
       const r3 = route([A, B], [FeeAmount.LOWEST])
       expect(pickDisjointSet([r0, r1, r2, r3], 3)).toEqual([r0, r1, r2])
+    })
+  })
+
+  describe('haveSameEndpoints', () => {
+    it('routes with the same concrete first and last token match (any hop count)', () => {
+      const direct = route([A, B], [FeeAmount.LOW])
+      const multiHop = route([A, C, B], [FeeAmount.LOW, FeeAmount.MEDIUM])
+      expect(haveSameEndpoints(direct, multiHop)).toBe(true)
+    })
+
+    it('shared-state alias endpoints (EURe v1 vs v2) are pool-disjoint but do NOT match', () => {
+      const a = route([EURE_V2, USDC], [FeeAmount.LOW])
+      const b = route([EURE_V1, USDC], [FeeAmount.LOW])
+      // disjoint pools (summable in the quote) yet different concrete input token (not co-executable)
+      expect(arePoolDisjoint(a, b)).toBe(true)
+      expect(haveSameEndpoints(a, b)).toBe(false)
+    })
+
+    it('a different output token does not match', () => {
+      const a = route([A, B], [FeeAmount.LOW])
+      const b = route([A, C], [FeeAmount.LOW])
+      expect(haveSameEndpoints(a, b)).toBe(false)
+    })
+
+    it('a split must not mix shared-state alias endpoints (regression for mixed v1/v2 legs)', () => {
+      // best route spends canonical EURe (v2); one disjoint candidate spends legacy EURe (v1).
+      const best = route([EURE_V2, USDC], [FeeAmount.LOW])
+      const aliasLeg = route([EURE_V1, USDC], [FeeAmount.MEDIUM]) // disjoint pool, different concrete tokenIn
+      const sameTokenLeg = route([EURE_V2, USDC], [FeeAmount.MEDIUM]) // disjoint pool, same concrete tokenIn
+
+      // mirrors computeBestSplit: filter to the best route's concrete endpoints, then pick disjoint.
+      const eligible = [best, aliasLeg, sameTokenLeg].filter((r) => haveSameEndpoints(r, best))
+      expect(pickDisjointSet(eligible, 2)).toEqual([best, sameTokenLeg]) // aliasLeg excluded
     })
   })
 })
