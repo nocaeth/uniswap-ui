@@ -9,6 +9,8 @@ import {
   GNOSIS_PREFERRED_STABLE_ROUTE_HUBS,
   GNOSIS_STABLE_ROUTE_TOKENS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { getValidAddress } from 'uniswap/src/utils/addresses'
 
 export interface CandidateRoute {
@@ -57,6 +59,7 @@ export interface BuildGnosisRouteCandidatesFromPoolEdgesArgs extends Omit<BuildG
 interface RankedCandidateRoute {
   route: CandidateRoute
   minimumLiquidity: BigNumber
+  minimumTvlUSD?: number
   preferenceScore: number
   totalFee: number
   routeKey: string
@@ -64,6 +67,24 @@ interface RankedCandidateRoute {
 
 export function normalizeGnosisRouteTokenAddress(address: string): string {
   return getValidAddress({ address, platform: Platform.EVM, withEVMChecksum: false }) ?? address
+}
+
+function getGnosisRouteEquivalentAddresses(address: string): string[] {
+  return [
+    ...new Set(
+      getGnosisSharedStateTokenAddresses({ chainId: UniverseChainId.Gnosis, address }).map(
+        normalizeGnosisRouteTokenAddress,
+      ),
+    ),
+  ]
+}
+
+function getGnosisRouteEquivalentAddressSet(addresses: readonly string[]): Set<string> {
+  return new Set(addresses.flatMap(getGnosisRouteEquivalentAddresses))
+}
+
+function getRouteGraphToken(args: { graph: GnosisPoolGraph; normalizedAddress: string; fallback: string }): string {
+  return args.graph.tokensByAddress.get(args.normalizedAddress) ?? args.fallback
 }
 
 function parsePositiveLiquidity(liquidity: BigNumberish): BigNumber | undefined {
@@ -189,10 +210,13 @@ export function filterGnosisPoolGraphEdgesByTvl(
     return [...poolEdges]
   }
 
-  return poolEdges.filter(
-    (poolEdge) =>
-      typeof poolEdge.tvlUSD === 'number' && Number.isFinite(poolEdge.tvlUSD) && poolEdge.tvlUSD >= minimumTvlUSD,
-  )
+  return poolEdges.filter((poolEdge) => {
+    if (typeof poolEdge.tvlUSD !== 'number' || !Number.isFinite(poolEdge.tvlUSD)) {
+      return true
+    }
+
+    return poolEdge.tvlUSD >= minimumTvlUSD
+  })
 }
 
 export function buildGnosisRouteCandidatesFromPoolEdges(
@@ -209,38 +233,68 @@ export function buildGnosisRouteCandidatesFromPoolEdges(
 }
 
 export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs): CandidateRoute[] {
-  const tokenIn = normalizeGnosisRouteTokenAddress(args.tokenIn)
-  const tokenOut = normalizeGnosisRouteTokenAddress(args.tokenOut)
-  if (!tokenIn || !tokenOut || tokenIn === tokenOut) {
-    return []
-  }
-
   const maxRoutes = Math.max(0, Math.trunc(args.maxRoutes ?? GNOSIS_MAX_CANDIDATE_ROUTES))
   if (maxRoutes === 0) {
     return []
   }
 
   const maxHops = Math.min(3, Math.max(1, Math.trunc(args.maxHops ?? 3)))
-  const routingHubs = new Set(
-    (args.routingHubs ?? GNOSIS_BASE_TOKENS)
-      .map(normalizeGnosisRouteTokenAddress)
-      .filter((hub) => hub !== tokenIn && hub !== tokenOut),
-  )
+  const tokenIns = getGnosisRouteEquivalentAddresses(args.tokenIn)
+  const tokenOuts = getGnosisRouteEquivalentAddresses(args.tokenOut)
+  const routeHubCandidates = [...getGnosisRouteEquivalentAddressSet(args.routingHubs ?? GNOSIS_BASE_TOKENS)]
   const rankedRoutes: RankedCandidateRoute[] = []
-  const visitedTokens = new Set<string>([tokenIn])
 
-  function visit({
-    currentToken,
-    routeTokens,
-    routeFees,
-    routeEdges,
-  }: {
+  for (const tokenIn of tokenIns) {
+    for (const tokenOut of tokenOuts) {
+      if (!tokenIn || !tokenOut || tokenIn === tokenOut) {
+        continue
+      }
+
+      rankedRoutes.push(
+        ...buildRankedGnosisRouteCandidates({
+          graph: args.graph,
+          tokenIn,
+          tokenOut,
+          maxHops,
+          routingHubs: routeHubCandidates.filter((hub) => hub !== tokenIn && hub !== tokenOut),
+        }),
+      )
+    }
+  }
+
+  const uniqueRoutes = new Map<string, RankedCandidateRoute>()
+  for (const route of rankedRoutes) {
+    const existingRoute = uniqueRoutes.get(route.routeKey)
+    if (!existingRoute || compareRankedRoutes(route, existingRoute) < 0) {
+      uniqueRoutes.set(route.routeKey, route)
+    }
+  }
+
+  return [...uniqueRoutes.values()]
+    .sort(compareRankedRoutes)
+    .slice(0, maxRoutes)
+    .map((rankedRoute) => rankedRoute.route)
+}
+
+function buildRankedGnosisRouteCandidates(args: {
+  graph: GnosisPoolGraph
+  tokenIn: string
+  tokenOut: string
+  maxHops: number
+  routingHubs: readonly string[]
+}): RankedCandidateRoute[] {
+  const rankedRoutes: RankedCandidateRoute[] = []
+  const visitedTokens = new Set<string>([args.tokenIn])
+  const routingHubs = new Set(args.routingHubs)
+
+  function visit(params: {
     currentToken: string
     routeTokens: string[]
     routeFees: FeeAmount[]
     routeEdges: GnosisViablePoolGraphEdge[]
   }): void {
-    if (routeFees.length >= maxHops) {
+    const { currentToken, routeTokens, routeFees, routeEdges } = params
+    if (routeFees.length >= args.maxHops) {
       return
     }
 
@@ -250,7 +304,7 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
     }
 
     for (const nextToken of [...neighbors.keys()].sort()) {
-      const isOutputToken = nextToken === tokenOut
+      const isOutputToken = nextToken === args.tokenOut
       if ((!isOutputToken && !routingHubs.has(nextToken)) || visitedTokens.has(nextToken)) {
         continue
       }
@@ -263,7 +317,9 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
       for (const poolEdge of poolEdges) {
         const nextRouteTokens = [
           ...routeTokens,
-          isOutputToken ? args.tokenOut : (args.graph.tokensByAddress.get(nextToken) ?? nextToken),
+          isOutputToken
+            ? getRouteGraphToken({ graph: args.graph, normalizedAddress: args.tokenOut, fallback: args.tokenOut })
+            : getRouteGraphToken({ graph: args.graph, normalizedAddress: nextToken, fallback: nextToken }),
         ]
         const nextRouteFees = [...routeFees, poolEdge.fee]
         const nextRouteEdges = [...routeEdges, poolEdge]
@@ -274,8 +330,8 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
             createRankedRoute({
               route,
               routeEdges: nextRouteEdges,
-              tokenIn,
-              tokenOut,
+              tokenIn: args.tokenIn,
+              tokenOut: args.tokenOut,
             }),
           )
           continue
@@ -293,20 +349,14 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
     }
   }
 
-  visit({ currentToken: tokenIn, routeTokens: [args.tokenIn], routeFees: [], routeEdges: [] })
+  visit({
+    currentToken: args.tokenIn,
+    routeTokens: [getRouteGraphToken({ graph: args.graph, normalizedAddress: args.tokenIn, fallback: args.tokenIn })],
+    routeFees: [],
+    routeEdges: [],
+  })
 
-  const uniqueRoutes = new Map<string, RankedCandidateRoute>()
-  for (const route of rankedRoutes) {
-    const existingRoute = uniqueRoutes.get(route.routeKey)
-    if (!existingRoute || compareRankedRoutes(route, existingRoute) < 0) {
-      uniqueRoutes.set(route.routeKey, route)
-    }
-  }
-
-  return [...uniqueRoutes.values()]
-    .sort(compareRankedRoutes)
-    .slice(0, maxRoutes)
-    .map((rankedRoute) => rankedRoute.route)
+  return rankedRoutes
 }
 
 function createRankedRoute(args: {
@@ -319,9 +369,10 @@ function createRankedRoute(args: {
   return {
     route,
     minimumLiquidity: getMinimumLiquidity(routeEdges),
+    minimumTvlUSD: getMinimumTvlUSD(routeEdges),
     preferenceScore: getRoutePreferenceScore({ route, tokenIn, tokenOut }),
     totalFee: route.fees.reduce((sum, fee) => sum + fee, 0),
-    routeKey: getRouteKey(route),
+    routeKey: getGnosisRouteKey(route),
   }
 }
 
@@ -340,10 +391,24 @@ function getMinimumLiquidity(routeEdges: readonly GnosisViablePoolGraphEdge[]): 
   return minimumLiquidity
 }
 
+function getMinimumTvlUSD(routeEdges: readonly GnosisViablePoolGraphEdge[]): number | undefined {
+  let minimumTvlUSD: number | undefined
+
+  for (const edge of routeEdges) {
+    if (typeof edge.tvlUSD !== 'number' || !Number.isFinite(edge.tvlUSD)) {
+      return undefined
+    }
+
+    minimumTvlUSD = minimumTvlUSD === undefined ? edge.tvlUSD : Math.min(minimumTvlUSD, edge.tvlUSD)
+  }
+
+  return minimumTvlUSD
+}
+
 function getRoutePreferenceScore(args: { route: CandidateRoute; tokenIn: string; tokenOut: string }): number {
   const { route, tokenIn, tokenOut } = args
-  const stableTokens = new Set(GNOSIS_STABLE_ROUTE_TOKENS.map(normalizeGnosisRouteTokenAddress))
-  const ethCorrelatedTokens = new Set(GNOSIS_ETH_CORRELATED_ROUTE_TOKENS.map(normalizeGnosisRouteTokenAddress))
+  const stableTokens = getGnosisRouteEquivalentAddressSet(GNOSIS_STABLE_ROUTE_TOKENS)
+  const ethCorrelatedTokens = getGnosisRouteEquivalentAddressSet(GNOSIS_ETH_CORRELATED_ROUTE_TOKENS)
   const intermediateTokens = route.tokens.slice(1, -1).map(normalizeGnosisRouteTokenAddress)
 
   if (stableTokens.has(tokenIn) && stableTokens.has(tokenOut)) {
@@ -359,12 +424,14 @@ function getRoutePreferenceScore(args: { route: CandidateRoute; tokenIn: string;
 
 function getHubPreferenceScore(routeTokens: readonly string[], preferredHubs: readonly string[]): number {
   const preferredHubScores = new Map(
-    preferredHubs.map((hub, index) => [normalizeGnosisRouteTokenAddress(hub), preferredHubs.length - index]),
+    preferredHubs.flatMap((hub, index) =>
+      getGnosisRouteEquivalentAddresses(hub).map((equivalentHub) => [equivalentHub, preferredHubs.length - index]),
+    ),
   )
   return routeTokens.reduce((score, token) => score + (preferredHubScores.get(token) ?? 0), 0)
 }
 
-function getRouteKey(route: CandidateRoute): string {
+export function getGnosisRouteKey(route: CandidateRoute): string {
   return `${route.tokens.map(normalizeGnosisRouteTokenAddress).join(':')}|${route.fees.join(':')}`
 }
 
@@ -372,6 +439,10 @@ function compareRankedRoutes(a: RankedCandidateRoute, b: RankedCandidateRoute): 
   const hopDelta = a.route.fees.length - b.route.fees.length
   if (hopDelta !== 0) {
     return hopDelta
+  }
+
+  if (a.minimumTvlUSD !== undefined && b.minimumTvlUSD !== undefined && a.minimumTvlUSD !== b.minimumTvlUSD) {
+    return b.minimumTvlUSD - a.minimumTvlUSD
   }
 
   if (!a.minimumLiquidity.eq(b.minimumLiquidity)) {

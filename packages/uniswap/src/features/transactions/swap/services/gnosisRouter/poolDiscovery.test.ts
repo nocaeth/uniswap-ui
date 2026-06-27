@@ -55,4 +55,20 @@ describe('Gnosis pool discovery', () => {
       { tokenA: lower(TOKEN_B), tokenB: lower(GNOSIS_USDCE), fee: FeeAmount.MEDIUM },
     ])
   })
+
+  it('discovers legacy shared-state pools for canonical Monerium endpoints', () => {
+    const candidates = buildGnosisPoolDiscoveryCandidates({
+      tokenIn: TOKEN_A,
+      tokenOut: GNOSIS_GBPE_V2,
+      routingHubs: [],
+      feeTiers: [FeeAmount.LOW],
+    })
+
+    expect(candidates).toEqual(
+      expect.arrayContaining([
+        { tokenA: lower(TOKEN_A), tokenB: lower(GNOSIS_GBPE_V2), fee: FeeAmount.LOW },
+        { tokenA: lower(TOKEN_A), tokenB: lower(GNOSIS_GBPE_V1), fee: FeeAmount.LOW },
+      ]),
+    )
+  })
 })

@@ -6,6 +6,7 @@ import {
   GNOSIS_EURE_LEGACY_ADDRESS,
   GNOSIS_GBPE_CANONICAL_ADDRESS,
   GNOSIS_GBPE_LEGACY_ADDRESSES,
+  getGnosisSharedStateTokenAddresses,
   isLegacyGnosisDiscoveryTokenAddress,
 } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 
@@ -71,5 +72,20 @@ describe('gnosisCanonicalTokens', () => {
         searchQuery: GNOSIS_GBPE_LEGACY_ADDRESSES[0],
       }),
     ).toBe(GNOSIS_GBPE_LEGACY_ADDRESSES[0])
+  })
+
+  it('returns canonical and legacy shared-state addresses with the requested address first', () => {
+    expect(
+      getGnosisSharedStateTokenAddresses({
+        chainId: UniverseChainId.Gnosis,
+        address: GNOSIS_GBPE_CANONICAL_ADDRESS,
+      }),
+    ).toEqual([GNOSIS_GBPE_CANONICAL_ADDRESS, GNOSIS_GBPE_LEGACY_ADDRESSES[0]])
+    expect(
+      getGnosisSharedStateTokenAddresses({
+        chainId: UniverseChainId.Gnosis,
+        address: GNOSIS_GBPE_LEGACY_ADDRESSES[0],
+      }),
+    ).toEqual([GNOSIS_GBPE_LEGACY_ADDRESSES[0], GNOSIS_GBPE_CANONICAL_ADDRESS])
   })
 })

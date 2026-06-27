@@ -1,4 +1,4 @@
-import { MultichainToken } from '@uniswap/client-data-api/dist/data/v1/types_pb'
+import type { MultichainToken } from '@uniswap/client-data-api/dist/data/v1/types_pb'
 import { isLegacyGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { TokenSortMethod } from '~/components/Tokens/constants'
 import type { UseListTokensOptions } from '~/features/Explore/state/listTokens/types'
@@ -39,20 +39,9 @@ function removeLegacyGnosisDiscoveryTokenAddresses(token: MultichainToken): Mult
     return token
   }
 
-  return new MultichainToken({
-    multichainId: token.multichainId,
-    symbol: token.symbol,
-    name: token.name,
-    type: token.type,
-    projectName: token.projectName,
-    logoUrl: token.logoUrl,
-    protectionInfo: token.protectionInfo,
-    feeData: token.feeData,
-    safetyLevel: token.safetyLevel,
-    spamCode: token.spamCode,
-    stats: token.stats,
-    chainTokens,
-  })
+  const filteredToken = token.clone()
+  filteredToken.chainTokens = chainTokens
+  return filteredToken
 }
 
 function filterLegacyGnosisDiscoveryTokens(tokens: MultichainToken[]): MultichainToken[] {

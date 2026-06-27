@@ -3,6 +3,8 @@ import {
   GNOSIS_BASE_TOKENS,
   GNOSIS_EURE_V1,
   GNOSIS_EURE_V2,
+  GNOSIS_GBPE_V1,
+  GNOSIS_GBPE_V2,
   GNOSIS_SDAI,
   GNOSIS_USDCE,
   GNOSIS_WETH,
@@ -89,6 +91,24 @@ describe('Gnosis route candidates', () => {
     expect(routes).toEqual([{ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] }])
   })
 
+  it('uses legacy shared-state pools when the user selects canonical GBPe', () => {
+    const routes = buildRoutes({
+      tokenOut: GNOSIS_GBPE_V2,
+      poolEdges: [poolEdge(TOKEN_A, GNOSIS_GBPE_V1, { fee: FeeAmount.LOW })],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, GNOSIS_GBPE_V1], fees: [FeeAmount.LOW] }])
+  })
+
+  it('uses legacy shared-state pools when canonical GBPe is the input token', () => {
+    const routes = buildRoutes({
+      tokenIn: GNOSIS_GBPE_V2,
+      poolEdges: [poolEdge(GNOSIS_GBPE_V1, TOKEN_B, { fee: FeeAmount.LOW })],
+    })
+
+    expect(routes).toEqual([{ tokens: [GNOSIS_GBPE_V1, TOKEN_B], fees: [FeeAmount.LOW] }])
+  })
+
   it('generates 2-hop routes through routing hubs', () => {
     const routes = buildRoutes({
       poolEdges: [
@@ -138,13 +158,32 @@ describe('Gnosis route candidates', () => {
     const poolEdges = [
       poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOW, tvlUSD: 999 }),
       poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.MEDIUM, tvlUSD: 1_000 }),
+      poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.HIGH }),
       poolEdge(TOKEN_A, GNOSIS_USDCE),
     ]
 
     expect(hasGnosisPoolTvlMetadata(poolEdges)).toBe(true)
-    expect(buildRoutes({ poolEdges: filterGnosisPoolGraphEdgesByTvl(poolEdges, 1_000) })).toEqual([
-      { tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] },
-    ])
+    const routes = buildRoutes({ poolEdges: filterGnosisPoolGraphEdgesByTvl(poolEdges, 1_000) })
+
+    expect(routes).toEqual(
+      expect.arrayContaining([
+        { tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] },
+        { tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.HIGH] },
+      ]),
+    )
+    expect(routes).not.toContainEqual({ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.LOW] })
+  })
+
+  it('ranks capped same-hop routes by TVL before raw v3 liquidity when TVL is known', () => {
+    const routes = buildRoutes({
+      maxRoutes: 1,
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOW, liquidity: '1000000000000', tvlUSD: 1_000 }),
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.MEDIUM, liquidity: '1', tvlUSD: 10_000 }),
+      ],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] }])
   })
 
   it('does not generate repeated-token loops', () => {
@@ -197,6 +236,15 @@ describe('Gnosis route candidates', () => {
         fees: [FeeAmount.LOW, FeeAmount.LOW],
       },
     ])
+  })
+
+  it('uses legacy shared-state pools for canonical EURe routing hubs', () => {
+    const routes = buildRoutes({
+      routingHubs: [GNOSIS_EURE_V2],
+      poolEdges: [poolEdge(TOKEN_A, GNOSIS_EURE_V1), poolEdge(GNOSIS_EURE_V1, TOKEN_B)],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, GNOSIS_EURE_V1, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] }])
   })
 
   it('prefers wstETH for ETH-correlated routes when liquidity and hops tie', () => {

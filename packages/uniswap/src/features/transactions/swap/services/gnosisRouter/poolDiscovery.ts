@@ -14,6 +14,8 @@ import {
   GNOSIS_MULTICALL3_ADDRESS,
   GNOSIS_V3_FACTORY_ADDRESS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import {
   normalizeGnosisRouteTokenAddress,
   type GnosisPoolGraphEdge,
@@ -58,6 +60,12 @@ function normalizeUniqueTokens(tokens: readonly string[]): string[] {
   return [...new Set(tokens.map(normalizeGnosisRouteTokenAddress))]
 }
 
+function expandGnosisSharedStateTokens(tokens: readonly string[]): string[] {
+  return tokens.flatMap((token) =>
+    getGnosisSharedStateTokenAddresses({ chainId: UniverseChainId.Gnosis, address: token }),
+  )
+}
+
 function getPoolDiscoveryCacheKey(args: {
   tokens: readonly string[]
   feeTiers: readonly FeeAmount[]
@@ -85,7 +93,7 @@ export function buildGnosisPoolDiscoveryCandidates({
   routingHubs?: readonly string[]
   feeTiers?: readonly FeeAmount[]
 }): GnosisPoolDiscoveryCandidate[] {
-  const tokens = normalizeUniqueTokens([tokenIn, tokenOut, ...routingHubs])
+  const tokens = normalizeUniqueTokens(expandGnosisSharedStateTokens([tokenIn, tokenOut, ...routingHubs]))
   const candidates: GnosisPoolDiscoveryCandidate[] = []
 
   for (let i = 0; i < tokens.length; i++) {
@@ -123,8 +131,8 @@ export async function discoverGnosisPoolGraphEdges({
   feeTiers?: readonly FeeAmount[]
 }): Promise<GnosisPoolGraphEdge[]> {
   const now = Date.now()
-  const normalizedHubs = normalizeUniqueTokens(routingHubs)
-  const tokens = normalizeUniqueTokens([tokenIn, tokenOut, ...normalizedHubs])
+  const normalizedHubs = normalizeUniqueTokens(expandGnosisSharedStateTokens(routingHubs))
+  const tokens = normalizeUniqueTokens(expandGnosisSharedStateTokens([tokenIn, tokenOut, ...normalizedHubs]))
   const cacheKey = getPoolDiscoveryCacheKey({ tokens, feeTiers, routingHubs: normalizedHubs })
   const cached = poolDiscoveryCache.get(cacheKey)
   if (cached && now - cached.ts < POOL_DISCOVERY_TTL_MS) {

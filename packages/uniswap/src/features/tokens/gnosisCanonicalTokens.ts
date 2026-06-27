@@ -68,6 +68,27 @@ export function canonicalizeGnosisDiscoveryTokenAddress({
   return getGnosisDiscoveryCanonicalToken({ chainId, address })?.canonicalAddress ?? address
 }
 
+export function getGnosisSharedStateTokenAddresses({
+  chainId,
+  address,
+}: {
+  chainId?: number | null
+  address: string
+}): readonly string[] {
+  const token = getGnosisDiscoveryCanonicalToken({ chainId, address })
+  if (!token) {
+    return [address]
+  }
+
+  const trimmedAddress = address.trim()
+  return [trimmedAddress, token.canonicalAddress, ...token.legacyAddresses].reduce<string[]>((addresses, candidate) => {
+    if (!addresses.some((addressInSet) => isSameGnosisAddress(candidate, addressInSet))) {
+      addresses.push(candidate)
+    }
+    return addresses
+  }, [])
+}
+
 export function isLegacyGnosisDiscoveryTokenAddress({
   chainId,
   address,

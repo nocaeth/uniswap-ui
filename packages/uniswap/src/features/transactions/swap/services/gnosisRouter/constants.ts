@@ -2,6 +2,12 @@
 import { QUOTER_ADDRESSES, V3_CORE_FACTORY_ADDRESSES } from '@uniswap/sdk-core'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import {
+  GNOSIS_EURE_CANONICAL_ADDRESS,
+  GNOSIS_EURE_LEGACY_ADDRESS,
+  GNOSIS_GBPE_CANONICAL_ADDRESS,
+  GNOSIS_GBPE_LEGACY_ADDRESSES,
+} from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 
 /**
  * Gnosis client-side V3 routing config.
@@ -22,12 +28,12 @@ export const GNOSIS_USDT = '0x4eCAbA5870353805a9f068101A8e0e64dD33cD47'
 export const GNOSIS_WETH = '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1'
 export const GNOSIS_WSTETH = '0x6c76971f98945ae98dd7d4dfca8711ebea946ea6'
 export const GNOSIS_SDAI = '0xaf204776c7245bf4147c2612bf6e5972ee483701'
-export const GNOSIS_EURE_V2 = '0x420CA0f9B9b604cE0fd9C18EF134C705e5Fa3430'
+export const GNOSIS_EURE_V2 = GNOSIS_EURE_CANONICAL_ADDRESS
 // EURe v1 is intentionally not a routing hub.
-export const GNOSIS_EURE_V1 = '0xcB444e90D8198415266c6a2724b7900fb12FC56E'
-export const GNOSIS_GBPE_V2 = '0x8E34bfEC4f6Eb781f9743D9b4af99CD23F9b7053'
+export const GNOSIS_EURE_V1 = GNOSIS_EURE_LEGACY_ADDRESS
+export const GNOSIS_GBPE_V2 = GNOSIS_GBPE_CANONICAL_ADDRESS
 // GBPe v1 is intentionally not a routing hub.
-export const GNOSIS_GBPE_V1 = '0x5Cb9073902F2035222B9749F8fB0c9BFe5527108'
+export const GNOSIS_GBPE_V1 = GNOSIS_GBPE_LEGACY_ADDRESSES[0]
 
 // Intermediate tokens tried when there is no good direct pool. Keep this bounded:
 // pool-aware route generation prunes missing/empty pools before quote calls.

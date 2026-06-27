@@ -65,6 +65,12 @@ function buildPoolTvlQuery(poolAddresses: readonly string[]): GnosisPoolTvlQuery
   }
 }
 
+function negativeCachePoolTvls(poolAddresses: readonly string[], ts: number): void {
+  for (const address of poolAddresses) {
+    poolTvlCache.set(address, { ts })
+  }
+}
+
 export async function fetchGnosisPoolTvlUSDByAddress(
   poolAddresses: readonly string[],
 ): Promise<ReadonlyMap<string, number>> {
@@ -103,6 +109,7 @@ export async function fetchGnosisPoolTvlUSDByAddress(
     })
 
     if (!response.ok) {
+      negativeCachePoolTvls(missingPoolAddresses, now)
       return tvls
     }
 
@@ -129,6 +136,7 @@ export async function fetchGnosisPoolTvlUSDByAddress(
       }
     }
   } catch {
+    negativeCachePoolTvls(missingPoolAddresses, now)
     return tvls
   } finally {
     if (abortTimeout) {

@@ -1,5 +1,10 @@
 import { ChainToken, TokenRankingsStat } from '@uniswap/client-explore/dist/uniswap/explore/v1/service_pb'
 import { tokenRankingsStatToSearchResult } from 'uniswap/src/data/rest/tokenRankingsMultichain'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import {
+  GNOSIS_EURE_CANONICAL_ADDRESS,
+  GNOSIS_EURE_LEGACY_ADDRESS,
+} from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 
 function createTokenRankingsStat(
   overrides: Partial<ConstructorParameters<typeof TokenRankingsStat>[0]> = {},
@@ -144,5 +149,23 @@ describe('tokenRankingsStatToSearchResult', () => {
     expect(result?.name).toBe('Ethereum')
     expect(result?.symbol).toBe('ETH')
     expect(result?.tokens.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('should filter legacy Gnosis EURe aliases from ranking search results', () => {
+    const stat = createTokenRankingsStat({
+      chain: 'GNOSIS',
+      address: GNOSIS_EURE_CANONICAL_ADDRESS,
+      name: 'Monerium EUR emoney',
+      symbol: 'EURe',
+      chainTokens: [
+        new ChainToken({ chainId: UniverseChainId.Gnosis, address: GNOSIS_EURE_LEGACY_ADDRESS, decimals: 18 }),
+        new ChainToken({ chainId: UniverseChainId.Gnosis, address: GNOSIS_EURE_CANONICAL_ADDRESS, decimals: 18 }),
+      ],
+    })
+
+    const result = tokenRankingsStatToSearchResult(stat)
+
+    expect(result?.tokens).toHaveLength(1)
+    expect(result?.tokens[0]?.currency.wrapped.address).toBe(GNOSIS_EURE_CANONICAL_ADDRESS)
   })
 })

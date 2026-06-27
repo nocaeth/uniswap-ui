@@ -44,8 +44,8 @@ import {
   buildGnosisPoolGraph,
   buildGnosisRouteCandidates,
   filterGnosisPoolGraphEdgesByTvl,
+  getGnosisRouteKey,
   hasGnosisPoolTvlMetadata,
-  normalizeGnosisRouteTokenAddress,
   type CandidateRoute,
   type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
@@ -141,9 +141,9 @@ interface QuotedRoute {
   gasEstimate: BigNumber
 }
 
-interface CandidateRouteSets {
+export interface CandidateRouteSets {
   preferredRoutes: CandidateRoute[]
-  fallbackRoutes: CandidateRoute[]
+  getFallbackRoutes: () => CandidateRoute[]
 }
 
 function buildCandidateRoutesFromPoolEdges(args: {
@@ -158,35 +158,45 @@ function buildCandidateRoutesFromPoolEdges(args: {
   })
 }
 
-function getCandidateRouteKey(route: CandidateRoute): string {
-  return `${route.tokens.map(normalizeGnosisRouteTokenAddress).join(':')}|${route.fees.join(':')}`
-}
-
 function haveSameCandidateRoutes(a: readonly CandidateRoute[], b: readonly CandidateRoute[]): boolean {
   if (a.length !== b.length) {
     return false
   }
 
-  const bRouteKeys = new Set(b.map(getCandidateRouteKey))
-  return a.every((route) => bRouteKeys.has(getCandidateRouteKey(route)))
+  const bRouteKeys = new Set(b.map(getGnosisRouteKey))
+  return a.every((route) => bRouteKeys.has(getGnosisRouteKey(route)))
 }
 
-function buildCandidateRouteSets(args: {
+/**
+ * Splits route candidates into a preferred set (built from pools that clear the TVL floor,
+ * plus pools whose TVL is unknown — those are kept, not excluded) and a lazily-built fallback
+ * set (the full pool graph, including confirmed sub-threshold pools). `getFallbackRoutes`
+ * builds the fallback at most once and returns [] when it is identical to the preferred set,
+ * so the caller never re-quotes the same routes. When no pool carries TVL metadata at all,
+ * everything is preferred and there is no fallback.
+ */
+export function buildCandidateRouteSets(args: {
   tokenIn: string
   tokenOut: string
   poolEdges: readonly GnosisPoolGraphEdge[]
 }): CandidateRouteSets {
-  const fallbackRoutes = buildCandidateRoutesFromPoolEdges(args)
   if (!hasGnosisPoolTvlMetadata(args.poolEdges)) {
-    return { preferredRoutes: fallbackRoutes, fallbackRoutes: [] }
+    return {
+      preferredRoutes: buildCandidateRoutesFromPoolEdges(args),
+      getFallbackRoutes: () => [],
+    }
   }
 
   const tvlFilteredPoolEdges = filterGnosisPoolGraphEdgesByTvl(args.poolEdges, GNOSIS_MIN_CANDIDATE_POOL_TVL_USD)
   const preferredRoutes = buildCandidateRoutesFromPoolEdges({ ...args, poolEdges: tvlFilteredPoolEdges })
+  let fallbackRoutes: CandidateRoute[] | undefined
 
   return {
     preferredRoutes,
-    fallbackRoutes: haveSameCandidateRoutes(preferredRoutes, fallbackRoutes) ? [] : fallbackRoutes,
+    getFallbackRoutes: () => {
+      fallbackRoutes ??= buildCandidateRoutesFromPoolEdges(args)
+      return haveSameCandidateRoutes(preferredRoutes, fallbackRoutes) ? [] : fallbackRoutes
+    },
   }
 }
 
@@ -447,18 +457,29 @@ async function fetchGnosisQuoteInner(
     tokenOut: resolvedOut,
   })
   const poolEdges = await annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges)
-  const { preferredRoutes, fallbackRoutes } = buildCandidateRouteSets({
+  const { preferredRoutes, getFallbackRoutes } = buildCandidateRouteSets({
     tokenIn: resolvedIn,
     tokenOut: resolvedOut,
     poolEdges,
   })
+  let fallbackRoutes: CandidateRoute[] = []
+  if (!preferredRoutes.length) {
+    fallbackRoutes = getFallbackRoutes()
+  }
   if (!preferredRoutes.length && !fallbackRoutes.length) {
     throw new Error(`No initialized Gnosis V3 pools found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
 
+  // Quote the preferred (TVL-cleared) routes first. A successful preferred quote wins without
+  // quoting the fallback set: routes through confirmed sub-threshold pools are intentionally
+  // not compared, since their thin liquidity would surface as price impact in the quote anyway.
+  // Fallback is only quoted when no preferred route exists or none of them quote successfully.
   const preferredBest = preferredRoutes.length
     ? await quoteCandidateRoutes({ provider, routes: preferredRoutes, amount, tradeType })
     : undefined
+  if (!preferredBest && !fallbackRoutes.length) {
+    fallbackRoutes = getFallbackRoutes()
+  }
   const best =
     preferredBest ??
     (fallbackRoutes.length
@@ -504,6 +525,7 @@ async function fetchGnosisQuoteInner(
     Boolean(params.swapper) &&
     params.swapper.toLowerCase() !== UNCONNECTED_SWAPPER.toLowerCase() &&
     params.swapper.toLowerCase() !== ZERO_ADDRESS
+  const executionInputToken = best.route.tokens[0] ?? resolvedIn
 
   const [{ metas, poolStates, permit2Allowance }, blockNumber, gasPrice] = await Promise.all([
     finalizeBestRoute({
@@ -511,7 +533,7 @@ async function fetchGnosisQuoteInner(
       best,
       tokenAddresses: best.route.tokens,
       permitOwner: permitRelevant ? params.swapper : undefined,
-      permitToken: permitRelevant ? resolvedIn : undefined,
+      permitToken: permitRelevant ? executionInputToken : undefined,
     }),
     provider.getBlockNumber(),
     provider.getGasPrice(),
@@ -564,7 +586,7 @@ async function fetchGnosisQuoteInner(
     permitRelevant,
     permit2Allowance,
     swapper: params.swapper,
-    token: resolvedIn,
+    token: executionInputToken,
     requiredAmount: best.amountIn,
   })
 

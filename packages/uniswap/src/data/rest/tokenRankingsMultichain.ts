@@ -12,6 +12,7 @@ import {
 } from 'uniswap/src/features/dataApi/types'
 import { buildCurrency, buildCurrencyInfo } from 'uniswap/src/features/dataApi/utils/buildCurrency'
 import { getCurrencySafetyInfo } from 'uniswap/src/features/dataApi/utils/getCurrencySafetyInfo'
+import { isLegacyGnosisDiscoveryTokenAddress } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import type { CurrencyId } from 'uniswap/src/types/currency'
 import { currencyId } from 'uniswap/src/utils/currencyId'
 
@@ -57,6 +58,13 @@ export function tokenRankingsStatToSearchResult(stat: TokenRankingsStat): Multic
   const safetyInfo = getCurrencySafetyInfo(safetyLevel, protectionInfo)
 
   const tokens = stat.chainTokens
+    .filter(
+      (ct) =>
+        !isLegacyGnosisDiscoveryTokenAddress({
+          chainId: ct.chainId,
+          address: ct.address,
+        }),
+    )
     .map((ct) => exploreChainTokenToCurrencyInfo({ chainToken: ct, parent: stat, safetyInfo }))
     .filter((c): c is CurrencyInfo => c !== null)
 

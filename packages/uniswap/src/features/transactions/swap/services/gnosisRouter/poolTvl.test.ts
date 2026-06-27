@@ -112,10 +112,23 @@ describe('Gnosis pool TVL', () => {
 
     const first = await fetchGnosisPoolTvlUSDByAddress([POOL_A])
     const second = await fetchGnosisPoolTvlUSDByAddress([POOL_A, POOL_B])
+    const third = await fetchGnosisPoolTvlUSDByAddress([POOL_B])
 
     expect(first.get(POOL_A)).toBe(2_500)
     expect(second.get(POOL_A)).toBe(2_500)
     expect(second.has(POOL_B)).toBe(false)
+    expect(third.has(POOL_B)).toBe(false)
     expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('negative-caches pools when the adapter returns a non-2xx response', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false } as Response)
+
+    const first = await fetchGnosisPoolTvlUSDByAddress([POOL_A])
+    const second = await fetchGnosisPoolTvlUSDByAddress([POOL_A])
+
+    expect(first.has(POOL_A)).toBe(false)
+    expect(second.has(POOL_A)).toBe(false)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })
