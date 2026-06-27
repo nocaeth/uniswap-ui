@@ -25,8 +25,8 @@ apps/cli
 
 # Tests / tooling noise
 **/coverage
-**/__mocks__
-**/.storybook
+# NOTE: do NOT exclude __mocks__/.storybook — vite.config.mts aliases `expo-blur` to
+# apps/web/.storybook/__mocks__/expo-blur.jsx, which the production web build requires.
 **/storybook-static
 **/.DS_Store
 *.log
