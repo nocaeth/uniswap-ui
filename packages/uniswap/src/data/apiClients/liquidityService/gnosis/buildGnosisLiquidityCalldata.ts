@@ -1,7 +1,8 @@
 import { Interface } from '@ethersproject/abi'
 import { BigNumber } from '@ethersproject/bignumber'
 import { Contract } from '@ethersproject/contracts'
-import { TransactionRequest } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/types_pb'
+import { PoolInfoRequest, PoolInfoResponse } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/api_pb'
+import { PoolInformation, TransactionRequest } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/types_pb'
 import {
   ClaimFeesRequest,
   ClaimFeesResponse,
@@ -203,6 +204,40 @@ async function buildPoolForTokens(token0Address: string, token1Address: string, 
     throw new Error(`Gnosis V3 pool not found for ${token0Address}/${token1Address} fee ${fee}`)
   }
   return buildPoolFromAddress(poolAddress)
+}
+
+/**
+ * Read pool existence + live state for the create/add-liquidity flow. Uniswap's
+ * hosted LiquidityService.PoolInfo doesn't serve Gnosis, so resolve on-chain
+ * (factory.getPool + slot0 + liquidity). Empty pools[] => no pool deployed yet
+ * (genuine "create pool"); a populated entry drives poolId, creatingPoolOrPair
+ * = false, and the SDK pool (sqrtRatioX96 / liquidity / currentTick).
+ */
+export async function buildGnosisPoolInfo(params: PoolInfoRequest): Promise<PoolInfoResponse> {
+  const pp = params.poolParameters
+  if (!pp || pp.fee === undefined) {
+    return new PoolInfoResponse({ pools: [] })
+  }
+  try {
+    const { pool, address } = await buildPoolForTokens(pp.tokenAddressA, pp.tokenAddressB, pp.fee)
+    const info = new PoolInformation({
+      poolReferenceIdentifier: address,
+      poolProtocol: params.protocol,
+      chainId: GNOSIS_CHAIN_ID,
+      tokenAddressA: pool.token0.address,
+      tokenAddressB: pool.token1.address,
+      tokenDecimalsA: String(pool.token0.decimals),
+      tokenDecimalsB: String(pool.token1.decimals),
+      fee: pool.fee,
+      tickSpacing: pool.tickSpacing,
+      sqrtRatioX96: pool.sqrtRatioX96.toString(),
+      poolLiquidity: pool.liquidity.toString(),
+      currentTick: pool.tickCurrent,
+    })
+    return new PoolInfoResponse({ pools: [info] })
+  } catch {
+    return new PoolInfoResponse({ pools: [] })
+  }
 }
 
 /** Build a brand-new (uninitialized) SDK Pool from create-pool parameters. */
