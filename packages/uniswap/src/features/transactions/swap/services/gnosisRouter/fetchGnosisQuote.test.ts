@@ -3,10 +3,15 @@ import { FeeAmount } from '@uniswap/v3-sdk'
 import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { SDAI_ERC4626_PREVIEW_ABI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
-import { GNOSIS_SDAI, GNOSIS_WXDAI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
+import {
+  GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
+  GNOSIS_SDAI,
+  GNOSIS_WXDAI,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import {
   buildCandidateRouteSets,
   fetchGnosisQuote,
+  isGnosisQuotePriceImpactViable,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
 import type { GnosisPoolGraphEdge } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
@@ -177,5 +182,19 @@ describe('fetchGnosisQuote sDAI adapter path', () => {
     expect(response.quote.input?.amount).toBe('1050')
     expect(response.quote.output?.amount).toBe('1000')
     expect(response.quote.gasFee).toBeUndefined()
+  })
+})
+
+describe('isGnosisQuotePriceImpactViable', () => {
+  it('accepts normal and high-but-plausible price impact', () => {
+    expect(isGnosisQuotePriceImpactViable(0)).toBe(true)
+    expect(isGnosisQuotePriceImpactViable(2.5)).toBe(true)
+    expect(isGnosisQuotePriceImpactViable(GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT - 0.001)).toBe(true)
+  })
+
+  it('rejects absurd price impact at or above the ceiling (near-empty-pool quote)', () => {
+    expect(isGnosisQuotePriceImpactViable(GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT)).toBe(false)
+    // 10 WETH -> 0.000133 WXDAI surfaces as ~100% impact when no liquid path exists within the hop cap.
+    expect(isGnosisQuotePriceImpactViable(99.99)).toBe(false)
   })
 })

@@ -58,6 +58,17 @@ export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, F
 // quoted in a single eth_call, but we still cap to bound calldata size and decode work.
 export const GNOSIS_MAX_CANDIDATE_ROUTES = 96
 
+// Firm quotes try these hop limits in order, stopping at the first whose best route is viable
+// (non-absurd price impact). The deep v3 graph is a near-linear chain
+// (WETH–wstETH–sDAI–EURe–USDC.e–WXDAI), so cluster-crossing pairs need up to 5 hops; common pairs
+// resolve at 3 and never pay for the longer passes. Indicative (keystroke) quotes use only the first.
+export const GNOSIS_ROUTE_HOP_TIERS = [3, 4, 5] as const
+// Hard clamp on hops in candidate generation; must cover the largest tier above.
+export const GNOSIS_MAX_ROUTE_HOPS: number = Math.max(...GNOSIS_ROUTE_HOP_TIERS)
+// Per token-pair, expand only the N deepest-liquidity pools (fee tiers) into candidate routes. Bounds
+// the candidate count as the hop limit grows so deep long routes survive the GNOSIS_MAX_CANDIDATE_ROUTES cap.
+export const GNOSIS_MAX_POOLS_PER_PAIR = 2
+
 // Preferred routing pass ignores dust pools. If that produces no usable quote,
 // swaps fall back to the full initialized-pool graph.
 export const GNOSIS_MIN_CANDIDATE_POOL_TVL_USD = 1_000
@@ -70,6 +81,12 @@ export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976
 export const GNOSIS_QUOTE_TIMEOUT_MS = 8_000
 export const GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS = 4_000
 
+// A full quote whose execution price sits at least this far (%) below pool spot price has no viable
+// route — its only path runs through a near-empty pool (e.g. 10 WETH -> 0.000133 WXDAI, ~100% impact
+// when no liquid WETH->WXDAI path exists within the hop limit). Such quotes are rejected rather than
+// surfaced. Set far above any legitimate trade's impact so it never rejects a real quote.
+export const GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT = 90
+
 /**
  * UniversalRouter address on Gnosis. UniversalRouter has no canonical address, so
  * this MUST be set to the address you deployed (see gnosis/contracts/README.md).
@@ -80,3 +97,21 @@ export const GNOSIS_UNIVERSAL_ROUTER_ADDRESS: string =
 
 // Permit2 is the canonical singleton (same address everywhere).
 export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
+
+/**
+ * Split-fill routing (see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).
+ *
+ * Splits a single EXACT_INPUT swap across pool-disjoint v3 routes, executed atomically in one
+ * UniversalRouter transaction, to reduce price impact on size. The universal-router-sdk already
+ * consumes a multi-sub-route quote natively, so this is a quote-production-only change. Always on:
+ * the accept gate below means a split is only used when it actually beats the single best route.
+ */
+// Max routes a split fans across. At 2, the SDK enforces slippage per-leg (no aggregate sweep);
+// raise only if 3 deep disjoint routes prove worthwhile.
+export const GNOSIS_MAX_SPLIT_LEGS = 2
+// Simplex grid resolution per split: G steps => G+1 allocations for a 2-leg split, all quoted in
+// one Multicall3 call. Keep small to bound added quote latency.
+export const GNOSIS_SPLIT_GRID_STEPS = 10
+// Minimum output improvement (bps) over the single best route before a split is used. Gnosis gas
+// is negligible, so this token-gain floor is the whole accept gate (no net-of-gas term).
+export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 5

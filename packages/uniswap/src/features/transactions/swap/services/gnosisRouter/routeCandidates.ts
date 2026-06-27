@@ -5,8 +5,11 @@ import {
   GNOSIS_BASE_TOKENS,
   GNOSIS_ETH_CORRELATED_ROUTE_TOKENS,
   GNOSIS_MAX_CANDIDATE_ROUTES,
+  GNOSIS_MAX_POOLS_PER_PAIR,
+  GNOSIS_MAX_ROUTE_HOPS,
   GNOSIS_PREFERRED_ETH_ROUTE_HUBS,
   GNOSIS_PREFERRED_STABLE_ROUTE_HUBS,
+  GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_STABLE_ROUTE_TOKENS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -26,6 +29,9 @@ export interface GnosisPoolGraphEdge {
   initialized: boolean
   poolAddress?: string
   tvlUSD?: number
+  // Pool spot state (from slot0), retained for cheap (no extra RPC) price-impact estimation.
+  sqrtPriceX96?: BigNumber
+  tick?: number
 }
 
 export interface GnosisViablePoolGraphEdge {
@@ -96,10 +102,19 @@ function parsePositiveLiquidity(liquidity: BigNumberish): BigNumber | undefined 
   }
 }
 
-function getPoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: string; fee: FeeAmount }): string {
+export function getPoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: string; fee: FeeAmount }): string {
   const first = tokenA < tokenB ? tokenA : tokenB
   const second = tokenA < tokenB ? tokenB : tokenA
   return `${first}:${second}:${fee}`
+}
+
+/** Canonical pool key for a route hop, normalizing both token addresses first (getPoolKey does not). */
+export function getRoutePoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: string; fee: FeeAmount }): string {
+  return getPoolKey({
+    tokenA: normalizeGnosisRouteTokenAddress(tokenA),
+    tokenB: normalizeGnosisRouteTokenAddress(tokenB),
+    fee,
+  })
 }
 
 function addAdjacencyEdge({
@@ -238,7 +253,7 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
     return []
   }
 
-  const maxHops = Math.min(3, Math.max(1, Math.trunc(args.maxHops ?? 3)))
+  const maxHops = Math.min(GNOSIS_MAX_ROUTE_HOPS, Math.max(1, Math.trunc(args.maxHops ?? GNOSIS_ROUTE_HOP_TIERS[0])))
   const tokenIns = getGnosisRouteEquivalentAddresses(args.tokenIn)
   const tokenOuts = getGnosisRouteEquivalentAddresses(args.tokenOut)
   const routeHubCandidates = [...getGnosisRouteEquivalentAddressSet(args.routingHubs ?? GNOSIS_BASE_TOKENS)]
@@ -314,7 +329,8 @@ function buildRankedGnosisRouteCandidates(args: {
         continue
       }
 
-      for (const poolEdge of poolEdges) {
+      // Only the deepest few fee tiers per pair; edges are pre-sorted by liquidity (compareViablePoolEdges).
+      for (const poolEdge of poolEdges.slice(0, GNOSIS_MAX_POOLS_PER_PAIR)) {
         const nextRouteTokens = [
           ...routeTokens,
           isOutputToken
