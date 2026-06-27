@@ -25,6 +25,8 @@ export interface TokenApprovalInfoParams {
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
   routing: TradingApi.Routing | undefined
   address?: string
+  // Used only by the Gnosis client-side approval path to pick the sDAI-zap spender (exact-input only).
+  tradeType?: TradingApi.TradeType
 }
 
 export type ApprovalTxInfo = {
@@ -43,11 +45,18 @@ function useApprovalWillBeBatchedWithSwap(chainId: UniverseChainId, routing: Tra
 }
 
 export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalTxInfo {
-  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, routing } = params
+  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, routing, tradeType } = params
 
   // Gnosis has no Trading API; resolve ERC20 -> Permit2 approval client-side instead.
   const isGnosis = chainId === UniverseChainId.Gnosis
-  const gnosisApprovalInfo = useGnosisApprovalInfo({ address, chainId, wrapType, currencyInAmount, currencyOutAmount })
+  const gnosisApprovalInfo = useGnosisApprovalInfo({
+    address,
+    chainId,
+    wrapType,
+    currencyInAmount,
+    currencyOutAmount,
+    tradeType,
+  })
 
   const isWrap = wrapType !== WrapType.NotApplicable
   /** Approval is included elsewhere for Chained Actions so it can be skipped */

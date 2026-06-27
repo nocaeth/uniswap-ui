@@ -70,6 +70,12 @@ import {
   getGnosisSdaiAdapterDirection,
   isGnosisNativeAddress,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
+import {
+  GNOSIS_SDAI_ZAP_ADAPTER_GAS,
+  GNOSIS_SDAI_ZAP_QUOTE_ID,
+  GnosisSdaiZapDirection,
+  getGnosisSdaiZapEligibility,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
 
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
 
@@ -830,6 +836,113 @@ export const fetchGnosisQuote: (
   })
 }
 
+async function previewSdaiConversion(args: {
+  provider: JsonRpcProvider
+  fn: 'previewDeposit' | 'previewRedeem'
+  amount: BigNumber
+}): Promise<BigNumber> {
+  const { provider, fn, amount } = args
+  const result = await provider.call({ to: GNOSIS_SDAI, data: sdaiPreviewInterface.encodeFunctionData(fn, [amount]) })
+  return BigNumber.from(sdaiPreviewInterface.decodeFunctionResult(fn, result)[0])
+}
+
+/** A firm zap quote must execute as a single v3 path (the contract does not split). */
+function isSingleLegV3Route(route: TradingApi.ClassicQuote['route'] | undefined): boolean {
+  return Array.isArray(route) && route.length === 1 && Array.isArray(route[0]) && route[0].length >= 1
+}
+
+function buildGnosisZapQuoteResponse(args: {
+  params: TradingApi.QuoteRequest & { isUSDQuote?: boolean }
+  indicative: boolean
+  inputToken: string
+  outputToken: string
+  inputAmount: BigNumber
+  outputAmount: BigNumber
+  subQuote: TradingApi.ClassicQuote
+}): DiscriminatedQuoteResponse {
+  const { params, indicative, inputToken, outputToken, inputAmount, outputAmount, subQuote } = args
+  const gasUseEstimate = BigNumber.from(subQuote.gasUseEstimate ?? '0')
+    .add(GNOSIS_SDAI_ZAP_ADAPTER_GAS)
+    .toString()
+  const quote: TradingApi.ClassicQuote = {
+    chainId: GNOSIS_CHAIN_ID,
+    swapper: params.swapper,
+    input: { token: inputToken, amount: inputAmount.toString() },
+    output: { token: outputToken, amount: outputAmount.toString(), recipient: params.swapper },
+    tradeType: params.type,
+    slippage: params.slippageTolerance,
+    route: indicative ? [] : (subQuote.route ?? []),
+    routeString: subQuote.routeString ? `sDAI-zap: ${subQuote.routeString}` : 'sDAI zap',
+    quoteId: GNOSIS_SDAI_ZAP_QUOTE_ID,
+    gasUseEstimate,
+    ...(subQuote.gasFee ? { gasFee: subQuote.gasFee } : {}),
+    ...(subQuote.blockNumber ? { blockNumber: subQuote.blockNumber } : {}),
+    priceImpact: subQuote.priceImpact ?? 0,
+    portionBips: 0,
+  }
+  return {
+    requestId: 'gnosis-local',
+    routing: TradingApi.Routing.CLASSIC,
+    permitData: null,
+    quote,
+  } as DiscriminatedQuoteResponse
+}
+
+/**
+ * Produces a zap quote (adapter + single deep v3 path) for an eligible WXDAI/xDAI <-> counterparty
+ * swap by quoting the sDAI-rooted sub-problem with the existing v3 machinery and wrapping it with the
+ * sDAI vault conversion. Returns undefined if no usable sub-route exists, so the caller can fall back
+ * to the direct v3 quote. The sub-quote runs with the placeholder swapper so it skips permit lookups
+ * (zap execution uses a plain ERC20 approval, not Permit2 -> UniversalRouter).
+ */
+async function tryFetchGnosisZapQuote(args: {
+  provider: JsonRpcProvider
+  params: TradingApi.QuoteRequest & { isUSDQuote?: boolean }
+  indicative: boolean
+  direction: GnosisSdaiZapDirection
+}): Promise<DiscriminatedQuoteResponse | undefined> {
+  const { provider, params, indicative, direction } = args
+  const amount = BigNumber.from(params.amount)
+  const inputToken = params.tokenIn
+  const outputToken = params.tokenOut
+
+  try {
+    if (direction === GnosisSdaiZapDirection.DepositAndSwap) {
+      const sharesIn = await previewSdaiConversion({ provider, fn: 'previewDeposit', amount })
+      if (sharesIn.isZero()) {
+        return undefined
+      }
+      const sub = await fetchGnosisQuoteInner(
+        { ...params, tokenIn: GNOSIS_SDAI, tokenOut: outputToken, amount: sharesIn.toString(), swapper: UNCONNECTED_SWAPPER },
+        indicative,
+      )
+      const subQuote = sub.quote as TradingApi.ClassicQuote
+      const outputAmount = BigNumber.from(subQuote.output?.amount ?? '0')
+      if (outputAmount.isZero() || (!indicative && !isSingleLegV3Route(subQuote.route))) {
+        return undefined
+      }
+      return buildGnosisZapQuoteResponse({ params, indicative, inputToken, outputToken, inputAmount: amount, outputAmount, subQuote })
+    }
+
+    const sub = await fetchGnosisQuoteInner(
+      { ...params, tokenIn: inputToken, tokenOut: GNOSIS_SDAI, amount: amount.toString(), swapper: UNCONNECTED_SWAPPER },
+      indicative,
+    )
+    const subQuote = sub.quote as TradingApi.ClassicQuote
+    const shares = BigNumber.from(subQuote.output?.amount ?? '0')
+    if (shares.isZero() || (!indicative && !isSingleLegV3Route(subQuote.route))) {
+      return undefined
+    }
+    const outputAmount = await previewSdaiConversion({ provider, fn: 'previewRedeem', amount: shares })
+    if (outputAmount.isZero()) {
+      return undefined
+    }
+    return buildGnosisZapQuoteResponse({ params, indicative, inputToken, outputToken, inputAmount: amount, outputAmount, subQuote })
+  } catch {
+    return undefined
+  }
+}
+
 async function fetchGnosisQuoteInner(
   params: TradingApi.QuoteRequest & { isUSDQuote?: boolean },
   indicative: boolean,
@@ -847,6 +960,17 @@ async function fetchGnosisQuoteInner(
   const sdaiAdapterQuote = await fetchGnosisSdaiAdapterQuote({ provider, params, tradeType, amount, indicative })
   if (sdaiAdapterQuote) {
     return sdaiAdapterQuote
+  }
+
+  // WXDAI/xDAI <-> deep-cluster counterparty: route through the sDAI zap (adapter + one deep v3 path)
+  // rather than WXDAI's shallow direct pools. Disabled (and a no-op) until the zap address is set.
+  // Falls back to the direct v3 quote below if no usable sDAI-rooted sub-route exists.
+  const zapDirection = getGnosisSdaiZapEligibility({ tokenIn: params.tokenIn, tokenOut: params.tokenOut, tradeType })
+  if (zapDirection) {
+    const zapQuote = await tryFetchGnosisZapQuote({ provider, params, indicative, direction: zapDirection })
+    if (zapQuote) {
+      return zapQuote
+    }
   }
 
   const discoveredPoolEdges = await discoverGnosisPoolGraphEdges({

@@ -21,6 +21,7 @@ import {
   isGnosisNativeAddress,
   isGnosisSdaiAdapterQuote,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
+import { buildGnosisSdaiZapTransaction } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
 import { areAddressesEqual } from 'uniswap/src/utils/addresses'
 
 const DEFAULT_SLIPPAGE_PERCENT = 0.5
@@ -127,6 +128,15 @@ export function createGnosisEVMSwapRepository(): EVMSwapRepository {
         return {
           requestId: 'gnosis-local',
           transactions: [sdaiAdapterTransaction],
+          gasFee: quote.gasFee ?? '0',
+        }
+      }
+
+      const sdaiZapTransaction = buildGnosisSdaiZapTransaction({ quote, deadline: params.deadline })
+      if (sdaiZapTransaction) {
+        return {
+          requestId: 'gnosis-local',
+          transactions: [sdaiZapTransaction],
           gasFee: quote.gasFee ?? '0',
         }
       }

@@ -275,6 +275,7 @@ export function useSwapParams(): {
     chainId,
     wrapType,
     currencyAmounts,
+    exactCurrencyField,
     trade: { trade },
   } = derivedSwapInfo
 
@@ -287,6 +288,10 @@ export function useSwapParams(): {
     currencyInAmount: currencyAmounts[CurrencyField.INPUT],
     currencyOutAmount: currencyAmounts[CurrencyField.OUTPUT],
     routing: trade?.routing,
+    tradeType:
+      exactCurrencyField === CurrencyField.INPUT
+        ? TradingApi.TradeType.EXACT_INPUT
+        : TradingApi.TradeType.EXACT_OUTPUT,
   })
 
   return {
