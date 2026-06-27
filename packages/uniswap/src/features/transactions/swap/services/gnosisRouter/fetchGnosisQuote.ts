@@ -27,6 +27,7 @@ import {
   GNOSIS_GBPE_V2,
   GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS,
   GNOSIS_MAX_SPLIT_LEGS,
+  GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
   GNOSIS_MIN_CANDIDATE_POOL_TVL_USD,
   GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
   GNOSIS_MULTICALL3_ADDRESS,
@@ -859,6 +860,12 @@ async function fetchGnosisQuoteInner(
 
   // Input-weighted across legs; reduces to the single route's impact for the common one-leg case.
   const priceImpact = computeAggregatePriceImpact({ legs, poolStatesByRoute, metas, tradeType, totalAmountIn })
+  // Reject an absurd quote (only path runs through a near-empty pool) instead of surfacing it.
+  if (!isGnosisQuotePriceImpactViable(priceImpact)) {
+    throw new Error(
+      `No viable Gnosis V3 route for ${params.tokenIn} -> ${params.tokenOut}: price impact ${priceImpact}% exceeds ${GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT}%`,
+    )
+  }
   const gasFee = totalGasEstimate.mul(gasPrice).toString()
 
   const routeString = legs
@@ -958,6 +965,16 @@ function computeRoutePriceImpact(args: {
   } catch {
     return 0
   }
+}
+
+/**
+ * A quote is viable only when its price impact stays below the absurd-quote ceiling. A ~100% impact
+ * means the only available path runs through a near-empty pool and the output is garbage (e.g. 10
+ * WETH -> 0.000133 WXDAI); such a quote is rejected rather than surfaced. When impact cannot be
+ * computed it is reported as 0, so this never rejects a quote whose impact is merely unknown.
+ */
+export function isGnosisQuotePriceImpactViable(priceImpact: number): boolean {
+  return priceImpact < GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT
 }
 
 /** Input-weighted average of per-leg price impact; reduces to the single route's impact at one leg. */

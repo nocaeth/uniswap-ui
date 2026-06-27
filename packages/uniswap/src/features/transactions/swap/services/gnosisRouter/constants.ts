@@ -70,6 +70,12 @@ export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976
 export const GNOSIS_QUOTE_TIMEOUT_MS = 8_000
 export const GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS = 4_000
 
+// A full quote whose execution price sits at least this far (%) below pool spot price has no viable
+// route — its only path runs through a near-empty pool (e.g. 10 WETH -> 0.000133 WXDAI, ~100% impact
+// when no liquid WETH->WXDAI path exists within the hop limit). Such quotes are rejected rather than
+// surfaced. Set far above any legitimate trade's impact so it never rejects a real quote.
+export const GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT = 90
+
 /**
  * UniversalRouter address on Gnosis. UniversalRouter has no canonical address, so
  * this MUST be set to the address you deployed (see gnosis/contracts/README.md).
