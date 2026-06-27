@@ -33,9 +33,7 @@ import {
   GNOSIS_QUOTE_TIMEOUT_MS,
   GNOSIS_QUOTER_ADDRESS,
   GNOSIS_SDAI,
-  GNOSIS_SPLIT_ENABLED,
   GNOSIS_SPLIT_GRID_STEPS,
-  GNOSIS_SPLIT_SHADOW,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
   GNOSIS_USDCE,
   GNOSIS_USDT,
@@ -54,7 +52,6 @@ import {
   passesAcceptGate,
   selectBestSplit,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/splitAllocation'
-import { logger } from 'utilities/src/logger/logger'
 import {
   buildGnosisPoolGraph,
   buildGnosisRouteCandidates,
@@ -384,10 +381,9 @@ async function computeBestSplit(args: {
 }
 
 /**
- * Decides the legs to finalize and emit. Split-fill is attempted only when enabled (or in shadow
- * mode) and never for USD quotes; shadow mode computes and logs the single-vs-split delta but keeps
- * the single best route. Returns the accepted split's legs under the live flag, else the single best
- * route as a one-leg list.
+ * Decides the legs to finalize and emit: the best split when it clears the accept gate, else the
+ * single best route as a one-leg list. Split-fill is skipped for USD quotes; EXACT_OUTPUT and the
+ * no-disjoint-alternative cases short-circuit inside computeBestSplit.
  */
 async function resolveQuoteLegs(args: {
   provider: JsonRpcProvider
@@ -399,26 +395,20 @@ async function resolveQuoteLegs(args: {
 }): Promise<QuotedRoute[]> {
   const { provider, ranked, best, amount, tradeType, params } = args
   const singleLeg = [best]
-  if (params.isUSDQuote || (!GNOSIS_SPLIT_ENABLED && !GNOSIS_SPLIT_SHADOW)) {
+  if (params.isUSDQuote) {
     return singleLeg
   }
 
   const split = await computeBestSplit({ provider, ranked, amount, tradeType })
-  const accepted =
-    split !== undefined &&
-    passesAcceptGate({
-      splitOutput: split.totalOut,
-      singleBestOutput: best.amountOut,
-      minImprovementBps: GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
-    })
-  if (GNOSIS_SPLIT_SHADOW) {
-    // Telemetry for every eligible quote — split or not — so the measured benefit has a denominator.
-    logShadowSplit({ params, best, split, accepted })
-  }
-  if (!split || !accepted || !GNOSIS_SPLIT_ENABLED) {
+  if (!split) {
     return singleLeg
   }
-  return split.legs
+  const accepted = passesAcceptGate({
+    splitOutput: split.totalOut,
+    singleBestOutput: best.amountOut,
+    minImprovementBps: GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
+  })
+  return accepted ? split.legs : singleLeg
 }
 
 interface ReadCall {
@@ -981,34 +971,6 @@ function computeAggregatePriceImpact(args: {
     weighted += impact * weightBps
   })
   return Number((weighted / BIPS_BASE).toFixed(3))
-}
-
-/**
- * Shadow-mode telemetry (spec §10): record the single-best vs best-split delta for every live quote
- * without changing the emitted quote, so the real per-pair benefit can be measured before enabling.
- */
-function logShadowSplit(args: {
-  params: TradingApi.QuoteRequest
-  best: QuotedRoute
-  split: SplitResult | undefined
-  accepted: boolean
-}): void {
-  const { params, best, split, accepted } = args
-  const splitOut = split?.totalOut ?? best.amountOut
-  const deltaBps = best.amountOut.isZero()
-    ? 0
-    : splitOut.sub(best.amountOut).mul(BIPS_BASE).div(best.amountOut).toNumber()
-  logger.info('fetchGnosisQuote', 'logShadowSplit', 'gnosis split shadow', {
-    pair: `${params.tokenIn}->${params.tokenOut}`,
-    amountIn: params.amount,
-    splitFound: split !== undefined,
-    legs: split?.legs.length ?? 1,
-    singleBestOut: best.amountOut.toString(),
-    splitOut: splitOut.toString(),
-    deltaBps,
-    accepted,
-    enabled: GNOSIS_SPLIT_ENABLED,
-  })
 }
 
 function buildPermitTransactionIfNeeded(args: {

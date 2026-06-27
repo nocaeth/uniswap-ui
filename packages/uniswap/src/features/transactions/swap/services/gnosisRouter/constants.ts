@@ -82,14 +82,15 @@ export const GNOSIS_UNIVERSAL_ROUTER_ADDRESS: string =
 export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 
 /**
- * Split-fill routing (default off; see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).
+ * Split-fill routing (see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).
  *
  * Splits a single EXACT_INPUT swap across pool-disjoint v3 routes, executed atomically in one
  * UniversalRouter transaction, to reduce price impact on size. The universal-router-sdk already
- * consumes a multi-sub-route quote natively, so this is a quote-production-only change.
+ * consumes a multi-sub-route quote natively, so this is a quote-production-only change. Always on:
+ * the accept gate below means a split is only used when it actually beats the single best route.
  */
 // Max routes a split fans across. At 2, the SDK enforces slippage per-leg (no aggregate sweep);
-// raise only if shadow data shows 3 deep disjoint routes pay off.
+// raise only if 3 deep disjoint routes prove worthwhile.
 export const GNOSIS_MAX_SPLIT_LEGS = 2
 // Simplex grid resolution per split: G steps => G+1 allocations for a 2-leg split, all quoted in
 // one Multicall3 call. Keep small to bound added quote latency.
@@ -97,8 +98,3 @@ export const GNOSIS_SPLIT_GRID_STEPS = 10
 // Minimum output improvement (bps) over the single best route before a split is used. Gnosis gas
 // is negligible, so this token-gain floor is the whole accept gate (no net-of-gas term).
 export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 5
-// Enable split-fill routing. Build-time env, mirroring the other Gnosis deploy toggles above.
-export const GNOSIS_SPLIT_ENABLED: boolean = process.env['REACT_APP_GNOSIS_SPLIT_ENABLED'] === 'true'
-// Shadow mode (non-shipping): compute single-best vs best-split for every live quote and log the
-// delta WITHOUT changing the emitted quote, to measure the real per-pair benefit before enabling.
-export const GNOSIS_SPLIT_SHADOW: boolean = process.env['REACT_APP_GNOSIS_SPLIT_SHADOW'] === 'true'
