@@ -1,18 +1,13 @@
 import { createPromiseClient } from '@connectrpc/connect'
 import { DataApiService } from '@uniswap/client-data-api/dist/data/v1/api_connect'
-import { getEntryGatewayUrl, getTransport } from '@universe/api'
 import type { RestPriceClient, TokenIdentifier, TokenPriceData } from '@universe/prices'
 import { createPriceKey } from '@universe/prices'
+import { dataApiPostTransport } from 'uniswap/src/data/rest/base'
 
-// Route through the Entry Gateway because GetTokenPrices is only registered
-// there. Use default credentials so web proxy builds avoid wildcard-CORS
-// credential failures while native clients still attach session headers via
-// getTransport.
-const dataApiTransport = getTransport({
-  getBaseUrl: () => getEntryGatewayUrl(),
-})
-
-const dataApiClient = createPromiseClient(DataApiService, dataApiTransport)
+// Gnosis fork: GetTokenPrices is served by the self-hosted adapter, reached
+// same-origin via the DataApiService transport (API_BASE_URL_V2_OVERRIDE).
+// Uniswap's hosted entry gateway has no Gnosis (chain 100) price data.
+const dataApiClient = createPromiseClient(DataApiService, dataApiPostTransport)
 
 /**
  * Creates a RestPriceClient that uses DataApiService/GetTokenPrices.
