@@ -1,4 +1,5 @@
 import { BigNumber } from '@ethersproject/bignumber'
+import { BIPS_BASE } from 'uniswap/src/constants/misc'
 
 /**
  * Pure split-fill allocation math (spec §4). Quoting (the Multicall3) lives in fetchGnosisQuote;
@@ -6,8 +7,6 @@ import { BigNumber } from '@ethersproject/bignumber'
  * grid, score them against per-leg quoted outputs, and apply the net-of-gas accept gate (which on
  * Gnosis collapses to a token-improvement floor, since gas is negligible).
  */
-
-const BPS_DENOMINATOR = 10_000
 
 /** All non-negative integer compositions of `total` into `parts` ordered slots (each sums to total). */
 function compositions(total: number, parts: number): number[][] {
@@ -109,7 +108,7 @@ export function passesAcceptGate(args: {
   if (singleBestOutput.isZero()) {
     return false
   }
-  const threshold = singleBestOutput.mul(BPS_DENOMINATOR + minImprovementBps).div(BPS_DENOMINATOR)
+  const threshold = singleBestOutput.mul(BIPS_BASE + minImprovementBps).div(BIPS_BASE)
   return splitOutput.gt(threshold)
 }
 

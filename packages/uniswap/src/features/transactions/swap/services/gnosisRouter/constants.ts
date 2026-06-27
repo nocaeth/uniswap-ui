@@ -96,7 +96,7 @@ export const GNOSIS_MAX_SPLIT_LEGS = 2
 export const GNOSIS_SPLIT_GRID_STEPS = 10
 // Minimum output improvement (bps) over the single best route before a split is used. Gnosis gas
 // is negligible, so this token-gain floor is the whole accept gate (no net-of-gas term).
-export const MIN_SPLIT_IMPROVEMENT_BPS = 5
+export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 5
 // Enable split-fill routing. Build-time env, mirroring the other Gnosis deploy toggles above.
 export const GNOSIS_SPLIT_ENABLED: boolean = process.env['REACT_APP_GNOSIS_SPLIT_ENABLED'] === 'true'
 // Shadow mode (non-shipping): compute single-best vs best-split for every live quote and log the

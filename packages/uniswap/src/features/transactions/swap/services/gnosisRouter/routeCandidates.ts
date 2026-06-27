@@ -96,7 +96,7 @@ function parsePositiveLiquidity(liquidity: BigNumberish): BigNumber | undefined 
   }
 }
 
-function getPoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: string; fee: FeeAmount }): string {
+export function getPoolKey({ tokenA, tokenB, fee }: { tokenA: string; tokenB: string; fee: FeeAmount }): string {
   const first = tokenA < tokenB ? tokenA : tokenB
   const second = tokenA < tokenB ? tokenB : tokenA
   return `${first}:${second}:${fee}`

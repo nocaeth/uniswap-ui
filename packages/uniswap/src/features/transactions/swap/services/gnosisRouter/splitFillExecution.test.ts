@@ -1,7 +1,8 @@
 /* oxlint-disable no-bitwise -- decoding UniversalRouter command bytes is inherently bitwise */
 import { Interface } from '@ethersproject/abi'
 import { Percent, TradeType } from '@uniswap/sdk-core'
-import { RouterTradeAdapter, SwapRouter } from '@uniswap/universal-router-sdk'
+import { CommandType, RouterTradeAdapter, SwapRouter } from '@uniswap/universal-router-sdk'
+import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk'
 import type { TradingApi } from '@universe/api'
 
 /**
@@ -12,11 +13,8 @@ import type { TradingApi } from '@universe/api'
  * command layout, including the K=2 nuance the SDK gates on (no aggregate SWEEP below 3 legs).
  */
 
-// UniversalRouter CommandType, low 6 bits (the high bit is the allow-revert flag).
-const V3_SWAP_EXACT_IN = 0x00
-const SWEEP = 0x04
 // sqrtPriceX96 at tick 0 (price 1:1 for equal-decimal tokens); valid for the v3-sdk Pool constructor.
-const Q96_TICK0 = '79228162514264337593543950336'
+const Q96_TICK0 = encodeSqrtRatioX96(1, 1).toString()
 
 const TOKEN_IN = '0xaaaa000000000000000000000000000000000001'
 const TOKEN_OUT = '0xbbbb000000000000000000000000000000000002'
@@ -76,10 +74,10 @@ describe('split-fill execution passthrough (universal-router-sdk)', () => {
       [v3Pool({ address: POOL2, fee: 3000, amountIn: '400', amountOut: '395' })],
     ]
     const cmds = commandBytes(encodeRoute(route))
-    expect(cmds.filter((c) => c === V3_SWAP_EXACT_IN)).toHaveLength(2)
+    expect(cmds.filter((c) => c === CommandType.V3_SWAP_EXACT_IN)).toHaveLength(2)
     // At 2 legs the SDK sends each swap to the recipient with its own per-leg min-out (spec §3.3
     // as corrected): there is no router-custody aggregate sweep.
-    expect(cmds).not.toContain(SWEEP)
+    expect(cmds).not.toContain(CommandType.SWEEP)
   })
 
   it('a 3-sub-route EXACT_INPUT quote adds a trailing SWEEP enforcing the aggregate min-out', () => {
@@ -89,14 +87,14 @@ describe('split-fill execution passthrough (universal-router-sdk)', () => {
       [v3Pool({ address: POOL3, fee: 10000, amountIn: '200', amountOut: '198' })],
     ]
     const cmds = commandBytes(encodeRoute(route))
-    expect(cmds.filter((c) => c === V3_SWAP_EXACT_IN)).toHaveLength(3)
-    expect(cmds).toContain(SWEEP)
+    expect(cmds.filter((c) => c === CommandType.V3_SWAP_EXACT_IN)).toHaveLength(3)
+    expect(cmds).toContain(CommandType.SWEEP)
   })
 
   it('a single-sub-route quote still encodes exactly one V3_SWAP_EXACT_IN (back-compat)', () => {
     const route = [[v3Pool({ address: POOL1, fee: 500, amountIn: '1000', amountOut: '985' })]]
     const cmds = commandBytes(encodeRoute(route))
-    expect(cmds.filter((c) => c === V3_SWAP_EXACT_IN)).toHaveLength(1)
-    expect(cmds).not.toContain(SWEEP)
+    expect(cmds.filter((c) => c === CommandType.V3_SWAP_EXACT_IN)).toHaveLength(1)
+    expect(cmds).not.toContain(CommandType.SWEEP)
   })
 })
