@@ -19,10 +19,27 @@ export const GNOSIS_WXDAI = '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
 export const GNOSIS_USDCE = '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0'
 export const GNOSIS_USDT = '0x4eCAbA5870353805a9f068101A8e0e64dD33cD47'
 export const GNOSIS_WETH = '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1'
+export const GNOSIS_WSTETH = '0x6c76971f98945ae98dd7d4dfca8711ebea946ea6'
+export const GNOSIS_SDAI = '0xaf204776c7245bf4147c2612bf6e5972ee483701'
+export const GNOSIS_EURE_V2 = '0x420CA0f9B9b604cE0fd9C18EF134C705e5Fa3430'
+// EURe v1 is intentionally not a routing hub.
+export const GNOSIS_EURE_V1 = '0xcB444e90D8198415266c6a2724b7900fb12FC56E'
 
-// Intermediate tokens tried when there is no good direct pool. WXDAI/USDC.e are the
-// deepest hubs on Gnosis; keep this list small to bound the number of quote calls.
-export const GNOSIS_BASE_TOKENS: string[] = [GNOSIS_WXDAI, GNOSIS_USDCE]
+// Intermediate tokens tried when there is no good direct pool. Keep this bounded:
+// pool-aware route generation prunes missing/empty pools before quote calls.
+export const GNOSIS_BASE_TOKENS: string[] = [GNOSIS_USDCE, GNOSIS_WXDAI, GNOSIS_SDAI, GNOSIS_EURE_V2, GNOSIS_WSTETH]
+
+export const GNOSIS_STABLE_ROUTE_TOKENS: string[] = [
+  GNOSIS_WXDAI,
+  GNOSIS_USDCE,
+  GNOSIS_SDAI,
+  GNOSIS_EURE_V2,
+  GNOSIS_USDT,
+]
+export const GNOSIS_PREFERRED_STABLE_ROUTE_HUBS: string[] = [GNOSIS_USDCE, GNOSIS_SDAI, GNOSIS_EURE_V2]
+
+export const GNOSIS_ETH_CORRELATED_ROUTE_TOKENS: string[] = [GNOSIS_WETH, GNOSIS_WSTETH]
+export const GNOSIS_PREFERRED_ETH_ROUTE_HUBS: string[] = [GNOSIS_WSTETH]
 
 export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH]
 
