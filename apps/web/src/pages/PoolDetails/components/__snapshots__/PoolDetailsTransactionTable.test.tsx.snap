@@ -277,7 +277,7 @@ exports[`PoolDetailsTransactionsTable > renders data filled state 1`] = `
               <svg
                 fill="none"
                 stroke-width="8"
-                style="width: 16px; height: 16px; color: rgb(255, 55, 199);"
+                style="width: 16px; height: 16px; color: rgb(255, 133, 102);"
                 viewBox="0 0 24 24"
               >
                 <path

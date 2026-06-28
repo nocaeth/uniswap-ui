@@ -596,8 +596,8 @@ describe(parseSwapTransaction, () => {
       inputCurrencyAmountRaw: '1000000000000000000',
       outputCurrencyAmountRaw: '1000000000000000000',
       dappInfo: {
-        name: 'Uniswap',
-        icon: 'https://protocol-icons.s3.amazonaws.com/icons/uniswap-v4.jpg',
+        name: 'NOCA',
+        icon: '/favicon.png',
       },
     })
   })
@@ -1691,10 +1691,10 @@ describe(extractRestOnChainTransactionDetails, () => {
     const txns = extractRestOnChainTransactionDetails({
       ...TRANSACTION_BASE,
       paymaster: { address: SAMPLE_SEED_ADDRESS_1 },
-      sponsorship: { name: 'Uniswap', logoUrl: 'https://app.uniswap.org/favicon.png' },
+      sponsorship: { name: 'NOCA', logoUrl: 'https://swap.gno.now/favicon.png' },
     } as unknown as OnChainTransaction)
     expect(txns).toHaveLength(1)
-    expect(txns[0]?.sponsorInfo).toEqual({ name: 'Uniswap', icon: 'https://app.uniswap.org/favicon.png' })
+    expect(txns[0]?.sponsorInfo).toEqual({ name: 'NOCA', icon: 'https://swap.gno.now/favicon.png' })
     expect(txns[0]?.paymaster).toEqual(SAMPLE_SEED_ADDRESS_1)
   })
 })

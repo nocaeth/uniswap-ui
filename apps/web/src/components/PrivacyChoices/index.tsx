@@ -2,10 +2,9 @@ import { useAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Anchor, Button, Checkbox, Flex, ModalCloseIcon, Text } from 'ui/src'
+import { Button, Checkbox, Flex, ModalCloseIcon, Text } from 'ui/src'
 import { Lock } from 'ui/src/components/icons/Lock'
 import { Modal } from 'uniswap/src/components/modals/Modal'
-import { UniswapStaticUrls } from 'uniswap/src/constants/urls'
 import { ElementName, ModalName } from 'uniswap/src/features/telemetry/constants'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { PRIVACY_SHARING_OPT_OUT_STORAGE_KEY } from '~/components/PrivacyChoices/constants'
@@ -47,14 +46,7 @@ export function PrivacyChoicesModal() {
               <Trans
                 i18nKey="common.privacyChoices.description"
                 components={{
-                  privacyLink: (
-                    <Anchor
-                      href={UniswapStaticUrls.privacyPolicyUrl}
-                      target="_blank"
-                      textDecorationLine="none"
-                      fontSize="inherit"
-                    />
-                  ),
+                  privacyLink: <Text variant="body3" color="$neutral2" />,
                 }}
               />
             </Text>

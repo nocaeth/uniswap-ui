@@ -1,5 +1,5 @@
 import { FeeAmount, TICK_SPACINGS } from '@uniswap/v3-sdk'
-import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
+import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem'
 import { gnosis } from 'viem/chains'
 
 // On-chain reads for the V3 liquidity/depth chart (GraphQL V3Pool.ticks). The
@@ -12,11 +12,13 @@ const client: PublicClient = createPublicClient({ chain: gnosis, transport: http
 
 const MIN_TICK = -887272
 const MAX_TICK = 887272
-// Bound the bitmap scan to a wide window around the active tick so RPC stays
-// cheap while still covering all realistic concentrated liquidity. Each word
-// spans 256 * tickSpacing ticks, so 200 words is an enormous price range.
+const BITMAP_MULTICALL_CHUNK_SIZE = 512
+// Keep the previous active-tick-centered scan width, but avoid full-range scans
+// on low tick-spacing pools where the bitmap spans thousands of words.
 const HALF_WINDOW_WORDS = 200
-const CACHE_TTL_MS = 20_000
+const MAX_BITMAP_WORDS_PER_SCAN = HALF_WINDOW_WORDS * 2 + 1
+const TICK_MULTICALL_CHUNK_SIZE = 512
+const CACHE_TTL_MS = 60_000
 
 const POOL_ABI = [
   {
@@ -34,7 +36,13 @@ const POOL_ABI = [
       { name: 'unlocked', type: 'bool' },
     ],
   },
-  { type: 'function', name: 'tickBitmap', stateMutability: 'view', inputs: [{ type: 'int16' }], outputs: [{ type: 'uint256' }] },
+  {
+    type: 'function',
+    name: 'tickBitmap',
+    stateMutability: 'view',
+    inputs: [{ type: 'int16' }],
+    outputs: [{ type: 'uint256' }],
+  },
   {
     type: 'function',
     name: 'ticks',
@@ -63,37 +71,103 @@ export function feeToTickSpacing(feeTier: number): number {
   return feeTier in TICK_SPACINGS ? TICK_SPACINGS[feeTier as FeeAmount] : 60
 }
 
-async function enumeratePoolTicks(poolAddress: string, tickSpacing: number): Promise<OnchainTick[]> {
-  const address = getAddress(poolAddress)
-  const slot0 = (await client.readContract({ address, abi: POOL_ABI, functionName: 'slot0' })) as readonly [
-    bigint,
-    number,
-    number,
-    number,
-    number,
-    number,
-    boolean,
-  ]
-  const currentWord = Math.floor(Number(slot0[1]) / tickSpacing) >> 8
-  const minWord = Math.max(currentWord - HALF_WINDOW_WORDS, Math.floor(MIN_TICK / tickSpacing) >> 8)
-  const maxWord = Math.min(currentWord + HALF_WINDOW_WORDS, Math.floor(MAX_TICK / tickSpacing) >> 8)
+function compressedTickToWord(tick: number, tickSpacing: number): number {
+  const compressedTick = Math.floor(tick / tickSpacing)
+  return Math.floor(compressedTick / 256)
+}
+
+function getBitmapWordBounds(tickSpacing: number): { minWord: number; maxWord: number; wordCount: number } {
+  const minWord = compressedTickToWord(MIN_TICK, tickSpacing)
+  const maxWord = compressedTickToWord(MAX_TICK, tickSpacing)
+  return { minWord, maxWord, wordCount: maxWord - minWord + 1 }
+}
+
+function getBitmapWordPositions(tickSpacing: number, centerTick?: number): number[] {
+  const { minWord, maxWord, wordCount } = getBitmapWordBounds(tickSpacing)
+  const scanSize = Math.min(wordCount, MAX_BITMAP_WORDS_PER_SCAN)
+
+  let startWord = minWord
+  if (wordCount > MAX_BITMAP_WORDS_PER_SCAN) {
+    const centerWord =
+      centerTick === undefined
+        ? Math.floor((minWord + maxWord) / 2)
+        : Math.min(Math.max(compressedTickToWord(centerTick, tickSpacing), minWord), maxWord)
+    startWord = Math.min(Math.max(centerWord - Math.floor(scanSize / 2), minWord), maxWord - scanSize + 1)
+  }
 
   const wordPositions: number[] = []
-  for (let w = minWord; w <= maxWord; w++) {
+
+  for (let w = startWord; w < startWord + scanSize; w++) {
     wordPositions.push(w)
   }
 
-  const bitmaps = (await client.multicall({
-    allowFailure: true,
-    contracts: wordPositions.map((w) => ({ address, abi: POOL_ABI, functionName: 'tickBitmap' as const, args: [w] })),
-  })) as { status: 'success' | 'failure'; result?: bigint }[]
+  return wordPositions
+}
+
+async function readCurrentTick(address: Address): Promise<number> {
+  const slot0 = (await client.readContract({
+    address,
+    abi: POOL_ABI,
+    functionName: 'slot0',
+  })) as readonly [bigint, number, number, number, number, number, boolean]
+  return Number(slot0[1])
+}
+
+async function readBitmapWords(address: Address, wordPositions: number[]): Promise<bigint[]> {
+  const results: bigint[] = []
+
+  for (let i = 0; i < wordPositions.length; i += BITMAP_MULTICALL_CHUNK_SIZE) {
+    const chunk = wordPositions.slice(i, i + BITMAP_MULTICALL_CHUNK_SIZE)
+    const bitmaps = (await client.multicall({
+      allowFailure: true,
+      contracts: chunk.map((w) => ({ address, abi: POOL_ABI, functionName: 'tickBitmap' as const, args: [w] })),
+    })) as { status: 'success' | 'failure'; result?: bigint }[]
+
+    results.push(...bitmaps.map((b) => (b.status === 'success' && b.result !== undefined ? b.result : 0n)))
+  }
+
+  return results
+}
+
+async function readTicks(address: Address, ticks: number[]): Promise<OnchainTick[]> {
+  const result: OnchainTick[] = []
+
+  for (let i = 0; i < ticks.length; i += TICK_MULTICALL_CHUNK_SIZE) {
+    const chunk = ticks.slice(i, i + TICK_MULTICALL_CHUNK_SIZE)
+    const tickData = (await client.multicall({
+      allowFailure: true,
+      contracts: chunk.map((t) => ({ address, abi: POOL_ABI, functionName: 'ticks' as const, args: [t] })),
+    })) as {
+      status: 'success' | 'failure'
+      result?: readonly [bigint, bigint, bigint, bigint, bigint, bigint, number, boolean]
+    }[]
+
+    chunk.forEach((tickIdx, chunkIndex) => {
+      const data = tickData[chunkIndex]
+      if (data?.status !== 'success' || !data.result) {
+        return
+      }
+      result.push({ tickIdx, liquidityGross: data.result[0], liquidityNet: data.result[1] })
+    })
+  }
+
+  return result
+}
+
+async function enumeratePoolTicks(poolAddress: string, tickSpacing: number): Promise<OnchainTick[]> {
+  const address = getAddress(poolAddress)
+  const shouldBoundBitmapScan = getBitmapWordBounds(tickSpacing).wordCount > MAX_BITMAP_WORDS_PER_SCAN
+  const wordPositions = getBitmapWordPositions(
+    tickSpacing,
+    shouldBoundBitmapScan ? await readCurrentTick(address) : undefined,
+  )
+  const bitmaps = await readBitmapWords(address, wordPositions)
 
   const initializedTicks: number[] = []
-  bitmaps.forEach((b, i) => {
-    if (b.status !== 'success' || b.result === undefined || b.result === 0n) {
+  bitmaps.forEach((word, i) => {
+    if (word === 0n) {
       return
     }
-    const word = b.result
     const wordPos = wordPositions[i]
     for (let bit = 0; bit < 256; bit++) {
       if (((word >> BigInt(bit)) & 1n) === 1n) {
@@ -108,19 +182,7 @@ async function enumeratePoolTicks(poolAddress: string, tickSpacing: number): Pro
     return []
   }
 
-  const tickData = (await client.multicall({
-    allowFailure: true,
-    contracts: initializedTicks.map((t) => ({ address, abi: POOL_ABI, functionName: 'ticks' as const, args: [t] })),
-  })) as { status: 'success' | 'failure'; result?: readonly [bigint, bigint, bigint, bigint, bigint, bigint, number, boolean] }[]
-
-  const result: OnchainTick[] = []
-  initializedTicks.forEach((tickIdx, i) => {
-    const d = tickData[i]
-    if (d?.status !== 'success' || !d.result) {
-      return
-    }
-    result.push({ tickIdx, liquidityGross: d.result[0], liquidityNet: d.result[1] })
-  })
+  const result = await readTicks(address, initializedTicks)
   result.sort((a, b) => a.tickIdx - b.tickIdx)
   return result
 }

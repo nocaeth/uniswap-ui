@@ -15,9 +15,7 @@ import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { FORCountry } from 'uniswap/src/features/fiatOnRamp/types'
 import { benignSafetyInfo } from 'uniswap/src/test/fixtures/wallet/currencies'
-import { LimitsExpiry } from 'uniswap/src/types/limits'
 import { UseAccountReturnType, type Register as WagmiRegister } from 'wagmi'
-import { expiryToDeadlineSeconds } from '~/pages/Swap/Limit/state/expiryToDeadlineSeconds'
 import {
   ClassicTrade,
   DutchOrderTrade,
@@ -273,7 +271,7 @@ export const LIMIT_ORDER_TRADE = new LimitOrderTrade({
   wrapInfo: { needsWrap: false },
   approveInfo: { needsApprove: false },
   swapper: '0xSwapperAddress',
-  deadlineBufferSecs: expiryToDeadlineSeconds(LimitsExpiry.Week),
+  deadlineBufferSecs: 7 * 24 * 60 * 60,
 })
 
 export const NATIVE_INFO: CurrencyInfo = {

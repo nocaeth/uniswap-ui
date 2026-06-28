@@ -1,11 +1,25 @@
 import { CurrencyAmount, Price, Token } from '@uniswap/sdk-core'
+import type { UTCTimestamp } from 'lightweight-charts'
 import { DAI, USDC_MAINNET } from 'uniswap/src/constants/tokens'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import type { PriceChartData } from '~/components/Charts/PriceChart'
 import {
   getCrosshairProps,
+  getVisiblePriceBounds,
   isEffectivelyInfinity,
   priceToNumber,
 } from '~/features/Liquidity/charts/LiquidityPositionRangeChart/utils'
+
+function pricePoint(time: number, value: number): PriceChartData {
+  return {
+    time: time as UTCTimestamp,
+    value,
+    open: value,
+    high: value,
+    low: value,
+    close: value,
+  }
+}
 
 describe('LiquidityPositionRangeChart utils', () => {
   describe('getCrosshairProps', () => {
@@ -108,6 +122,39 @@ describe('LiquidityPositionRangeChart utils', () => {
       const price = new Price(noDecimalsCurrency, noDecimalsCurrency, baseAmount.quotient, quoteAmount.quotient)
 
       expect(priceToNumber(price, 0)).toBe(2)
+    })
+  })
+
+  describe('getVisiblePriceBounds', () => {
+    it('includes position range bounds with padding', () => {
+      const bounds = getVisiblePriceBounds({
+        data: [pricePoint(1, 100), pricePoint(2, 110)],
+        positionPriceLower: 80,
+        positionPriceUpper: 130,
+      })
+
+      expect(bounds.minVisiblePrice).toBeCloseTo(76)
+      expect(bounds.maxVisiblePrice).toBeCloseTo(134)
+    })
+
+    it('ignores full-range sentinel values', () => {
+      const bounds = getVisiblePriceBounds({
+        data: [pricePoint(1, 100), pricePoint(2, 120)],
+        positionPriceLower: 1e-30,
+        positionPriceUpper: 1e30,
+      })
+
+      expect(bounds.minVisiblePrice).toBeCloseTo(98.4)
+      expect(bounds.maxVisiblePrice).toBeCloseTo(121.6)
+    })
+
+    it('pads flat price data', () => {
+      const bounds = getVisiblePriceBounds({
+        data: [pricePoint(1, 100), pricePoint(2, 100)],
+      })
+
+      expect(bounds.minVisiblePrice).toBeCloseTo(95)
+      expect(bounds.maxVisiblePrice).toBeCloseTo(105)
     })
   })
 })

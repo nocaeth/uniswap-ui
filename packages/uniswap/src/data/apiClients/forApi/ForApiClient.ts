@@ -32,12 +32,7 @@ import { logger } from 'utilities/src/logger/logger'
  * ## Possible URLs
  *
  * ### When ForUrlMigration flag is ENABLED (new structure):
- * | Environment | URL                                                                       |
- * |-------------|---------------------------------------------------------------------------|
- * | Dev/Beta    | https://entry-gateway.backend-staging.api.uniswap.org/FOR.v1.FORService   |
- * | Prod        | https://entry-gateway.backend-prod.api.uniswap.org/FOR.v1.FORService      |
- *
- * Note: traffic goes through the Entry Gateway host, same as Plan / Chained Actions.
+ * Traffic goes through the Entry Gateway host, same as Plan / Chained Actions.
  *
  * ### When ForUrlMigration flag is DISABLED (legacy structure):
  * Uses the cloudflare gateway URL with v2 prefix.
@@ -58,8 +53,8 @@ const ForApiFetchClient = createFetchClient({
   getSession: tryProvideSession,
   source: SessionGateSource.FetchFor,
   // On web the session lives in an HttpOnly cookie set on the entry-gateway domain.
-  // FOR requests go to entry-gateway.backend-prod.api.uniswap.org (same host as Plan
-  // / Chained Actions), but from a different origin than app.uniswap.org. Without
+  // FOR requests go to the entry gateway (same host as Plan / Chained Actions), but
+  // from a different origin than the app. Without
   // credentials:include, the browser drops the cookie on these cross-origin requests
   // and the backend treats every web request as score=0. Plan already uses this
   // pattern against the same host, so CORS is known to allow credentials.

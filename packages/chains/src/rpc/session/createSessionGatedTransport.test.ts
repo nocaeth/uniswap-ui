@@ -71,7 +71,9 @@ describe('createSessionGatedTransport', () => {
     let calls = 0
     const inner = vi.fn(async () => {
       calls++
-      if (calls === 1) throw unauthorizedError
+      if (calls === 1) {
+        throw unauthorizedError
+      }
       return 'ok'
     })
     const wrapped = createSessionGatedTransport({
@@ -98,7 +100,9 @@ describe('createSessionGatedTransport', () => {
     let calls = 0
     const inner = vi.fn(async () => {
       calls++
-      if (calls === 1) throw forbiddenError
+      if (calls === 1) {
+        throw forbiddenError
+      }
       return 'ok'
     })
     const wrapped = createSessionGatedTransport({

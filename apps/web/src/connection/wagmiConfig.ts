@@ -9,8 +9,6 @@ import {
 } from '@universe/chains'
 import { isE2eTestEnv, isTestEnv } from '@universe/environment'
 import { SessionGateSource } from '@universe/sessions'
-import { UNISWAP_LOGO } from 'ui/src/assets'
-import { UNISWAP_WEB_URL } from 'uniswap/src/constants/urls'
 import { CONNECTION_PROVIDER_IDS } from 'uniswap/src/constants/web3'
 import type { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { ORDERED_EVM_CHAINS } from 'uniswap/src/features/chains/chainInfo'
@@ -87,10 +85,8 @@ function createWagmiConnectors(params: {
     // so we can disable it to reduce log noise.
     ...(isTestEnv() && !isE2eTestEnv() ? [] : [walletConnect(WC_PARAMS)]),
     coinbaseWallet({
-      appName: 'Uniswap',
-      // CB SDK doesn't pass the parent origin context to their passkey site
-      // Flagged to CB team and can remove UNISWAP_WEB_URL once fixed
-      appLogoUrl: `${UNISWAP_WEB_URL}${UNISWAP_LOGO}`,
+      appName: 'NOCA',
+      appLogoUrl: 'https://swap.gno.now/favicon.png',
       reloadOnDisconnect: false,
     }),
     safe({

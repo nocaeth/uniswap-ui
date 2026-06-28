@@ -30,7 +30,6 @@ export const ModalName = {
   BuyNativeToken: 'buy-native-token-modal',
   CancelOrders: 'cancel-orders-modal',
   ChooseProfilePhoto: 'choose-profile-photo-modal',
-  ChooseProviderModal: 'choose-provider-modal',
   ChooseUnitag: 'choose-unitag-modal',
   ClaimFee: 'claim-fee-modal',
   ClaimPopup: 'claim-popup',

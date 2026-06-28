@@ -13,6 +13,26 @@ vi.mock('uniswap/src/features/chains/hooks/useEnabledChains', async (importOrigi
 })
 
 describe(NetworkIconList, () => {
+  const defaultEnabledChains = [
+    UniverseChainId.Mainnet,
+    UniverseChainId.Polygon,
+    UniverseChainId.ArbitrumOne,
+    UniverseChainId.Optimism,
+  ]
+
+  beforeEach(() => {
+    vi.mocked(useEnabledChains).mockReturnValue({
+      chains: defaultEnabledChains,
+      gqlChains: [],
+      defaultChainId: UniverseChainId.Mainnet,
+      isTestnetModeEnabled: false,
+    })
+  })
+
+  afterEach(() => {
+    vi.mocked(useEnabledChains).mockRestore()
+  })
+
   it('renders empty when no chainIds provided', () => {
     const tree = render(<NetworkIconList chainIds={[]} />)
     expect(tree).toMatchSnapshot()

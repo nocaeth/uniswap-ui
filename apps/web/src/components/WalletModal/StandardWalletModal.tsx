@@ -12,8 +12,8 @@ export function StandardWalletModal(): JSX.Element {
     </Flex>
   )
 
-  // Gnosis-only: external wallets only — the Uniswap Wallet promo/extension/download
-  // section is removed. The grid itself is unchanged from upstream: with the embedded
+  // Gnosis-only: external wallets only. The grid itself is unchanged from upstream:
+  // with the embedded
   // wallet disabled, buildPrimaryConnectorsList already lists injected + WalletConnect +
   // Coinbase, so no separate "other wallets" navigation is needed.
   return (

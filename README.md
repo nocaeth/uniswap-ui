@@ -22,22 +22,6 @@ For instructions per application or package, see the README published for each a
 
 For instructions on the best way to contribute, please review our [Contributing guide](CONTRIBUTING.md)!
 
-## Whitepapers
-
-- [V4](https://uniswap.org/whitepaper-v4.pdf)
-- [V3](https://uniswap.org/whitepaper-v3.pdf)
-- [V2](https://uniswap.org/whitepaper.pdf)
-- [V1](https://hackmd.io/C-DvwDSfSxuh-Gd4WKE_ig)
-
-## Production & Release Process
-
-Uniswap Labs develops all front-end interfaces in a private repository.
-At the end of each development cycle:
-
-1. We publish the latest production-ready code to this public repository.
-
-2. Releases are automatically tagged — view them in the [Releases tab](https://github.com/Uniswap/interface/releases).
-
 ## 🗂 Directory Structure
 
 | Folder      | Contents                                                                       |

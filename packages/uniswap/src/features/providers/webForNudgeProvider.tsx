@@ -1,6 +1,4 @@
-import { isWebApp } from '@universe/environment'
 import React from 'react'
-import { useIsPortfolioZero } from 'uniswap/src/features/transactions/swap/components/SwapFormButton/hooks/useIsPortfolioZero'
 
 type StateContext = boolean
 type SetContext = (v: boolean) => void
@@ -37,9 +35,8 @@ export function useSetIsShowingWebFORNudge(): (v: boolean) => void {
 }
 
 export function useWebFORNudgeGateEnabled(): boolean {
-  const isPortfolioZero = useIsPortfolioZero()
-
-  return isWebApp && isPortfolioZero
+  // Gnosis-only web builds do not expose fiat on-ramp flows, so the swap CTA must never open the FOR nudge.
+  return false
 }
 
 export function useIsWebFORNudgeEnabled(): boolean {

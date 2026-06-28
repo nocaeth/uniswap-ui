@@ -206,11 +206,10 @@ export async function metaTagInjectionMiddleware(c: Context, next: Next): Promis
     } else {
       const imageUri = requestURL.origin + '/images/1200x630_Rich_Link_Preview_Image.png'
       data = {
-        title: 'Uniswap Interface',
+        title: 'NOCA Interface',
         image: imageUri,
         url: c.req.url,
-        description:
-          'Swap crypto on Ethereum, Base, Arbitrum, Polygon, Unichain and more. The DeFi platform trusted by millions.',
+        description: 'Swap crypto on Gnosis Chain.',
       }
     }
 

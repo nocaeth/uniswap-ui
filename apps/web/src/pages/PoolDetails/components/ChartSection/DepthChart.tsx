@@ -1,6 +1,6 @@
 import { ProtocolVersion as RestProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
-import { FeeAmount } from '@uniswap/v3-sdk'
+import { FeeAmount, TICK_SPACINGS } from '@uniswap/v3-sdk'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, useSporeColors } from 'ui/src'
@@ -39,6 +39,7 @@ import {
   DepthTooltipBody,
   TooltipShell,
 } from '~/pages/PoolDetails/components/ChartSection/DepthChartTooltip'
+import { selectPoolById } from '~/pages/PoolDetails/components/ChartSection/selectPoolById'
 import { unwrappedToken } from '~/utils/unwrappedToken'
 
 export type { DepthChartZoomActions } from '~/pages/PoolDetails/components/ChartSection/DepthChartModel'
@@ -98,6 +99,8 @@ export function DepthChart({
     true,
   )
 
+  const pool = useMemo(() => selectPoolById(poolData?.pools, poolId), [poolData?.pools, poolId])
+
   const sdkCurrencies = useMemo(() => ({ TOKEN0: tokenA, TOKEN1: tokenB }), [tokenA, tokenB])
 
   const { tickData, activeTick, loading } = useLiquidityBarData({
@@ -108,7 +111,7 @@ export function DepthChart({
     version,
     hooks,
     poolId,
-    tickSpacing: poolData?.pools[0]?.tickSpacing,
+    tickSpacing: pool?.tickSpacing ?? TICK_SPACINGS[feeTier],
   })
 
   const { sellData, buyData, midPrice } = useMemo(() => {

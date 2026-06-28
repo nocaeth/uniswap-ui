@@ -27,7 +27,7 @@ export const Switch = memo(function Switch({
   defaultChecked = false,
   onCheckedChange,
   disabled,
-  variant = 'default',
+  variant,
   style,
   testID,
   pointerEvents,

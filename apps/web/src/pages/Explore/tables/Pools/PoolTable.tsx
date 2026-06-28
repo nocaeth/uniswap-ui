@@ -12,7 +12,6 @@ import { Flex, styled, Text, useMedia } from 'ui/src'
 import { LearnMoreLink } from 'uniswap/src/components/text/LearnMoreLink'
 import { getNativeAddress } from 'uniswap/src/constants/addresses'
 import { BIPS_BASE } from 'uniswap/src/constants/misc'
-import { UNI } from 'uniswap/src/constants/tokens'
 import { UniswapStaticUrls } from 'uniswap/src/constants/urls'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -26,7 +25,6 @@ import { type FiatNumberType, NumberType } from 'utilities/src/format/types'
 import { supportedChainIdFromGQLChain } from '~/appGraphql/data/chainUtils'
 import { PoolSortFields, TablePool } from '~/appGraphql/data/pools/useTopPools'
 import { gqlToCurrency, OrderDirection, unwrapToken } from '~/appGraphql/data/util'
-import { CurrencyLogo } from '~/components/Logo/CurrencyLogo'
 import { DoubleCurrencyLogo } from '~/components/Logo/DoubleLogo'
 import { Table } from '~/components/Table'
 import { Cell } from '~/components/Table/Cell'
@@ -101,18 +99,16 @@ function getPoolVolumes(pool: TablePool | PoolStat): { tvl: number; volume24h: n
   }
 }
 
-function buildV4CurrencyId(
+function buildPoolTokenCurrencyIds(
   pool: TablePool | PoolStat,
   chainId: UniverseChainId,
 ): {
   token0CurrencyId?: string
   token1CurrencyId?: string
 } {
-  if (pool.protocolVersion !== GraphQLApi.ProtocolVersion.V4) {
-    return {}
-  }
-  const token0 = pool.token0?.address || getNativeAddress(chainId)
-  const token1 = pool.token1?.address || getNativeAddress(chainId)
+  const nativeFallback = pool.protocolVersion === GraphQLApi.ProtocolVersion.V4 ? getNativeAddress(chainId) : undefined
+  const token0 = pool.token0?.address || nativeFallback
+  const token1 = pool.token1?.address || nativeFallback
   return {
     token0CurrencyId: token0 ? buildCurrencyId(chainId, token0) : undefined,
     token1CurrencyId: token1 ? buildCurrencyId(chainId, token1) : undefined,
@@ -377,7 +373,7 @@ export function PoolsTable({
           rewardApr: pool.boostedApr,
           link: getPoolLink(pool, { chainId, linkBuilder: getLink }),
           linkState,
-          ...buildV4CurrencyId(pool, chainId),
+          ...buildPoolTokenCurrencyIds(pool, chainId),
           analytics: {
             elementName: ElementName.PoolsTableRow,
             properties: {
@@ -698,7 +694,6 @@ function RewardAprCell({ apr, isLoading, rewardApr, token0CurrencyId, token1Curr
         <TableText color="$accent1" mr="$spacing4">
           {formatPercent(rewardApr)}
         </TableText>
-        <CurrencyLogo currency={UNI[UniverseChainId.Mainnet]} size={16} />
       </Cell>
     </MouseoverTooltip>
   )

@@ -17,7 +17,11 @@ describe('ExploreStatsSection', () => {
   const mockVolumeData = {
     protocolVolumes: { v4: 1000000, v3: 2000000, v2: 500000 },
     totalVolume: 3500000,
+    totalVolume7d: 17500000,
+    totalVolume30d: 75000000,
     totalChangePercent: 5.2,
+    totalVolume7dChangePercent: 6.8,
+    totalVolume30dChangePercent: 9.1,
     isLoading: false,
   }
 
@@ -56,7 +60,7 @@ describe('ExploreStatsSection', () => {
 
     // Should not show actual data values
     expect(screen.queryByText('$3.50M')).not.toBeInTheDocument()
-    expect(screen.queryByText('$8.50B')).not.toBeInTheDocument()
+    expect(screen.queryByText('$6.00B')).not.toBeInTheDocument()
   })
 
   it('shows actual data when loading is complete', () => {
@@ -64,11 +68,29 @@ describe('ExploreStatsSection', () => {
 
     // Should show formatted volume and TVL values
     expect(screen.getByText(/1D volume/i)).toBeInTheDocument()
-    expect(screen.getByText(/Total Uniswap TVL/i)).toBeInTheDocument()
+    expect(screen.getByText(/7D volume/i)).toBeInTheDocument()
+    expect(screen.getByText(/30D volume/i)).toBeInTheDocument()
+    expect(screen.getByText(/v3 TVL/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Total Uniswap TVL/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/v2 TVL/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/v4 TVL/i)).not.toBeInTheDocument()
 
     // Should not show loading bubbles
     const loadingBubbles = container.querySelectorAll('[style*="animation-name: shine"]')
     expect(loadingBubbles.length).toBe(0)
+  })
+
+  it('renders unavailable stat changes as a placeholder', () => {
+    mockUse24hProtocolVolume.mockReturnValue({
+      ...mockVolumeData,
+      totalVolume30dChangePercent: Number.NaN,
+    })
+
+    render(<ExploreStatsSection />)
+
+    expect(screen.queryByText(/NaN/i)).not.toBeInTheDocument()
+    expect(screen.getByText('-')).toBeInTheDocument()
+    expect(screen.getAllByText(/today/i)).toHaveLength(3)
   })
 
   it('transitions from loading to loaded state properly', () => {
@@ -100,7 +122,7 @@ describe('ExploreStatsSection', () => {
 
     // Data should appear
     expect(screen.getByText(/1D volume/i)).toBeInTheDocument()
-    expect(screen.getByText(/Total Uniswap TVL/i)).toBeInTheDocument()
+    expect(screen.getByText(/v3 TVL/i)).toBeInTheDocument()
   })
 
   it('ensures consistent dimensions between loading and loaded states', () => {
@@ -141,8 +163,8 @@ describe('ExploreStatsSection', () => {
     const loadingBubbles = container.querySelectorAll('[style*="animation-name: shine"]')
     expect(loadingBubbles.length).toBeGreaterThan(0)
 
-    // TVL data should still be visible
-    expect(screen.getByText(/Total Uniswap TVL/i)).toBeInTheDocument()
+    // TVL label should still be visible
+    expect(screen.getByText(/v3 TVL/i)).toBeInTheDocument()
   })
 
   it('shows TVL loading state with proper dimensions', () => {
@@ -188,7 +210,7 @@ describe('ExploreStatsSection', () => {
     const loadedBubbles = container.querySelectorAll('[style*="animation-name: shine"]')
     expect(loadedBubbles.length).toBe(0)
     expect(screen.getByText(/1D volume/i)).toBeInTheDocument()
-    expect(screen.getByText(/Total Uniswap TVL/i)).toBeInTheDocument()
+    expect(screen.getByText(/v3 TVL/i)).toBeInTheDocument()
 
     // Ensure no leftover loading artifacts
     const remainingLoadingElements = container.querySelectorAll('[style*="animation-name: shine"]')

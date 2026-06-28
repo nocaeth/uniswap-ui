@@ -87,6 +87,10 @@ export async function openUri({
   controlsColor?: string
   throwOnError?: boolean
 }): Promise<void> {
+  if (!uri.trim()) {
+    return
+  }
+
   if (!isSafeUri && !isAllowedExternalUri(uri)) {
     const error = new Error('User attempted to open potentially unsafe url')
     logger.error(error, {

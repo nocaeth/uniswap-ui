@@ -3,11 +3,10 @@ import type { CurrencyAmount, Token } from '@uniswap/sdk-core'
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Flex, IconButton, Image } from 'ui/src'
-import { UNISWAP_LOGO } from 'ui/src/assets'
+import { Button, Flex, IconButton } from 'ui/src'
 import { Settings } from 'ui/src/components/icons/Settings'
+import { Wallet } from 'ui/src/components/icons/Wallet'
 import { Shine } from 'ui/src/loading/Shine'
-import { iconSizes } from 'ui/src/theme'
 import AnimatedNumber, {
   BALANCE_CHANGE_INDICATION_DURATION,
 } from 'uniswap/src/components/AnimatedNumber/AnimatedNumber'
@@ -148,7 +147,7 @@ export function AuthenticatedHeader({
                 <IconButton
                   size="small"
                   emphasis="text-only"
-                  icon={<Image height={iconSizes.icon24} source={UNISWAP_LOGO} width={iconSizes.icon24} />}
+                  icon={<Wallet size="$icon.24" color="$neutral2" />}
                   borderRadius="$rounded32"
                   hoverStyle={{
                     backgroundColor: '$surface2',

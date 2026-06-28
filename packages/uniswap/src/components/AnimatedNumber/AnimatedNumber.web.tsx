@@ -30,7 +30,7 @@ type AnimatedNumberProps = {
 
 const AnimatedNumber = ({
   value,
-  loading = false,
+  loading,
   loadingPlaceholderText,
   shouldFadeDecimals,
   warmLoading,

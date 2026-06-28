@@ -1,8 +1,7 @@
 import { PositionStatus } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Anchor, Flex, Text } from 'ui/src'
+import { Flex } from 'ui/src'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import { InterfacePageName, UniswapEventName } from 'uniswap/src/features/telemetry/constants'
@@ -27,13 +26,10 @@ import { useAccount } from '~/hooks/useAccount'
 import { ClosedPositionsCTA } from '~/pages/Positions/components/ClosedPositionsCTA'
 import { PositionsSidebar } from '~/pages/Positions/components/PositionsSidebar'
 import { usePositionFilters } from '~/pages/Positions/hooks/usePositionFilters'
-import { ClickableTamaguiStyle } from '~/theme/components/styles'
 import { useCreatePositionHref } from '~/utils/createPositionRoute'
-import { buildImportV2PositionsHref } from '~/utils/importV2PositionsRoute'
 
 export function Pool() {
   const account = useAccount()
-  const { t } = useTranslation()
   const { address, isConnected } = account
 
   const isLPIncentivesEnabled = useFeatureFlag(FeatureFlags.LpIncentives) && isConnected
@@ -157,18 +153,6 @@ export function Pool() {
             </Flex>
           )}
           <ClosedPositionsCTA show={!statusFilter.includes(PositionStatus.CLOSED) && !!account.address} />
-          {isConnected && (
-            <Flex row centered $sm={{ flexDirection: 'column', alignItems: 'flex-start' }} mb="$spacing24" gap="$gap4">
-              <Text variant="body3" color="$neutral2">
-                {t('pool.import.link.description')}
-              </Text>
-              <Anchor href={buildImportV2PositionsHref()} textDecorationLine="none">
-                <Text variant="body3" color="$neutral1" {...ClickableTamaguiStyle}>
-                  {t('pool.import.positions.v2')}
-                </Text>
-              </Anchor>
-            </Flex>
-          )}
         </Flex>
         <PositionsSidebar chainFilter={chainFilter} />
       </Flex>

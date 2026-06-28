@@ -4,10 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { TokenOption } from 'uniswap/src/components/lists/items/types'
 import { type OnchainItemSection, OnchainItemSectionName } from 'uniswap/src/components/lists/OnchainItemList/types'
 import { useOnchainItemListSection } from 'uniswap/src/components/lists/utils'
-import { useCurrencyInfosToTokenOptions } from 'uniswap/src/components/TokenSelector/hooks/useCurrencyInfosToTokenOptions'
+import { filter } from 'uniswap/src/components/TokenSelector/filter'
+import {
+  currencyInfosToTokenOptions,
+  useCurrencyInfosToTokenOptions,
+} from 'uniswap/src/components/TokenSelector/hooks/useCurrencyInfosToTokenOptions'
 import { usePortfolioBalancesForAddressById } from 'uniswap/src/components/TokenSelector/hooks/usePortfolioBalancesForAddressById'
 import { usePortfolioTokenOptions } from 'uniswap/src/components/TokenSelector/hooks/usePortfolioTokenOptions'
 import { mergeSearchResultsWithBridgingTokens } from 'uniswap/src/components/TokenSelector/utils'
+import { COMMON_BASES } from 'uniswap/src/constants/routing'
 import { TradeableAsset } from 'uniswap/src/entities/assets'
 import type { AddressGroup } from 'uniswap/src/features/accounts/store/types/AccountsState'
 import { useBridgingTokensOptions } from 'uniswap/src/features/bridging/hooks/tokens'
@@ -16,6 +21,48 @@ import { getChainLabel } from 'uniswap/src/features/chains/utils'
 import { useMultichainSearchTokens } from 'uniswap/src/features/dataApi/searchTokens'
 import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { isWSOL } from 'uniswap/src/utils/isWSOL'
+
+export function getLocalGnosisCommonBaseSearchCurrencies({
+  chainFilter,
+  searchFilter,
+}: {
+  chainFilter: UniverseChainId | null
+  searchFilter: string | null
+}): CurrencyInfo[] | undefined {
+  if (!searchFilter || (chainFilter && chainFilter !== UniverseChainId.Gnosis)) {
+    return undefined
+  }
+
+  const tokenOptions = currencyInfosToTokenOptions(COMMON_BASES[UniverseChainId.Gnosis]) ?? []
+  return filter({
+    tokenOptions,
+    chainFilter,
+    searchFilter,
+    hideWSOL: true,
+  }).map((option) => option.currencyInfo)
+}
+
+export function mergeCurrencyInfoSearchResults({
+  localResults,
+  remoteResults,
+}: {
+  localResults?: CurrencyInfo[]
+  remoteResults?: CurrencyInfo[]
+}): CurrencyInfo[] | undefined {
+  if (!localResults && !remoteResults) {
+    return undefined
+  }
+
+  const seenCurrencyIds = new Set<string>()
+  return [...(localResults ?? []), ...(remoteResults ?? [])].filter((currencyInfo) => {
+    if (seenCurrencyIds.has(currencyInfo.currencyId)) {
+      return false
+    }
+
+    seenCurrencyIds.add(currencyInfo.currencyId)
+    return true
+  })
+}
 
 export function useTokenSectionsForSearchResults({
   addresses,
@@ -67,9 +114,27 @@ export function useTokenSectionsForSearchResults({
     skip: isBalancesOnlySearch,
   })
 
-  const searchResultCurrencies = useMemo(
+  const remoteSearchResultCurrencies = useMemo(
     () => searchResultsMultichain?.flatMap((r) => r.tokens).filter((c) => !isWSOL(c.currency)),
     [searchResultsMultichain],
+  )
+  const localGnosisSearchResultCurrencies = useMemo(
+    () =>
+      isBalancesOnlySearch
+        ? undefined
+        : getLocalGnosisCommonBaseSearchCurrencies({
+            chainFilter,
+            searchFilter,
+          }),
+    [chainFilter, isBalancesOnlySearch, searchFilter],
+  )
+  const searchResultCurrencies = useMemo(
+    () =>
+      mergeCurrencyInfoSearchResults({
+        localResults: localGnosisSearchResultCurrencies,
+        remoteResults: remoteSearchResultCurrencies,
+      }),
+    [localGnosisSearchResultCurrencies, remoteSearchResultCurrencies],
   )
 
   const [selectedNetworkResults, otherNetworksSearchResults] = useMemo((): [CurrencyInfo[], CurrencyInfo[]] => {

@@ -18,6 +18,8 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { Token } from '@uniswap/sdk-core'
+import { tickToPrice } from '@uniswap/v3-sdk'
 import { createSchema } from 'graphql-yoga'
 import {
   getDeepestPoolForToken,
@@ -49,6 +51,7 @@ const rawSdl = readFileSync(SCHEMA_PATH, 'utf8')
 const sdl = rawSdl.replace(/enum Chain \{/, 'enum Chain {\n  GNOSIS')
 
 const CHAIN = 'GNOSIS'
+const GNOSIS_CHAIN_ID = 100
 const now = (): number => Math.floor(Date.now() / 1000)
 
 interface Amt {
@@ -167,6 +170,18 @@ function poolSource(p: EnvioPool): PoolSource {
     token0Supply: p.token0Supply,
     token1Supply: p.token1Supply,
     __pool: p,
+  }
+}
+
+function sdkToken(token: EnvioToken): Token {
+  return new Token(GNOSIS_CHAIN_ID, token.id, token.decimals, token.symbol, token.name)
+}
+
+function tickPriceFields(token0: Token, token1: Token, tickIdx: number): { price0: string; price1: string } {
+  const price0 = tickToPrice(token0, token1, tickIdx)
+  return {
+    price0: price0.toSignificant(18),
+    price1: price0.invert().toSignificant(18),
   }
 }
 
@@ -333,19 +348,19 @@ export const schema = createSchema({
       transactions: (p: PoolSource, args: { first: number; timestampCursor?: number | null }) =>
         getPoolTransactions(p.__pool.id, args.first ?? 100, args.timestampCursor ?? undefined),
       // Per-tick liquidity distribution for the depth/range chart (AllV3Ticks).
-      // Enumerated on-chain (no indexed tick data). price0/price1 are unused by
-      // the chart (it recomputes prices from tickIdx), so left as '0'.
+      // Enumerated on-chain because the indexer snapshot has no per-tick table.
       ticks: async (p: PoolSource, args: { skip?: number | null; first?: number | null }) => {
         const all = await getPoolTicks(p.__pool.id, feeToTickSpacing(p.__pool.feeTier))
         const skip = args.skip ?? 0
         const first = args.first ?? all.length
+        const token0 = sdkToken(p.__pool.token0)
+        const token1 = sdkToken(p.__pool.token1)
         return all.slice(skip, skip + first).map((t) => ({
           id: `${p.__pool.id}-tick-${t.tickIdx}`,
           tickIdx: t.tickIdx,
           liquidityGross: t.liquidityGross.toString(),
           liquidityNet: t.liquidityNet.toString(),
-          price0: '0',
-          price1: '0',
+          ...tickPriceFields(token0, token1, t.tickIdx),
         }))
       },
     },

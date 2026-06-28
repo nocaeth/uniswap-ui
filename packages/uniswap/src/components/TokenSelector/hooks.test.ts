@@ -16,6 +16,10 @@ import { useFavoriteTokensOptions } from 'uniswap/src/components/TokenSelector/h
 import { usePortfolioBalancesForAddressById } from 'uniswap/src/components/TokenSelector/hooks/usePortfolioBalancesForAddressById'
 import { usePortfolioTokenOptions } from 'uniswap/src/components/TokenSelector/hooks/usePortfolioTokenOptions'
 import { useRecentlySearchedTokens } from 'uniswap/src/components/TokenSelector/hooks/useRecentlySearchedTokens'
+import {
+  getLocalGnosisCommonBaseSearchCurrencies,
+  mergeCurrencyInfoSearchResults,
+} from 'uniswap/src/components/TokenSelector/hooks/useTokenSectionsForSearchResults'
 import { useTrendingTokensOptions } from 'uniswap/src/components/TokenSelector/hooks/useTrendingTokensOptions'
 import { BRIDGED_BASE_ADDRESSES } from 'uniswap/src/constants/addresses'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -312,12 +316,12 @@ describe(useFilterCallbacks, () => {
       expect(result.current.parsedSearchFilter).toEqual(null)
 
       await act(() => {
-        result.current.onChangeText('BaSE uni')
+        result.current.onChangeText('GnOSIS uni')
       })
 
       expect(result.current.chainFilter).toEqual(null)
-      expect(result.current.searchFilter).toEqual('BaSE uni')
-      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Base)
+      expect(result.current.searchFilter).toEqual('GnOSIS uni')
+      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Gnosis)
       expect(result.current.parsedSearchFilter).toEqual('uni')
     })
 
@@ -359,12 +363,12 @@ describe(useFilterCallbacks, () => {
       expect(result.current.parsedSearchFilter).toEqual(null)
 
       await act(() => {
-        result.current.onChangeText('base uni corn')
+        result.current.onChangeText('gnosis uni corn')
       })
 
       expect(result.current.chainFilter).toEqual(null)
-      expect(result.current.searchFilter).toEqual('base uni corn')
-      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Base)
+      expect(result.current.searchFilter).toEqual('gnosis uni corn')
+      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Gnosis)
       expect(result.current.parsedSearchFilter).toEqual('uni corn')
     })
 
@@ -374,12 +378,12 @@ describe(useFilterCallbacks, () => {
       expect(result.current.parsedSearchFilter).toEqual(null)
 
       await act(() => {
-        result.current.onChangeText('uni BaSE')
+        result.current.onChangeText('uni GnOSIS')
       })
 
       expect(result.current.chainFilter).toEqual(null)
-      expect(result.current.searchFilter).toEqual('uni BaSE')
-      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Base)
+      expect(result.current.searchFilter).toEqual('uni GnOSIS')
+      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Gnosis)
       expect(result.current.parsedSearchFilter).toEqual('uni')
     })
 
@@ -389,12 +393,12 @@ describe(useFilterCallbacks, () => {
       expect(result.current.parsedSearchFilter).toEqual(null)
 
       await act(() => {
-        result.current.onChangeText('uni corn token base')
+        result.current.onChangeText('uni corn token gnosis')
       })
 
       expect(result.current.chainFilter).toEqual(null)
-      expect(result.current.searchFilter).toEqual('uni corn token base')
-      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Base)
+      expect(result.current.searchFilter).toEqual('uni corn token gnosis')
+      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Gnosis)
       expect(result.current.parsedSearchFilter).toEqual('uni corn token')
     })
 
@@ -404,12 +408,12 @@ describe(useFilterCallbacks, () => {
       expect(result.current.parsedSearchFilter).toEqual(null)
 
       await act(() => {
-        result.current.onChangeText('base token ethereum')
+        result.current.onChangeText('gnosis token ethereum')
       })
 
       expect(result.current.chainFilter).toEqual(null)
-      expect(result.current.searchFilter).toEqual('base token ethereum')
-      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Base)
+      expect(result.current.searchFilter).toEqual('gnosis token ethereum')
+      expect(result.current.parsedChainFilter).toEqual(UniverseChainId.Gnosis)
       expect(result.current.parsedSearchFilter).toEqual('token ethereum')
     })
 
@@ -470,6 +474,46 @@ describe(useFilterCallbacks, () => {
 
       expect(result.current.chainFilter).toEqual(UniverseChainId.Base)
     })
+  })
+})
+
+describe(getLocalGnosisCommonBaseSearchCurrencies, () => {
+  it('finds GBPe from the local Gnosis token list by lowercase symbol', () => {
+    const results = getLocalGnosisCommonBaseSearchCurrencies({
+      chainFilter: UniverseChainId.Gnosis,
+      searchFilter: 'gbpe',
+    })
+
+    const gbpe = results?.find((currencyInfo) => currencyInfo.currency.symbol === 'GBPe')
+    expect(gbpe?.logoUrl).toContain('githubusercontent.com/nocaeth/gc-tokenlist')
+  })
+
+  it('does not search the local Gnosis token list for another selected chain', () => {
+    expect(
+      getLocalGnosisCommonBaseSearchCurrencies({
+        chainFilter: UniverseChainId.Mainnet,
+        searchFilter: 'gbpe',
+      }),
+    ).toBeUndefined()
+  })
+})
+
+describe(mergeCurrencyInfoSearchResults, () => {
+  it('keeps local search results first and dedupes matching remote currencies', () => {
+    const localResults = getLocalGnosisCommonBaseSearchCurrencies({
+      chainFilter: UniverseChainId.Gnosis,
+      searchFilter: 'gbpe',
+    })
+    const localGbpe = localResults?.find((currencyInfo) => currencyInfo.currency.symbol === 'GBPe')
+
+    expect(localGbpe).toBeDefined()
+    const merged = mergeCurrencyInfoSearchResults({
+      localResults: localGbpe ? [localGbpe] : [],
+      remoteResults: localGbpe ? [{ ...localGbpe, logoUrl: undefined }] : [],
+    })
+
+    expect(merged).toHaveLength(1)
+    expect(merged?.[0]?.logoUrl).toBe(localGbpe?.logoUrl)
   })
 })
 

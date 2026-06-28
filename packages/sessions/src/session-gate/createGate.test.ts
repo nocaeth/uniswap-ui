@@ -79,7 +79,9 @@ describe('gated (throw-based)', () => {
     let attempts = 0
     const call = vi.fn(async () => {
       attempts++
-      if (attempts === 1) throw new Error('401')
+      if (attempts === 1) {
+        throw new Error('401')
+      }
       return 'ok'
     })
     const result = await gated({ ...baseOpts, session: fakeSession(), call, getLogger: () => logger })

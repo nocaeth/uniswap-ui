@@ -35,7 +35,7 @@ export function getChainLogoUrl(chainId: UniverseChainId | undefined): string | 
     return undefined
   }
   const networkName = getChainInfo(chainId).assetRepoNetworkName
-  if (!networkName) {
+  if (!networkName || !UniswapStaticUrls.uniswapAssetsBlockchainsBaseUrl) {
     return undefined
   }
   return `${UniswapStaticUrls.uniswapAssetsBlockchainsBaseUrl}/${networkName}/info/logo.png`

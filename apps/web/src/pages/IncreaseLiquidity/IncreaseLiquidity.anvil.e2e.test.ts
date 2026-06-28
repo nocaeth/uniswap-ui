@@ -1,6 +1,5 @@
 import { getPosition } from '@uniswap/client-data-api/dist/data/v1/api-DataApiService_connectquery'
 import { LiquidityService } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v2/api_connect'
-import { PERMIT2_ADDRESS } from '@uniswap/permit2-sdk'
 import { USDT } from 'uniswap/src/constants/tokens'
 import { TestID } from 'uniswap/src/test/fixtures/testIDs'
 import { getUniswapServiceUrls } from '~/config'
@@ -22,55 +21,7 @@ test.describe(
     ],
   },
   () => {
-    test('should increase liquidity of a position', async ({ page, anvil }) => {
-      await stubLiquidityServiceEndpoint({
-        page,
-        endpoint: LiquidityService.methods.increasePosition,
-        service: LiquidityService,
-      })
-      await anvil.setErc20Balance({ address: assume0xAddress(USDT.address), balance: ONE_MILLION_USDT })
-      await page.route(
-        `${getUniswapServiceUrls().apiBaseUrlV2}/${getPosition.service.typeName}/${getPosition.name}`,
-        async (route) => {
-          await route.fulfill({ path: Mocks.Positions.get_v4_position })
-        },
-      )
-      await anvil.setErc20Balance({ address: assume0xAddress(USDT.address), balance: ONE_MILLION_USDT })
-      await page.goto('/positions/v4/ethereum/1')
-      await page.getByRole('button', { name: 'Add liquidity' }).dblclick()
-      await page.getByTestId(TestID.AmountInputIn).nth(1).click()
-      await page.getByTestId(TestID.AmountInputIn).nth(1).fill('1')
-
-      await page.getByRole('button', { name: 'Review' }).click()
-      await page.getByRole('button', { name: 'Confirm' }).click()
-      await expect(page.getByText('Approved').first()).toBeVisible()
-    })
-
     test.describe('approval flow', () => {
-      test('should approve and increase liquidity on a V4 position', async ({ page, anvil }) => {
-        await stubLiquidityServiceEndpoint({
-          page,
-          endpoint: LiquidityService.methods.increasePosition,
-          service: LiquidityService,
-        })
-        await anvil.setErc20Balance({ address: assume0xAddress(USDT.address), balance: ONE_MILLION_USDT })
-        await page.route(
-          `${getUniswapServiceUrls().apiBaseUrlV2}/${getPosition.service.typeName}/${getPosition.name}`,
-          async (route) => {
-            await route.fulfill({ path: Mocks.Positions.get_v4_position })
-          },
-        )
-
-        await page.goto('/positions/v4/ethereum/1')
-        await page.getByRole('button', { name: 'Add liquidity' }).dblclick()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).click()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).fill('1')
-
-        await page.getByRole('button', { name: 'Review' }).click()
-        await page.getByRole('button', { name: 'Confirm' }).click()
-        await expect(page.getByText('Approved').first()).toBeVisible()
-      })
-
       test('should approve and increase liquidity on a V3 position', async ({ page, anvil }) => {
         await stubLiquidityServiceEndpoint({
           page,
@@ -93,71 +44,6 @@ test.describe(
         await page.getByRole('button', { name: 'Review' }).click()
         await page.getByRole('button', { name: 'Confirm' }).click()
         await expect(page.getByText('Approved').first()).toBeVisible()
-      })
-
-      test('should skip permit2 approval when allowance already set', async ({ page, anvil }) => {
-        await stubLiquidityServiceEndpoint({
-          page,
-          endpoint: LiquidityService.methods.increasePosition,
-          service: LiquidityService,
-        })
-        await anvil.setErc20Balance({ address: assume0xAddress(USDT.address), balance: ONE_MILLION_USDT })
-        await page.route(
-          `${getUniswapServiceUrls().apiBaseUrlV2}/${getPosition.service.typeName}/${getPosition.name}`,
-          async (route) => {
-            await route.fulfill({ path: Mocks.Positions.get_v4_position })
-          },
-        )
-        await stubLiquidityServiceEndpoint({
-          page,
-          endpoint: LiquidityService.methods.checkLPApproval,
-          service: LiquidityService,
-          modifyResponseData: (data) => {
-            return { ...data, transactions: [], v4BatchPermitData: null }
-          },
-        })
-        await anvil.setErc20Allowance({ address: assume0xAddress(USDT.address), spender: PERMIT2_ADDRESS })
-
-        await page.goto('/positions/v4/ethereum/1')
-        await page.getByRole('button', { name: 'Add liquidity' }).click()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).click()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).fill('1')
-
-        await page.getByRole('button', { name: 'Review' }).click()
-        await expect(page.getByText('Approval required')).not.toBeVisible()
-        await expect(page.getByText('Signature required')).not.toBeVisible()
-        await page.getByRole('button', { name: 'Confirm' }).click()
-      })
-    })
-
-    test.describe('error handling', () => {
-      test('should gracefully handle errors during review', async ({ page, anvil }) => {
-        await anvil.setErc20Balance({ address: assume0xAddress(USDT.address), balance: ONE_MILLION_USDT })
-        await page.route(
-          `${getUniswapServiceUrls().apiBaseUrlV2}/${getPosition.service.typeName}/${getPosition.name}`,
-          async (route) => {
-            await route.fulfill({ path: Mocks.Positions.get_v4_position })
-          },
-        )
-        await page.goto('/positions/v4/ethereum/1')
-        await page.getByRole('button', { name: 'Add liquidity' }).click()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).click()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).fill('1')
-
-        await page.getByRole('button', { name: 'Review' }).click()
-        await page.getByRole('button', { name: 'Confirm' }).click()
-        await expect(page.getByText('Approved').first()).toBeVisible()
-
-        await expect(page.getByText('Something went wrong')).toBeVisible()
-        await expect(page.getByText('Request failed')).toBeVisible()
-        await expect(page.getByRole('button', { name: 'Review' })).toBeVisible()
-
-        await page.getByTestId(TestID.AmountInputIn).nth(1).click()
-        await page.getByTestId(TestID.AmountInputIn).nth(1).fill('2')
-
-        await expect(page.getByText('Something went wrong')).not.toBeVisible()
-        await expect(page.getByText('Request failed')).not.toBeVisible()
-        await expect(page.getByRole('button', { name: 'Review' })).toBeVisible()
       })
     })
   },

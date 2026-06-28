@@ -49,7 +49,7 @@ export const MAINNET_CHAIN_INFO = {
   blockPerMainnetEpochForChainId: 1,
   blockWaitMsBeforeWarning: isWebApp ? DEFAULT_MS_BEFORE_WARNING : ONE_MINUTE_MS,
   bridge: undefined,
-  docs: 'https://docs.uniswap.org/',
+  docs: 'https://ethereum.org/developers/docs/',
   elementName: ElementName.ChainEthereum,
   explorer: {
     name: 'Etherscan',
@@ -74,7 +74,7 @@ export const MAINNET_CHAIN_INFO = {
     ? getPlaywrightRpcUrls(LOCAL_MAINNET_PLAYWRIGHT_RPC_URL)
     : {
         [RPCType.Private]: {
-          http: ['https://rpc.mevblocker.io/?referrer=uniswapwallet'],
+          http: ['https://rpc.mevblocker.io/?referrer=noca'],
         },
         [RPCType.Public]: {
           http: [getUniRpcEndpointUrl(UniverseChainId.Mainnet)],
@@ -141,7 +141,7 @@ export const SEPOLIA_CHAIN_INFO = {
   blockPerMainnetEpochForChainId: 1,
   blockWaitMsBeforeWarning: undefined,
   bridge: undefined,
-  docs: 'https://docs.uniswap.org/',
+  docs: 'https://ethereum.org/developers/docs/',
   elementName: ElementName.ChainSepolia,
   explorer: {
     name: 'Etherscan',

@@ -20,7 +20,6 @@ import { Search } from 'ui/src/components/icons/Search'
 import { TokenSelectorFlow } from 'uniswap/src/components/TokenSelector/types'
 import { ZERO_ADDRESS } from 'uniswap/src/constants/misc'
 import { nativeOnChain, WRAPPED_NATIVE_CURRENCY } from 'uniswap/src/constants/tokens'
-import { UniswapHelpUrls } from 'uniswap/src/constants/urls'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
@@ -617,15 +616,7 @@ function SelectStepError({
           <>
             {blockedTokenSymbols.length > 1
               ? t('token.safety.warning.blocked.description.default_other')
-              : t('token.safety.warning.blocked.description.default_one')}{' '}
-            <Text
-              color="$neutral1"
-              variant="body3"
-              onPress={() => window.open(UniswapHelpUrls.articles.tokenWarning, '_blank', 'noopener,noreferrer')}
-              {...ClickableTamaguiStyle}
-            >
-              {t('common.button.learn')}
-            </Text>
+              : t('token.safety.warning.blocked.description.default_one')}
           </>
         }
       />

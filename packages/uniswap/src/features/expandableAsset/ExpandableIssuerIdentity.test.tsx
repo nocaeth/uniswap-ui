@@ -2,9 +2,19 @@ import { RwaCategory } from '@uniswap/client-data-api/dist/data/v1/api_pb'
 import { mapRankedRwa } from 'uniswap/src/data/rest/rwa/mapRankedRwa'
 import { makeRankedRwa } from 'uniswap/src/data/rest/rwa/rankedRwaTestHelpers'
 import type { ChainToken, Rwa } from 'uniswap/src/data/rest/rwa/types'
+import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { ExpandableIssuerIdentity } from 'uniswap/src/features/expandableAsset/ExpandableIssuerIdentity'
 import { render } from 'uniswap/src/test/test-utils'
+import { afterEach, beforeEach, vi } from 'vitest'
+
+vi.mock('uniswap/src/features/chains/hooks/useEnabledChains', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('uniswap/src/features/chains/hooks/useEnabledChains')>()
+  return {
+    ...mod,
+    useEnabledChains: vi.fn(mod.useEnabledChains),
+  }
+})
 
 const ENABLED_CHAINS = [UniverseChainId.Mainnet, UniverseChainId.Base, UniverseChainId.ArbitrumOne]
 
@@ -35,6 +45,19 @@ function rwaWithIssuerChains(chainTokens: ChainToken[]): Rwa {
 }
 
 describe('ExpandableIssuerIdentity network badge', () => {
+  beforeEach(() => {
+    vi.mocked(useEnabledChains).mockReturnValue({
+      chains: ENABLED_CHAINS,
+      gqlChains: [],
+      defaultChainId: UniverseChainId.Mainnet,
+      isTestnetModeEnabled: false,
+    })
+  })
+
+  afterEach(() => {
+    vi.mocked(useEnabledChains).mockRestore()
+  })
+
   it('hides the network badge for a multi-network issuer in search (the "N networks" subtitle stands alone)', () => {
     const rwa = rwaWithIssuerChains([
       { chainId: UniverseChainId.Base, address: '0xbase' },

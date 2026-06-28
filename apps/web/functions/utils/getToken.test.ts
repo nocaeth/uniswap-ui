@@ -38,7 +38,7 @@ describe('getToken', () => {
     const result = await getToken({
       networkName: 'ethereum',
       tokenAddress: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
-      url: 'https://app.uniswap.org/explore/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+      url: 'https://swap.gno.now/explore/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
     })
 
     expect(client.query).toHaveBeenCalledWith({
@@ -51,9 +51,9 @@ describe('getToken', () => {
       fetchPolicy: 'no-cache',
     })
     expect(result).toEqual({
-      title: 'Get UNI on Uniswap',
-      image: 'https://app.uniswap.org/api/image/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
-      url: 'https://app.uniswap.org/explore/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+      title: 'Get UNI on NOCA',
+      image: 'https://swap.gno.now/api/image/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+      url: 'https://swap.gno.now/explore/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
       tokenData: {
         symbol: 'UNI',
       },
@@ -69,7 +69,7 @@ describe('getToken', () => {
     const resultPromise = getToken({
       networkName: 'ethereum',
       tokenAddress: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
-      url: 'https://app.uniswap.org/explore/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+      url: 'https://swap.gno.now/explore/tokens/ethereum/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
     })
 
     await vi.advanceTimersByTimeAsync(META_TAG_FETCH_TIMEOUT_MS)

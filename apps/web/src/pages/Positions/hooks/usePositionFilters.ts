@@ -1,7 +1,11 @@
 import { PositionStatus, ProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { atom, useAtom } from 'jotai'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { DEFAULT_LP_POSITION_PROTOCOL_FILTER, DEFAULT_LP_POSITION_STATUS_FILTER } from '~/features/Liquidity/constants'
+import {
+  DEFAULT_LP_POSITION_PROTOCOL_FILTER,
+  DEFAULT_LP_POSITION_STATUS_FILTER,
+  LP_POSITION_PROTOCOL_VERSIONS,
+} from '~/features/Liquidity/constants'
 
 // GNOSIS-ONLY: default the positions chain filter to Gnosis instead of null ("all networks").
 const chainFilterAtom = atom<UniverseChainId | null>(UniverseChainId.Gnosis)
@@ -23,6 +27,10 @@ export function usePositionFilters(): UsePositionFiltersResult {
   const [statusFilter, setStatusFilter] = useAtom(statusFilterAtom)
 
   const toggleVersion = (version: ProtocolVersion) => {
+    if (!LP_POSITION_PROTOCOL_VERSIONS.includes(version)) {
+      return
+    }
+
     setVersionFilter((prev) => (prev.includes(version) ? prev.filter((v) => v !== version) : [...prev, version]))
   }
 

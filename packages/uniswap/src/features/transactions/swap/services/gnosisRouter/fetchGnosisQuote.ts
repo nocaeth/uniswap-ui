@@ -104,6 +104,11 @@ import {
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
 
 const DEFAULT_GNOSIS_SLIPPAGE_PERCENT = 0.5
+// Hard ceiling on slippage for EVERY Gnosis route (zap, aggregation, plain v3). The deployed
+// routers enforce only an absolute amountOutMinimum and hold no notion of a fair price, so this
+// off-chain clamp is the single place a percentage cap can live. A trade that genuinely needs
+// more than this reverts on-chain against the floor (fails safe; the user keeps their input).
+export const GNOSIS_MAX_SLIPPAGE_PERCENT = 5
 // Static gas allowance (in gas units) for the standalone Permit2.approve permit tx.
 const PERMIT2_APPROVE_GAS = 55_000
 const PERMIT2_APPROVE_EXPIRATION_SECONDS = 30 * 60
@@ -126,8 +131,9 @@ const permit2Interface = new Interface(PERMIT2_ABI)
 const sdaiPreviewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
 const erc20BalanceInterface = new Interface(['function balanceOf(address) view returns (uint256)'])
 
-function getGnosisSlippageTolerance(params: Pick<TradingApi.QuoteRequest, 'slippageTolerance'>): number {
-  return params.slippageTolerance ?? DEFAULT_GNOSIS_SLIPPAGE_PERCENT
+export function getGnosisSlippageTolerance(params: Pick<TradingApi.QuoteRequest, 'slippageTolerance'>): number {
+  const requested = params.slippageTolerance ?? DEFAULT_GNOSIS_SLIPPAGE_PERCENT
+  return Math.min(GNOSIS_MAX_SLIPPAGE_PERCENT, Math.max(0, requested))
 }
 
 function getSlippageBips(slippagePercent: number): number {

@@ -5,21 +5,21 @@ import { createTestUrlBuilder } from './urls'
 describe('createTestUrlBuilder', () => {
   describe('basic URL building', () => {
     it('should create URL with baseUrl only', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({})
-      expect(url).toBe('https://uniswap.org/')
+      expect(url).toBe('https://swap.gno.now/')
     })
 
     it('should append subpath to baseUrl', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ subPath: '/swap' })
-      expect(url).toBe('https://uniswap.org/swap')
+      expect(url).toBe('https://swap.gno.now/swap')
     })
 
     it('should handle baseUrl with existing path', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org/app' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now/app' })
       const url = buildUrl({ subPath: '/swap' })
-      expect(url).toBe('https://uniswap.org/app/swap')
+      expect(url).toBe('https://swap.gno.now/app/swap')
     })
 
     it('should handle relative baseUrl with root path', () => {
@@ -50,13 +50,13 @@ describe('createTestUrlBuilder', () => {
 
   describe('query parameters', () => {
     it('should add single query parameter', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ queryParams: { foo: 'bar' } })
-      expect(url).toBe('https://uniswap.org/?foo=bar')
+      expect(url).toBe('https://swap.gno.now/?foo=bar')
     })
 
     it('should add multiple query parameters', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ queryParams: { foo: 'bar', baz: 'qux' } })
       expect(url).toContain('foo=bar')
       expect(url).toContain('baz=qux')
@@ -64,16 +64,16 @@ describe('createTestUrlBuilder', () => {
 
     it('should use default query parameters', () => {
       const buildUrl = createTestUrlBuilder({
-        basePath: 'https://uniswap.org',
+        basePath: 'https://swap.gno.now',
         defaultQueryParams: { defaultKey: 'defaultValue' },
       })
       const url = buildUrl({})
-      expect(url).toBe('https://uniswap.org/?defaultKey=defaultValue')
+      expect(url).toBe('https://swap.gno.now/?defaultKey=defaultValue')
     })
 
     it('should merge default and custom query parameters', () => {
       const buildUrl = createTestUrlBuilder({
-        basePath: 'https://uniswap.org',
+        basePath: 'https://swap.gno.now',
         defaultQueryParams: { default: 'value' },
       })
       const url = buildUrl({ queryParams: { custom: 'param' } })
@@ -83,30 +83,30 @@ describe('createTestUrlBuilder', () => {
 
     it('should override default query parameters with custom ones', () => {
       const buildUrl = createTestUrlBuilder({
-        basePath: 'https://uniswap.org',
+        basePath: 'https://swap.gno.now',
         defaultQueryParams: { key: 'default' },
       })
       const url = buildUrl({ queryParams: { key: 'override' } })
-      expect(url).toBe('https://uniswap.org/?key=override')
+      expect(url).toBe('https://swap.gno.now/?key=override')
       expect(url).not.toContain('key=default')
     })
   })
 
   describe('feature flags', () => {
     it('should add enabled feature flag', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ featureFlags: { [FeatureFlags.AATestWeb]: true } })
-      expect(url).toBe('https://uniswap.org/?featureFlagOverride=aatest_web')
+      expect(url).toBe('https://swap.gno.now/?featureFlagOverride=aatest_web')
     })
 
     it('should add disabled feature flag', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ featureFlags: { [FeatureFlags.AATestWeb]: false } })
-      expect(url).toBe('https://uniswap.org/?featureFlagOverrideOff=aatest_web')
+      expect(url).toBe('https://swap.gno.now/?featureFlagOverrideOff=aatest_web')
     })
 
     it('should add multiple enabled feature flags', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({
         featureFlags: { [FeatureFlags.AATestWeb]: true, [FeatureFlags.PortfolioDefiTab]: true },
       })
@@ -116,7 +116,7 @@ describe('createTestUrlBuilder', () => {
     })
 
     it('should add multiple disabled feature flags', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({
         featureFlags: { [FeatureFlags.AATestWeb]: false, [FeatureFlags.PortfolioDefiTab]: false },
       })
@@ -126,7 +126,7 @@ describe('createTestUrlBuilder', () => {
     })
 
     it('should separate enabled and disabled feature flags', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ featureFlags: { [FeatureFlags.AATestWeb]: true, [FeatureFlags.PortfolioDefiTab]: false } })
 
       expect(url).toContain('featureFlagOverride=aatest_web')
@@ -135,16 +135,16 @@ describe('createTestUrlBuilder', () => {
 
     it('should use default feature flags', () => {
       const buildUrl = createTestUrlBuilder({
-        basePath: 'https://uniswap.org',
+        basePath: 'https://swap.gno.now',
         defaultFeatureFlags: { [FeatureFlags.AATestWeb]: true },
       })
       const url = buildUrl({})
-      expect(url).toBe('https://uniswap.org/?featureFlagOverride=aatest_web')
+      expect(url).toBe('https://swap.gno.now/?featureFlagOverride=aatest_web')
     })
 
     it('should merge default and custom feature flags', () => {
       const buildUrl = createTestUrlBuilder({
-        basePath: 'https://uniswap.org',
+        basePath: 'https://swap.gno.now',
         defaultFeatureFlags: { [FeatureFlags.AATestWeb]: true },
       })
       const url = buildUrl({ featureFlags: { [FeatureFlags.PortfolioDefiTab]: true } })
@@ -155,18 +155,18 @@ describe('createTestUrlBuilder', () => {
 
     it('should override default feature flags with custom ones', () => {
       const buildUrl = createTestUrlBuilder({
-        basePath: 'https://uniswap.org',
+        basePath: 'https://swap.gno.now',
         defaultFeatureFlags: { [FeatureFlags.PortfolioDefiTab]: true },
       })
       const url = buildUrl({ featureFlags: { [FeatureFlags.PortfolioDefiTab]: false } })
-      expect(url).toBe('https://uniswap.org/?featureFlagOverrideOff=portfolio_defi_tab')
+      expect(url).toBe('https://swap.gno.now/?featureFlagOverrideOff=portfolio_defi_tab')
       expect(url).not.toContain('featureFlagOverride=')
     })
   })
 
   describe('combined parameters', () => {
     it('should combine subpath, query params, and feature flags', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({
         subPath: '/swap',
         queryParams: { chain: 'mainnet' },
@@ -199,33 +199,33 @@ describe('createTestUrlBuilder', () => {
 
   describe('edge cases', () => {
     it('should handle empty subpath string', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ subPath: '' })
-      expect(url).toBe('https://uniswap.org/')
+      expect(url).toBe('https://swap.gno.now/')
     })
 
     it('should handle subpath without leading slash', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ subPath: 'swap' })
-      expect(url).toBe('https://uniswap.org/swap')
+      expect(url).toBe('https://swap.gno.now/swap')
     })
 
     it('should handle empty query params object', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ queryParams: {} })
-      expect(url).toBe('https://uniswap.org/')
+      expect(url).toBe('https://swap.gno.now/')
     })
 
     it('should handle empty feature flags object', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ featureFlags: {} })
-      expect(url).toBe('https://uniswap.org/')
+      expect(url).toBe('https://swap.gno.now/')
     })
 
     it('should handle special characters in query params', () => {
-      const buildUrl = createTestUrlBuilder({ basePath: 'https://uniswap.org' })
+      const buildUrl = createTestUrlBuilder({ basePath: 'https://swap.gno.now' })
       const url = buildUrl({ queryParams: { key: 'value with spaces' } })
-      expect(url).toBe('https://uniswap.org/?key=value+with+spaces')
+      expect(url).toBe('https://swap.gno.now/?key=value+with+spaces')
     })
   })
 })

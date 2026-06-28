@@ -1,5 +1,6 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import userEvent from '@testing-library/user-event'
+import { ProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import type { ReactNode } from 'react'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { PositionInfo } from 'uniswap/src/features/positions/types'
@@ -41,7 +42,8 @@ const positionInfo = (id: string): PositionInfo =>
   ({
     poolId: `pool-${id}`,
     tokenId: id,
-    chainId: UniverseChainId.Mainnet,
+    chainId: UniverseChainId.Gnosis,
+    version: ProtocolVersion.V3,
   }) as PositionInfo
 
 function setVirtualItems(positions: PositionInfo[], lastIndex?: number) {
@@ -195,15 +197,15 @@ describe('PositionsListSection', () => {
   it('links cards to the owner-only position page by default', () => {
     render(<PositionsListSection {...baseProps} />)
 
-    expect(screen.getByText('pool-a-a').closest('a')).toHaveAttribute('href', '/positions/v4/ethereum/a')
+    expect(screen.getByText('pool-a-a').closest('a')).toHaveAttribute('href', '/positions/v3/gnosis/a')
   })
 
   it('links cards to the public pool details page in readOnly mode', () => {
     render(<PositionsListSection {...baseProps} readOnly showHiddenPositions={true} />)
 
     // visible position
-    expect(screen.getByText('pool-a-a').closest('a')).toHaveAttribute('href', '/explore/pools/ethereum/pool-a')
+    expect(screen.getByText('pool-a-a').closest('a')).toHaveAttribute('href', '/explore/pools/gnosis/pool-a')
     // hidden position
-    expect(screen.getByText('pool-h1-h1').closest('a')).toHaveAttribute('href', '/explore/pools/ethereum/pool-h1')
+    expect(screen.getByText('pool-h1-h1').closest('a')).toHaveAttribute('href', '/explore/pools/gnosis/pool-h1')
   })
 })

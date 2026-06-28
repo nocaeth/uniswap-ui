@@ -100,7 +100,7 @@ export function CurrencySearch({
           chainId={resolvedChainId}
           chainIds={chainIds ?? chains}
           currencyField={currencyField}
-          flow={swapTab === SwapTab.Limit ? TokenSelectorFlow.Limit : flow}
+          flow={flow}
           isSurfaceReady={true}
           variation={
             variation ??

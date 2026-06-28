@@ -13,7 +13,7 @@ export type TradingApiFetchClientContext = Omit<FetchClientContext, 'baseUrl' | 
 /**
  * Builds the `FetchClient` used by every trading API client. Sets
  * `credentials: 'include'` so web requests carry the HttpOnly session cookie
- * (scoped to `uniswap.org`) to the cross-origin trading backend; mobile and
+ * (scoped to the app parent domain) to the cross-origin trading backend; mobile and
  * extension authenticate via the `x-session-id` header. Mirrors the Plan /
  * Chained Actions client.
  */

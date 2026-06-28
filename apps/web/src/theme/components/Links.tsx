@@ -88,5 +88,9 @@ export function ExternalLink({
     },
     [href, target, onClick, onPress],
   )
+  if (!href) {
+    return <>{rest.children}</>
+  }
+
   return <StyledLink href={href} rel={rel} target={target} {...rest} onPress={handlePress} />
 }

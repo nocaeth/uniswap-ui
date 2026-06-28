@@ -219,4 +219,66 @@ describe('Gnosis aggregation router helpers', () => {
       'Malformed Gnosis aggregation quote: leg input sum does not match quote input amount',
     )
   })
+
+  it('fails closed when the output minimum is missing or zero (never a zero floor)', async () => {
+    vi.resetModules()
+    vi.doMock('uniswap/src/features/transactions/swap/services/gnosisRouter/constants', async () => ({
+      ...(await vi.importActual('uniswap/src/features/transactions/swap/services/gnosisRouter/constants')),
+      GNOSIS_AGGREGATION_ROUTER_ADDRESS: ROUTER,
+      GNOSIS_CURVE_ROUTER_ADDRESS: CURVE,
+    }))
+
+    const {
+      GNOSIS_AGGREGATION_QUOTE_ID,
+      GnosisAggregationStepType,
+      GnosisTransmuteDirection,
+      buildGnosisAggregationTransaction,
+      encodeGnosisAggregationTransmuteStepData,
+    } = await import('uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter')
+
+    const baseQuote = {
+      chainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      swapper: SWAPPER,
+      input: { token: GNOSIS_USDCE, amount: '1000' },
+      tradeType: TradingApi.TradeType.EXACT_INPUT,
+      slippage: 0.5,
+      route: [],
+      routeString: 'USDC.e->USDC transmuter',
+      quoteId: GNOSIS_AGGREGATION_QUOTE_ID,
+      gasUseEstimate: '165000',
+      priceImpact: 0,
+      portionBips: 0,
+      aggregation: {
+        tokenIn: GNOSIS_USDCE,
+        tokenOut: GNOSIS_USDC,
+        legs: [
+          {
+            amountIn: '1000',
+            label: 'USDC.e->USDC transmuter',
+            steps: [
+              {
+                stepType: GnosisAggregationStepType.Transmute,
+                data: encodeGnosisAggregationTransmuteStepData(GnosisTransmuteDirection.UsdceToUsdc),
+              },
+            ],
+          },
+        ],
+      },
+    }
+
+    // Neither minimumAmount nor amount present -> no usable floor.
+    const missing = { ...baseQuote, output: { token: GNOSIS_USDC, recipient: RECIPIENT } } as GnosisAggregationQuote
+    expect(() => buildGnosisAggregationTransaction({ quote: missing })).toThrow(
+      'Malformed Gnosis aggregation quote: missing output minimum amount',
+    )
+
+    // Explicit zero floor -> stripped all slippage protection.
+    const zero = {
+      ...baseQuote,
+      output: { token: GNOSIS_USDC, amount: '1000', minimumAmount: '0', recipient: RECIPIENT },
+    } as GnosisAggregationQuote
+    expect(() => buildGnosisAggregationTransaction({ quote: zero })).toThrow(
+      'Malformed Gnosis aggregation quote: output minimum amount is zero',
+    )
+  })
 })

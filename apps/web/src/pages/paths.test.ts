@@ -1,5 +1,4 @@
 import React from 'react'
-import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defaults'
 import { getExploreTitle } from '~/pages/getExploreTitle'
 import {
   getAddLiquidityPageTitle,
@@ -21,10 +20,6 @@ describe('Paths', () => {
     appPaths.forEach((path) => {
       // We don't want to expose these fallback routes to the Cloudflare function.
       if (path === '*' || path === '/not-found') {
-        return
-      }
-      if (path === `/explore/tokens/solana/${WRAPPED_SOL_ADDRESS_SOLANA}`) {
-        // Special case: WSOL is redirected to SOL TDP, so we don't want to expose it to the Cloudflare function.
         return
       }
       expect(paths).toContain(path)
@@ -83,32 +78,15 @@ describe('getExploreTitle', () => {
 })
 
 describe('positionPage static titles and descriptions', () => {
-  it('should return the correct title & description for v4 positions page', () => {
-    const v4PositionsPageUrl = '/positions/v4/optimism/512372'
-    expect(getPositionPageTitle(v4PositionsPageUrl)).toBe('Manage pool liquidity on NOCA')
-    expect(getPositionPageDescription(v4PositionsPageUrl)).toBe(
-      'View your active v4 liquidity positions. Add new positions.',
-    )
-  })
-
   it('should return the correct title & description for v3 positions page', () => {
-    const v3PositionsPageUrl = '/positions/v3/optimism/512372'
+    const v3PositionsPageUrl = '/positions/v3/gnosis/512372'
     expect(getPositionPageTitle(v3PositionsPageUrl)).toBe('Manage pool liquidity (v3) on NOCA')
     expect(getPositionPageDescription(v3PositionsPageUrl)).toBe(
       'View your active v3 liquidity positions. Add new positions.',
     )
   })
 
-  it('should return the correct title & description for v2 positions page', () => {
-    const v2PositionsPageUrl = '/positions/v2/ethereum/0x004375Dff511095CC5A197A54140a24eFEF3A416'
-    expect(getPositionPageTitle(v2PositionsPageUrl)).toBe('Manage pool liquidity (v2) on NOCA')
-    expect(getPositionPageDescription(v2PositionsPageUrl)).toBe(
-      'View your active v2 liquidity positions. Add new positions.',
-    )
-  })
-
   it('should return the correct title for Add Liquidity pages', () => {
     expect(getAddLiquidityPageTitle('/add')).toBe('Add liquidity to pools on NOCA')
-    expect(getAddLiquidityPageTitle('/add/v2')).toBe('Add liquidity to pools (v2) on NOCA')
   })
 })

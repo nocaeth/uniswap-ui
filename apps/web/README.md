@@ -1,10 +1,8 @@
-# Uniswap Labs Web Interface
+# NOCA Web Interface
 
-## Accessing the Uniswap Interface
+## Accessing the NOCA Interface
 
-To access the Uniswap Interface, use an IPFS gateway link from the
-[latest release](https://github.com/Uniswap/uniswap-interface/releases/latest),
-or visit [app.uniswap.org](https://app.uniswap.org).
+To access the hosted interface, visit [swap.gno.now](https://swap.gno.now).
 
 ## Tech Stack
 

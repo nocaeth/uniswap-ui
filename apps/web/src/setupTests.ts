@@ -119,7 +119,7 @@ setupi18n()
 
 // Sets origin to the production origin, because some tests depend on this.
 // This prevents each test file from needing to set this manually.
-globalThis.origin = 'https://app.uniswap.org'
+globalThis.origin = 'https://swap.gno.now'
 
 // Polyfill browser APIs (jest is a node.js environment):
 // oxlint-disable-next-line no-lone-blocks -- block used to scope polyfill assignments
@@ -431,11 +431,7 @@ failOnConsole({
       // Allow React key warnings from Trans component (react-i18next v14 issue)
       if (
         message.includes('Each child in a list should have a unique') &&
-        (message.includes('Trans') ||
-          message.includes('UniswapXDescription') ||
-          message.includes('SwapPreview') ||
-          message.includes('LimitOrderPreview') ||
-          message.includes('LimitPriceInputLabel'))
+        (message.includes('Trans') || message.includes('UniswapXDescription') || message.includes('SwapPreview'))
       ) {
         return true
       }

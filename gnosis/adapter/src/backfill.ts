@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url'
 /**
  * Historical indexer for Uniswap V3 on Gnosis (chain 100) → SQLite.
  *
@@ -32,8 +33,8 @@
  */
 import { createPublicClient, http, parseAbi, getAddress } from 'viem'
 import { gnosis } from 'viem/chains'
-import { pathToFileURL } from 'node:url'
 import { getDb, initSchema } from './db.js'
+import { applyOsgnoOracleUsdPrice, fetchOsgnoRate } from './osgnoOracle.js'
 
 const HYPERSYNC_URL = 'https://gnosis.hypersync.xyz/query'
 const HEIGHT_URL = 'https://gnosis.hypersync.xyz/height'
@@ -296,8 +297,18 @@ export async function runBackfill(): Promise<void> {
   // 3) Current pool state: slot0 (spot) + reserves (balanceOf token0/token1).
   const stateCalls = pools.flatMap((p) => [
     { address: p.pool as `0x${string}`, abi: poolAbi, functionName: 'slot0' as const },
-    { address: p.token0 as `0x${string}`, abi: erc20Abi, functionName: 'balanceOf' as const, args: [p.pool as `0x${string}`] },
-    { address: p.token1 as `0x${string}`, abi: erc20Abi, functionName: 'balanceOf' as const, args: [p.pool as `0x${string}`] },
+    {
+      address: p.token0 as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'balanceOf' as const,
+      args: [p.pool as `0x${string}`],
+    },
+    {
+      address: p.token1 as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'balanceOf' as const,
+      args: [p.pool as `0x${string}`],
+    },
   ])
   const stateRes = await client.multicall({ contracts: stateCalls, allowFailure: true })
   interface PoolState {
@@ -437,7 +448,9 @@ export async function runBackfill(): Promise<void> {
     }
     from = r.next_block
   }
-  console.log(`events scanned: ${eventCount}; recent tx (${TX_DAYS}d): ${recentTx.length}; elapsed ${((Date.now() - t0) / 1000).toFixed(1)}s`)
+  console.log(
+    `events scanned: ${eventCount}; recent tx (${TX_DAYS}d): ${recentTx.length}; elapsed ${((Date.now() - t0) / 1000).toFixed(1)}s`,
+  )
 
   // 5) Build the day + hour axes.
   const todayDay = floorDay(nowTs)
@@ -508,12 +521,16 @@ export async function runBackfill(): Promise<void> {
     'DELETE FROM tokens; DELETE FROM pools; DELETE FROM token_day_data; DELETE FROM token_hour_data; DELETE FROM pool_day_data; DELETE FROM pool_hour_data; DELETE FROM protocol_day_data; DELETE FROM transactions; DELETE FROM meta;',
   )
 
-  const insTokenDay = db.prepare('INSERT OR REPLACE INTO token_day_data (tokenId,day,priceUSD,volumeUSD,tvlUSD) VALUES (?,?,?,?,?)')
+  const insTokenDay = db.prepare(
+    'INSERT OR REPLACE INTO token_day_data (tokenId,day,priceUSD,volumeUSD,tvlUSD) VALUES (?,?,?,?,?)',
+  )
   const insPoolDay = db.prepare(
     'INSERT OR REPLACE INTO pool_day_data (poolId,day,volumeUSD,tvlUSD,feesUSD,token0Price,token1Price,txCount) VALUES (?,?,?,?,?,?,?,?)',
   )
   const insProtoDay = db.prepare('INSERT OR REPLACE INTO protocol_day_data (day,tvlUSD,volumeUSD) VALUES (?,?,?)')
-  const insTokenHour = db.prepare('INSERT OR REPLACE INTO token_hour_data (tokenId,hour,priceUSD,volumeUSD) VALUES (?,?,?,?)')
+  const insTokenHour = db.prepare(
+    'INSERT OR REPLACE INTO token_hour_data (tokenId,hour,priceUSD,volumeUSD) VALUES (?,?,?,?)',
+  )
   const insPoolHour = db.prepare(
     'INSERT OR REPLACE INTO pool_hour_data (poolId,hour,volumeUSD,token0Price,token1Price) VALUES (?,?,?,?,?)',
   )
@@ -538,7 +555,10 @@ export async function runBackfill(): Promise<void> {
       const depth = (poolId: string, usd: Map<string, number>): number => {
         const pd = poolDaily.get(poolId)!
         const p = poolById.get(poolId)!
-        return (usd.get(p.token0) ?? 0) * Math.max(0, pd.reserve0[i]) + (usd.get(p.token1) ?? 0) * Math.max(0, pd.reserve1[i])
+        return (
+          (usd.get(p.token0) ?? 0) * Math.max(0, pd.reserve0[i]) +
+          (usd.get(p.token1) ?? 0) * Math.max(0, pd.reserve1[i])
+        )
       }
       const usd = propagateUSD(pools, price1per0, depth)
 
@@ -612,7 +632,10 @@ export async function runBackfill(): Promise<void> {
       const depth = (poolId: string, usd: Map<string, number>): number => {
         const pd = poolDaily.get(poolId)!
         const p = poolById.get(poolId)!
-        return (usd.get(p.token0) ?? 0) * Math.max(0, pd.reserve0[di2]) + (usd.get(p.token1) ?? 0) * Math.max(0, pd.reserve1[di2])
+        return (
+          (usd.get(p.token0) ?? 0) * Math.max(0, pd.reserve0[di2]) +
+          (usd.get(p.token1) ?? 0) * Math.max(0, pd.reserve1[di2])
+        )
       }
       const usd = propagateUSD(pools, price1per0, depth)
       const tokenVol = new Map<string, number>()
@@ -651,6 +674,11 @@ export async function runBackfill(): Promise<void> {
     const p = poolById.get(poolId)!
     return (usd.get(p.token0) ?? 0) * st.reserve0 + (usd.get(p.token1) ?? 0) * st.reserve1
   })
+  const osgnoRate = await fetchOsgnoRate(client).catch((error) => {
+    console.warn('osGNO oracle price unavailable; leaving indexed osGNO price unchanged', error)
+    return undefined
+  })
+  applyOsgnoOracleUsdPrice(curUSD, osgnoRate)
 
   // 10) Token + pool snapshot rows (with trailing volumes + percent changes).
   const sumHour = (m: Map<number, number>, fromTs: number): number => {
@@ -671,7 +699,12 @@ export async function runBackfill(): Promise<void> {
     }
     return s
   }
-  const priceAt = (hourMap: Map<number, number>, dayMap: Map<number, number>, atTs: number, hourly: boolean): number => {
+  const priceAt = (
+    hourMap: Map<number, number>,
+    dayMap: Map<number, number>,
+    atTs: number,
+    hourly: boolean,
+  ): number => {
     const m = hourly ? hourMap : dayMap
     const step = hourly ? HOUR : DAY
     const key = hourly ? floorHour(atTs) : floorDay(atTs)
@@ -784,7 +817,8 @@ export async function runBackfill(): Promise<void> {
       const pdRow = poolDaily.get(p.pool)!
       const prevTvl =
         pdRow.reserve0.length > 1
-          ? p0 * Math.max(0, pdRow.reserve0[pdRow.reserve0.length - 2]) + p1 * Math.max(0, pdRow.reserve1[pdRow.reserve1.length - 2])
+          ? p0 * Math.max(0, pdRow.reserve0[pdRow.reserve0.length - 2]) +
+            p1 * Math.max(0, pdRow.reserve1[pdRow.reserve1.length - 2])
           : tvl
       insPool.run(
         p.pool,
@@ -848,7 +882,9 @@ export async function runBackfill(): Promise<void> {
 
   // Summary.
   const protoNow = db
-    .query<{ tvl: number; vol: number }>('SELECT tvlUSD AS tvl, volumeUSD AS vol FROM protocol_day_data ORDER BY day DESC LIMIT 1')
+    .query<{ tvl: number; vol: number }>(
+      'SELECT tvlUSD AS tvl, volumeUSD AS vol FROM protocol_day_data ORDER BY day DESC LIMIT 1',
+    )
     .get()
   const count = (sql: string): number => db.query<{ c: number }>(sql).get()?.c ?? 0
   console.log(
@@ -860,7 +896,9 @@ export async function runBackfill(): Promise<void> {
   console.log(`latest protocol day: TVL=$${(protoNow?.tvl ?? 0).toFixed(0)} vol=$${(protoNow?.vol ?? 0).toFixed(0)}`)
   console.log('\nTop 10 pools by TVL:')
   const top = db
-    .query<{ id: string; tvlUSD: number; volume1d: number }>('SELECT id,tvlUSD,volume1d FROM pools ORDER BY tvlUSD DESC LIMIT 10')
+    .query<{ id: string; tvlUSD: number; volume1d: number }>(
+      'SELECT id,tvlUSD,volume1d FROM pools ORDER BY tvlUSD DESC LIMIT 10',
+    )
     .all()
   for (const row of top) {
     const p = poolById.get(row.id)!
@@ -924,15 +962,15 @@ function propagateUSD(
 
 async function fetchLogos(): Promise<Map<string, string>> {
   // Merge multiple Gnosis token lists by address (best-effort). CoinGecko's xdai
-  // list is the broadest; the CoW Swap list is curated for the major Gnosis
-  // tokens and is overlaid last so its (higher-quality) icons win on overlap.
+  // list is the broadest; NOCA's canonical list is overlaid last so its curated
+  // icons win on overlap.
   const sources: { url: string; pick: (json: unknown) => { address?: string; logoURI?: string }[] }[] = [
     {
       url: 'https://tokens.coingecko.com/xdai/all.json',
       pick: (j) => (j as { tokens?: { address?: string; logoURI?: string }[] }).tokens ?? [],
     },
     {
-      url: 'https://files.cow.fi/tokens/CowSwap.json',
+      url: 'https://raw.githubusercontent.com/nocaeth/gc-tokenlist/main/token-list.json',
       pick: (j) =>
         ((j as { tokens?: { chainId?: number; address?: string; logoURI?: string }[] }).tokens ?? []).filter(
           (t) => t.chainId === 100,

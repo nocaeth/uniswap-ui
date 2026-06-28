@@ -60,7 +60,9 @@ describe('requireSessionInterceptor', () => {
     let attempts = 0
     const next = vi.fn(async () => {
       attempts++
-      if (attempts === 1) throw new ConnectError('nope', Code.Unauthenticated)
+      if (attempts === 1) {
+        throw new ConnectError('nope', Code.Unauthenticated)
+      }
       return 'ok'
     })
     const interceptor = requireSessionInterceptor({ getSession: () => session, source: 'test' })
@@ -76,7 +78,9 @@ describe('requireSessionInterceptor', () => {
     let attempts = 0
     const next = vi.fn(async () => {
       attempts++
-      if (attempts === 1) throw new ConnectError('forbidden', Code.PermissionDenied)
+      if (attempts === 1) {
+        throw new ConnectError('forbidden', Code.PermissionDenied)
+      }
       return 'ok'
     })
     const interceptor = requireSessionInterceptor({ getSession: () => session, source: 'test' })

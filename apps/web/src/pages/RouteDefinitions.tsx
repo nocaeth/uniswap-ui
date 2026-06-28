@@ -1,7 +1,6 @@
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { lazy, ReactNode, Suspense, useMemo } from 'react'
 import { matchPath, Navigate, useLocation } from 'react-router'
-import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defaults'
 import i18n from 'uniswap/src/i18n'
 import { getExploreDescription, getExploreTitle } from '~/pages/getExploreTitle'
 import {
@@ -16,24 +15,16 @@ import { isBrowserRouterEnabled } from '~/utils/env'
 const AddLiquidity = lazy(() => import('~/pages/AddLiquidity/AddLiquidity'))
 const CreatePosition = lazy(() => import('~/pages/CreatePosition/CreatePosition'))
 const AddLiquidityV3WithTokenRedirects = lazy(() => import('~/pages/AddLiquidityV3/redirects'))
-const AddLiquidityV2WithTokenRedirects = lazy(() => import('~/pages/AddLiquidityV2/redirects'))
 const RedirectExplore = lazy(() => import('~/pages/Explore/redirects'))
 const NotFound = lazy(() => import('~/pages/NotFound'))
 const Pool = lazy(() => import('~/pages/Positions'))
 const LegacyPoolRedirects = lazy(() =>
   import('~/pages/LegacyPool/redirects').then((module) => ({ default: module.LegacyPoolRedirects })),
 )
-const PoolFinderRedirects = lazy(() =>
-  import('~/pages/LegacyPool/redirects').then((module) => ({ default: module.PoolFinderRedirects })),
-)
 const LegacyPositionPageRedirects = lazy(() =>
   import('~/pages/LegacyPool/redirects').then((module) => ({ default: module.LegacyPositionPageRedirects })),
 )
-const RemoveLiquidityV2WithTokenRedirects = lazy(() =>
-  import('~/pages/LegacyPool/redirects').then((module) => ({ default: module.RemoveLiquidityV2WithTokenRedirects })),
-)
 const PositionPage = lazy(() => import('~/pages/Positions/PositionPage'))
-const V2PositionPage = lazy(() => import('~/pages/Positions/V2PositionPage'))
 const PoolDetails = lazy(() => import('~/pages/PoolDetails'))
 const TokenDetails = lazy(() => import('~/pages/TokenDetails/TokenDetailsPage'))
 
@@ -124,13 +115,6 @@ export const routes: RouteDefinition[] = [
     nestedPaths: [':tab', ':chainName', ':tab/:chainName'],
     getElement: () => <RedirectExplore />,
   }),
-  // Special case: redirect WSOL to SOL TDP, as directly trading WSOL is not supported currently.
-  createRouteDefinition({
-    path: `/explore/tokens/solana/${WRAPPED_SOL_ADDRESS_SOLANA}`,
-    getTitle: () => i18n.t('common.buyAndSell'),
-    getDescription: () => StaticTitlesAndDescriptions.TDPDescription,
-    getElement: () => <Navigate to="/explore/tokens/solana/NATIVE" replace />,
-  }),
   createRouteDefinition({
     path: '/explore/tokens/:chainName/:tokenAddress',
     getTitle: () => i18n.t('common.buyAndSell'),
@@ -206,19 +190,7 @@ export const routes: RouteDefinition[] = [
     getDescription: getPositionPageDescription,
   }),
   createRouteDefinition({
-    path: '/positions/v2/:chainName/:pairAddress',
-    getElement: () => <V2PositionPage />,
-    getTitle: getPositionPageTitle,
-    getDescription: getPositionPageDescription,
-  }),
-  createRouteDefinition({
     path: '/positions/v3/:chainName/:tokenId',
-    getElement: () => <PositionPage />,
-    getTitle: getPositionPageTitle,
-    getDescription: getPositionPageDescription,
-  }),
-  createRouteDefinition({
-    path: '/positions/v4/:chainName/:tokenId',
     getElement: () => <PositionPage />,
     getTitle: getPositionPageTitle,
     getDescription: getPositionPageDescription,
@@ -231,26 +203,8 @@ export const routes: RouteDefinition[] = [
     getDescription: getPositionPageDescription,
   }),
   createRouteDefinition({
-    path: '/pool/v2/find',
-    getElement: () => <PoolFinderRedirects />,
-    getTitle: getPositionPageDescription,
-    getDescription: getPositionPageDescription,
-  }),
-  createRouteDefinition({
-    path: '/pool/v2',
-    getElement: () => <LegacyPositionPageRedirects />,
-    getTitle: getPositionPageTitle,
-    getDescription: getPositionPageDescription,
-  }),
-  createRouteDefinition({
     path: '/pool/:tokenId',
     getElement: () => <LegacyPositionPageRedirects />,
-    getTitle: getPositionPageTitle,
-    getDescription: getPositionPageDescription,
-  }),
-  createRouteDefinition({
-    path: '/pools/v2/find',
-    getElement: () => <PoolFinderRedirects />,
     getTitle: getPositionPageTitle,
     getDescription: getPositionPageDescription,
   }),
@@ -267,13 +221,6 @@ export const routes: RouteDefinition[] = [
     getDescription: getPositionPageDescription,
   }),
   createRouteDefinition({
-    path: '/add/v2',
-    nestedPaths: [':currencyIdA', ':currencyIdA/:currencyIdB'],
-    getElement: () => <AddLiquidityV2WithTokenRedirects />,
-    getTitle: getAddLiquidityPageTitle,
-    getDescription: () => StaticTitlesAndDescriptions.AddLiquidityDescription,
-  }),
-  createRouteDefinition({
     path: '/add',
     nestedPaths: [
       ':currencyIdA',
@@ -284,12 +231,6 @@ export const routes: RouteDefinition[] = [
     getElement: () => <AddLiquidityV3WithTokenRedirects />,
     getTitle: getAddLiquidityPageTitle,
     getDescription: () => StaticTitlesAndDescriptions.AddLiquidityDescription,
-  }),
-  createRouteDefinition({
-    path: '/remove/v2/:currencyIdA/:currencyIdB',
-    getElement: () => <RemoveLiquidityV2WithTokenRedirects />,
-    getTitle: () => i18n.t('title.removeLiquidityv2'),
-    getDescription: () => i18n.t('title.removeTokensv2'),
   }),
   createRouteDefinition({
     path: '/remove/:tokenId',

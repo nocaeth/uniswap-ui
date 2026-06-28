@@ -2,6 +2,7 @@ import { Interface } from '@ethersproject/abi'
 import { BigNumber } from '@ethersproject/bignumber'
 import type { TransactionRequest } from '@ethersproject/providers'
 import { TradingApi } from '@universe/api'
+import { BIPS_BASE } from 'uniswap/src/constants/misc'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import {
   GNOSIS_SDAI_ZAP_ADDRESS,
@@ -116,7 +117,9 @@ export function encodeV3PathFromRoute(pools: readonly TradingApi.V3PoolInRoute[]
 function applySlippageFloor(amount: BigNumber, slippagePercent: number | undefined): BigNumber {
   const pct = slippagePercent ?? DEFAULT_SLIPPAGE_PERCENT
   const bips = Math.max(0, Math.round(pct * 100))
-  return amount.mul(10_000 - bips).div(10_000)
+  // Canonical minimum-out formula (mirrors getGnosisQuoteSlippageAmounts). Stays strictly
+  // positive for any finite slippage, unlike `(BIPS_BASE - bips)/BIPS_BASE` which hits 0 at 100%.
+  return amount.mul(BIPS_BASE).div(BIPS_BASE + bips)
 }
 
 /**

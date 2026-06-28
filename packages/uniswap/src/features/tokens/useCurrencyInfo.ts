@@ -1,16 +1,130 @@
 import { GqlResult, GraphQLApi } from '@universe/api'
 import { useMemo } from 'react'
+import { getNativeAddress } from 'uniswap/src/constants/addresses'
 import { getCommonBase } from 'uniswap/src/constants/routing'
+import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { currencyIdToContractInput } from 'uniswap/src/features/dataApi/utils/currencyIdToContractInput'
 import { gqlTokenToCurrencyInfo } from 'uniswap/src/features/dataApi/utils/gqlTokenToCurrencyInfo'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import {
   buildNativeCurrencyId,
   buildWrappedNativeCurrencyId,
   currencyIdToAddress,
   currencyIdToChain,
 } from 'uniswap/src/utils/currencyId'
+
+type GqlToken = NonNullable<NonNullable<ReturnType<typeof GraphQLApi.useTokenQuery>['data']>['token']>
+type GqlTokens = NonNullable<ReturnType<typeof GraphQLApi.useTokensQuery>['data']>['tokens']
+type GqlTokenWithCurrencyId = GqlToken & { currencyId?: string | null }
+
+function getCurrencyInfoLookupKey(currencyId?: string | null): string | undefined {
+  if (!currencyId) {
+    return undefined
+  }
+
+  const chainId = currencyIdToChain(currencyId)
+  if (!chainId) {
+    return undefined
+  }
+
+  try {
+    return `${chainId}-${normalizeTokenAddressForCache(currencyIdToAddress(currencyId))}`
+  } catch (_error) {
+    return undefined
+  }
+}
+
+function getGqlTokenLookupKeys(gqlToken?: GqlToken): string[] {
+  if (!gqlToken) {
+    return []
+  }
+
+  const lookupKeys: string[] = []
+  const currencyIdLookupKey = getCurrencyInfoLookupKey((gqlToken as GqlTokenWithCurrencyId).currencyId)
+  if (currencyIdLookupKey) {
+    lookupKeys.push(currencyIdLookupKey)
+  }
+
+  const chainId = fromGraphQLChain(gqlToken.chain)
+  if (!chainId || gqlToken.address === undefined) {
+    return lookupKeys
+  }
+
+  const address = gqlToken.address ?? getNativeAddress(chainId)
+  const chainAddressLookupKey = `${chainId}-${normalizeTokenAddressForCache(address)}`
+  if (!lookupKeys.includes(chainAddressLookupKey)) {
+    lookupKeys.push(chainAddressLookupKey)
+  }
+
+  return lookupKeys
+}
+
+function buildGqlTokenLookup(gqlTokens?: GqlTokens): Map<string, GqlToken> {
+  const gqlTokenLookup = new Map<string, GqlToken>()
+
+  gqlTokens?.forEach((gqlToken) => {
+    if (!gqlToken) {
+      return
+    }
+
+    getGqlTokenLookupKeys(gqlToken).forEach((lookupKey) => {
+      if (!gqlTokenLookup.has(lookupKey)) {
+        gqlTokenLookup.set(lookupKey, gqlToken)
+      }
+    })
+  })
+
+  return gqlTokenLookup
+}
+
+function getCurrencyInfoFromTokenLookup(
+  currencyId: string,
+  gqlTokenLookup: Map<string, GqlToken>,
+): Maybe<CurrencyInfo> {
+  const lookupKey = getCurrencyInfoLookupKey(currencyId)
+  return getCurrencyInfoWithLocalFallback(currencyId, lookupKey ? gqlTokenLookup.get(lookupKey) : undefined)
+}
+
+function getCurrencyInfoWithLocalFallback(currencyId?: string, gqlToken?: GqlToken): Maybe<CurrencyInfo> {
+  if (!currencyId) {
+    return undefined
+  }
+
+  const chainId = currencyIdToChain(currencyId)
+  let address: Address | undefined
+  try {
+    address = currencyIdToAddress(currencyId)
+  } catch (_error) {
+    return undefined
+  }
+
+  if (chainId && address) {
+    const commonBase = getCommonBase(chainId, address)
+    if (commonBase) {
+      // Creating new object to avoid error "Cannot assign to read only property"
+      const copyCommonBase = { ...commonBase }
+      const gnosisTokenListLogoUrl = getGnosisTokenListLogoURI({ address, chainId })
+      // Related to TODO(WEB-5111): prefer the local Gnosis token-list asset when
+      // present, otherwise fall back to remote project metadata for common bases.
+      if (gnosisTokenListLogoUrl) {
+        copyCommonBase.logoUrl = gnosisTokenListLogoUrl
+      } else if (gqlToken?.project?.logoUrl) {
+        copyCommonBase.logoUrl = gqlToken.project.logoUrl
+      }
+      copyCommonBase.currencyId = currencyId
+
+      // Local common base object will not have remote project id, so we add it here.
+      copyCommonBase.projectId = gqlToken?.project?.id
+
+      return copyCommonBase
+    }
+  }
+
+  return gqlToken ? gqlTokenToCurrencyInfo(gqlToken) : undefined
+}
 
 function useCurrencyInfoQuery(
   _currencyId?: string,
@@ -22,39 +136,10 @@ function useCurrencyInfoQuery(
     fetchPolicy: options?.refetch ? 'cache-and-network' : 'cache-first',
   })
 
-  const currencyInfo = useMemo(() => {
-    if (!_currencyId) {
-      return undefined
-    }
-
-    const chainId = currencyIdToChain(_currencyId)
-    let address: Address | undefined
-    try {
-      address = currencyIdToAddress(_currencyId)
-    } catch (_error) {
-      return undefined
-    }
-    if (chainId && address) {
-      const commonBase = getCommonBase(chainId, address)
-      if (commonBase) {
-        // Creating new object to avoid error "Cannot assign to read only property"
-        const copyCommonBase = { ...commonBase }
-        // Related to TODO(WEB-5111)
-        // Some common base images are broken so this'll ensure we read from uniswap images
-        if (queryResult.data?.token?.project?.logoUrl) {
-          copyCommonBase.logoUrl = queryResult.data.token.project.logoUrl
-        }
-        copyCommonBase.currencyId = _currencyId
-
-        // Local common base object will not have remote project id, so we add it here.
-        copyCommonBase.projectId = queryResult.data?.token?.project?.id
-
-        return copyCommonBase
-      }
-    }
-
-    return queryResult.data?.token && gqlTokenToCurrencyInfo(queryResult.data.token)
-  }, [_currencyId, queryResult.data?.token])
+  const currencyInfo = useMemo(
+    () => getCurrencyInfoWithLocalFallback(_currencyId, queryResult.data?.token),
+    [_currencyId, queryResult.data?.token],
+  )
 
   return {
     currencyInfo,
@@ -95,8 +180,9 @@ export function useCurrencyInfos(
   })
 
   return useMemo(() => {
-    return data?.tokens?.map((token) => token && gqlTokenToCurrencyInfo(token)) ?? []
-  }, [data])
+    const gqlTokenLookup = buildGqlTokenLookup(data?.tokens)
+    return _currencyIds.map((currencyId) => getCurrencyInfoFromTokenLookup(currencyId, gqlTokenLookup))
+  }, [_currencyIds, data?.tokens])
 }
 
 export function useCurrencyInfosWithLoading(
@@ -112,16 +198,16 @@ export function useCurrencyInfosWithLoading(
   })
 
   return useMemo(() => {
+    const gqlTokenLookup = buildGqlTokenLookup(queryResult.data?.tokens)
     return {
-      data:
-        queryResult.data?.tokens
-          ?.map((token) => token && gqlTokenToCurrencyInfo(token))
-          .filter((currencyInfo) => !!currencyInfo) ?? [],
+      data: _currencyIds
+        .map((currencyId) => getCurrencyInfoFromTokenLookup(currencyId, gqlTokenLookup))
+        .filter((currencyInfo): currencyInfo is CurrencyInfo => Boolean(currencyInfo)),
       loading: queryResult.loading,
       error: queryResult.error,
       refetch: queryResult.refetch,
     }
-  }, [queryResult.data?.tokens, queryResult.loading, queryResult.error, queryResult.refetch])
+  }, [_currencyIds, queryResult.data?.tokens, queryResult.loading, queryResult.error, queryResult.refetch])
 }
 
 export function useNativeCurrencyInfo(chainId: UniverseChainId): Maybe<CurrencyInfo> {

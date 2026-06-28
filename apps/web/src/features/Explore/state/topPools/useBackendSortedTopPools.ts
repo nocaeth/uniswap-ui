@@ -7,6 +7,7 @@ import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import {
   calculate1DVolOverTvl,
   calculateApr,
@@ -48,6 +49,10 @@ const poolSortFieldToOrderBy: Partial<Record<PoolSortFields, TopPoolsOrderBy>> =
   // VolOverTvl is intentionally omitted - sorted client-side
 }
 
+function getDataApiTokenLogo(token: DataApiPool['token0']): string | undefined {
+  return getGnosisTokenListLogoURI({ address: token?.address, chainId: token?.chainId }) ?? token?.metadata?.logoUrl
+}
+
 /**
  * Converts DataApiPool to PoolStat for compatibility with existing UI
  */
@@ -66,7 +71,7 @@ function convertDataApiPoolToPoolStat(pool: DataApiPool): PoolStat {
           symbol: pool.token0.symbol,
           name: pool.token0.name,
           decimals: pool.token0.decimals,
-          logo: pool.token0.metadata?.logoUrl,
+          logo: getDataApiTokenLogo(pool.token0),
         }
       : undefined,
     token1: pool.token1
@@ -76,7 +81,7 @@ function convertDataApiPoolToPoolStat(pool: DataApiPool): PoolStat {
           symbol: pool.token1.symbol,
           name: pool.token1.name,
           decimals: pool.token1.decimals,
-          logo: pool.token1.metadata?.logoUrl,
+          logo: getDataApiTokenLogo(pool.token1),
         }
       : undefined,
     totalLiquidity: pool.stats?.tvl !== undefined ? { value: pool.stats.tvl } : undefined,
@@ -118,7 +123,7 @@ function sortPoolsByVolOverTvl(pools: PoolStat[], ascending: boolean): PoolStat[
 export function useBackendSortedTopPools({
   sortState,
   chainId,
-  protocol,
+  protocol: _protocol,
   enabled,
   filterString: filterStringOverride,
 }: {
@@ -148,10 +153,8 @@ export function useBackendSortedTopPools({
   const orderBy = poolSortFieldToOrderBy[sortState.sortBy] ?? TopPoolsOrderBy.TVL
   const ascending = sortState.sortDirection === OrderDirection.Asc
 
-  // When no protocol filter is selected, include all protocol versions
-  // Note: protocol === 0 is ProtocolVersion.UNSPECIFIED, treat as "all"
-  const protocolVersions =
-    protocol !== undefined && protocol !== 0 ? [protocol] : [ProtocolVersion.V2, ProtocolVersion.V3, ProtocolVersion.V4]
+  // Gnosis-only deployment: Gnosis has V3 pools only, so never request V2/V4.
+  const protocolVersions = [ProtocolVersion.V3]
 
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
     dataApiQueries.listTopPools({

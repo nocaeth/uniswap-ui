@@ -11,6 +11,7 @@ import { gnosis } from 'viem/chains'
 import { pathToFileURL } from 'node:url'
 import { runBackfill } from './backfill.js'
 import { getDb, initSchema } from './db.js'
+import { applyOsgnoOracleUsdPrice, fetchOsgnoRate } from './osgnoOracle.js'
 
 const HYPERSYNC_URL = 'https://gnosis.hypersync.xyz/query'
 const HEIGHT_URL = 'https://gnosis.hypersync.xyz/height'
@@ -529,6 +530,10 @@ function propagateUSD(
 async function refreshCurrentSnapshots(client: PublicClient, pools: PoolRow[]): Promise<Map<string, number>> {
   const db = getDb(true)
   const tokens = loadTokens()
+  const osgnoRate = await fetchOsgnoRate(client).catch((error) => {
+    console.warn('osGNO oracle price unavailable; leaving indexed osGNO price unchanged', error)
+    return undefined
+  })
   const tokenDecimals = new Map(tokens.map((t) => [t.id, t.decimals]))
   const states = await fetchPoolStates(client, pools, tokenDecimals)
   const price1per0 = new Map<string, number>()
@@ -549,6 +554,7 @@ async function refreshCurrentSnapshots(client: PublicClient, pools: PoolRow[]): 
     }
     return (knownUsd.get(pool.token0) ?? 0) * st.reserve0 + (knownUsd.get(pool.token1) ?? 0) * st.reserve1
   })
+  applyOsgnoOracleUsdPrice(usd, osgnoRate)
 
   const nowTs = Math.floor(Date.now() / 1000)
   const today = floorDay(nowTs)

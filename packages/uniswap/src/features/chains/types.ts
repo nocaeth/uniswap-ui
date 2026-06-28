@@ -91,7 +91,7 @@ type ChainRPCUrls = { http: string[] }
 export interface UniverseChainInfo extends WagmiChain {
   readonly id: UniverseChainId
   readonly platform: Platform
-  readonly assetRepoNetworkName: string | undefined // Name used to index the network on this repo: https://github.com/Uniswap/assets/
+  readonly assetRepoNetworkName: string | undefined // Name used to index the network on this repo: the asset repository
   readonly backendChain: BackendChain
   readonly blockPerMainnetEpochForChainId: number
   readonly blockWaitMsBeforeWarning: number | undefined

@@ -1,4 +1,4 @@
-// Based mostly on https://github.com/Uniswap/interface/blob/main/src/theme/index.tsx
+// Based mostly on the upstream interface theme
 
 import { colorsDark, colorsLight } from 'ui/src/theme'
 

@@ -14,7 +14,7 @@ const hoverStyle: FlexProps['hoverStyle'] = { backgroundColor: '$surface2Hovered
 
 export function SwapArrowButton({
   backgroundColor = '$surface2',
-  opacity = undefined,
+  opacity,
   iconSize = iconSizes.icon24,
   disabled,
   onPress,

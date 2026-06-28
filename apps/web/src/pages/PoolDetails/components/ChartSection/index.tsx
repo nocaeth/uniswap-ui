@@ -166,7 +166,7 @@ export function ChartSection(props: ChartSectionProps) {
 
   const refitChartContent = useAtomValue(refitChartContentAtom)
 
-  // TODO(WEB-3740): Integrate BE tick query, remove special casing for liquidity chart
+  // Liquidity/depth charts fetch backend tick + pool-state data inside their chart components.
   const loading = props.loading || (activeQuery.chartType !== ChartType.LIQUIDITY ? activeQuery.loading : false)
 
   // oxlint-disable-next-line typescript/consistent-return
@@ -190,7 +190,6 @@ export function ChartSection(props: ChartSectionProps) {
       version: parseRestProtocolVersion(props.poolData.protocolVersion) ?? RestProtocolVersion.V3,
     }
 
-    // TODO(WEB-3740): Integrate BE tick query, remove special casing for liquidity chart
     if (activeQuery.chartType === ChartType.LIQUIDITY) {
       if (selectedChartType === ChartType.DEPTH) {
         return <DepthChart {...selectedChartProps} onZoomActionsReady={setZoomActions} priceEntries={priceEntries} />

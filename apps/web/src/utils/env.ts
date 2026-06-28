@@ -1,8 +1,8 @@
 import { isBetaEnv, isProdEnv } from '@universe/environment'
 import { getConfig } from '~/config'
 
-function isAppUniswapOrg({ hostname }: { hostname: string }): boolean {
-  return hostname === 'app.uniswap.org'
+function isNocaAppHost({ hostname }: { hostname: string }): boolean {
+  return hostname === 'swap.gno.now'
 }
 
 function isAppUniswapStagingOrg({ hostname }: { hostname: string }): boolean {
@@ -12,7 +12,7 @@ function isAppUniswapStagingOrg({ hostname }: { hostname: string }): boolean {
 export function isBrowserRouterEnabled(): boolean {
   if (isProdEnv()) {
     if (
-      isAppUniswapOrg(window.location) ||
+      isNocaAppHost(window.location) ||
       isAppUniswapStagingOrg(window.location) ||
       isLocalhost(window.location) // playwright tests
     ) {
@@ -32,7 +32,7 @@ export function isRemoteReportingEnabled(): boolean {
   if (isBetaEnv() && !isAppUniswapStagingOrg(window.location)) {
     return false
   }
-  if (isProdEnv() && !isAppUniswapOrg(window.location)) {
+  if (isProdEnv() && !isNocaAppHost(window.location)) {
     return false
   }
   return getConfig().analyticsEnabled

@@ -7,8 +7,8 @@ import { CONNECTION_PROVIDER_IDS } from 'uniswap/src/constants/web3'
 import { MenuStateVariant, useSetMenu } from '~/components/AccountDrawer/menuState'
 import { useShowMoonpayText } from '~/components/AccountDrawer/MiniPortfolio/hooks'
 import { ConnectionErrorView } from '~/components/WalletModal/ConnectionErrorView'
+import { MobileWalletConnectorOption } from '~/components/WalletModal/MobileWalletConnectorOption'
 import { PrivacyPolicyNotice } from '~/components/WalletModal/PrivacyPolicyNotice'
-import { UniswapMobileWalletConnectorOption } from '~/components/WalletModal/UniswapMobileWalletConnectorOption'
 import { WalletConnectorOption } from '~/components/WalletModal/WalletConnectorOption'
 import { useRecentConnectorId } from '~/connection/constants'
 import { useOrderedWallets } from '~/features/wallet/connection/hooks/useOrderedWalletConnectors'
@@ -51,12 +51,11 @@ export function OtherWalletsModal() {
             transition={`${transitions.duration.fast} ${transitions.timing.inOut}`}
             data-testid="option-grid"
           >
-            {/* If uniswap mobile was the last used connector it will be show on the primary window */}
-            {/* If Embedded Wallet is enabled, it will be shown on the primary window */}
+            {/* If the mobile connector was last used or Embedded Wallet is enabled, it is shown on the primary window. */}
             {recentConnectorId !== CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID &&
               !isEmbeddedWalletEnabled && (
                 <>
-                  <UniswapMobileWalletConnectorOption />
+                  <MobileWalletConnectorOption />
                   {wallets.length > 0 && <Separator />}
                 </>
               )}

@@ -32,7 +32,11 @@ import { PriceChartData } from '~/components/Charts/PriceChart'
 import { DataQuality, formatTickMarks, PriceChartType } from '~/components/Charts/utils'
 import { ErrorBoundary } from '~/components/ErrorBoundary'
 import { ActiveLiquidityChart } from '~/features/Liquidity/charts/ActiveLiquidityChart/ActiveLiquidityChart'
-import { getCrosshairProps, priceToNumber } from '~/features/Liquidity/charts/LiquidityPositionRangeChart/utils'
+import {
+  getCrosshairProps,
+  getVisiblePriceBounds,
+  priceToNumber,
+} from '~/features/Liquidity/charts/LiquidityPositionRangeChart/utils'
 import { useDensityChartData } from '~/features/Liquidity/charts/LiquidityRangeInput/hooks'
 import { usePoolPriceChartData } from '~/features/Liquidity/charts/usePoolPriceChartData'
 import { getBaseAndQuoteCurrencies } from '~/features/Liquidity/utils/currency'
@@ -86,6 +90,7 @@ interface LPPriceChartModelParams extends ChartModelParams<PriceChartData> {
   minVisiblePrice?: number
   maxVisiblePrice?: number
   disableExtendedTimeScale?: boolean
+  interactive?: boolean
 }
 
 class LPPriceChartModel extends ChartModel<PriceChartData> {
@@ -158,8 +163,8 @@ class LPPriceChartModel extends ChartModel<PriceChartData> {
         borderVisible: false,
         tickMarkFormatter: formatTickMarks,
       },
-      handleScroll: false,
-      handleScale: false,
+      handleScroll: Boolean(params.interactive),
+      handleScale: Boolean(params.interactive),
       localization: {
         priceFormatter: (priceValue: number) => {
           const currentLocale = window.navigator.languages[0]
@@ -180,7 +185,7 @@ class LPPriceChartModel extends ChartModel<PriceChartData> {
 
     const autoscaleInfoProvider = (original: () => any) => {
       const res = original()
-      if (params.minVisiblePrice && params.maxVisiblePrice) {
+      if (params.minVisiblePrice !== undefined && params.maxVisiblePrice !== undefined) {
         // oxlint-disable-next-line typescript/no-unsafe-return -- biome-parity: oxlint is stricter here
         return {
           ...res,
@@ -493,14 +498,26 @@ function LiquidityPositionRangeChart({
   const [boundaryPrices, setBoundaryPrices] = useState<[number, number]>()
 
   const chartParams = useMemo(() => {
+    const positionPriceLower = isV2 ? 0 : priceOrdering.priceLower
+    const positionPriceUpper = isV2 ? Number.MAX_SAFE_INTEGER : priceOrdering.priceUpper
+    const visiblePriceBounds = isV2
+      ? {}
+      : getVisiblePriceBounds({
+          data: priceData.entries,
+          positionPriceLower,
+          positionPriceUpper,
+        })
+
     return {
       data: priceData.entries,
       stale: priceData.dataQuality === DataQuality.STALE,
       type: PriceChartType.LINE,
       color: LPPriceChartModel.getPriceLineColor({ positionStatus, colors }),
       colors,
-      positionPriceLower: isV2 ? 0 : priceOrdering.priceLower,
-      positionPriceUpper: isV2 ? Number.MAX_SAFE_INTEGER : priceOrdering.priceUpper,
+      positionPriceLower,
+      positionPriceUpper,
+      minVisiblePrice: visiblePriceBounds.minVisiblePrice,
+      maxVisiblePrice: visiblePriceBounds.maxVisiblePrice,
       height: showLiquidityBars ? height - X_AXIS_HEIGHT : height,
       priceScaleMargins: {
         top: 0,
@@ -600,7 +617,12 @@ function LiquidityPositionRangeChart({
               borderColor="$surface3"
             />
           )}
-          <Chart Model={LPPriceChartModel} params={chartParams} height={height} disableChartTouchPanning={true} />
+          <Chart
+            Model={LPPriceChartModel}
+            params={chartParams}
+            height={height}
+            disableChartTouchPanning={!interactive}
+          />
         </Flex>
       )}
       <style>{pulseKeyframe}</style>
@@ -631,6 +653,7 @@ function LiquidityPositionRangeChart({
           left={0}
           top={0}
           zIndex={zIndexes.mask}
+          pointerEvents="none"
         >
           <ActiveLiquidityChart
             barColor={colors.surface3.val}

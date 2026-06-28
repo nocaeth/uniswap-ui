@@ -16,17 +16,24 @@ export const LearnMoreLink = ({
   onlyUseText = false,
   componentType = 'TouchableArea',
 }: {
-  url: string
+  url?: string
   textVariant?: TextProps['variant']
   textColor?: TextProps['color']
   centered?: boolean
   display?: TouchableAreaProps['display']
   onlyUseText?: boolean
   componentType?: 'Button' | 'TouchableArea'
-}): JSX.Element => {
+}): JSX.Element | null => {
   const { t } = useTranslation()
+  const handleOnPress = useEvent(() => {
+    if (url) {
+      void onPressLearnMore(url)
+    }
+  })
 
-  const handleOnPress = useEvent(() => onPressLearnMore(url))
+  if (!url) {
+    return null
+  }
 
   if (componentType === 'Button') {
     return (

@@ -128,7 +128,7 @@ describe(tdpChainSelectionFromFilter, () => {
 describe(getTokenUrl, () => {
   it('returns a chain-specific token URL by default', () => {
     expect(getTokenUrl(`${UniverseChainId.Base}-0x4200000000000000000000000000000000000006`)).toEqual(
-      'https://app.uniswap.org/explore/tokens/base/0x4200000000000000000000000000000000000006',
+      'https://swap.gno.now/explore/tokens/base/0x4200000000000000000000000000000000000006',
     )
   })
 
@@ -138,7 +138,7 @@ describe(getTokenUrl, () => {
         addMobileUTMTags: true,
       }),
     ).toEqual(
-      'https://app.uniswap.org/explore/tokens/base/0x4200000000000000000000000000000000000006?utm_medium=mobile&utm_source=share-tdp',
+      'https://swap.gno.now/explore/tokens/base/0x4200000000000000000000000000000000000006?utm_medium=mobile&utm_source=share-tdp',
     )
   })
 })

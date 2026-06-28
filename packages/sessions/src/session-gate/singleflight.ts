@@ -12,7 +12,9 @@
 export function singleflight<T>(fn: () => Promise<T>): () => Promise<T> {
   let inflight: Promise<T> | null = null
   return () => {
-    if (inflight) return inflight
+    if (inflight) {
+      return inflight
+    }
     inflight = fn().finally(() => {
       inflight = null
     })

@@ -1,6 +1,6 @@
 import { ProtocolVersion as RestProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { Currency } from '@uniswap/sdk-core'
-import { FeeAmount } from '@uniswap/v3-sdk'
+import { FeeAmount, TICK_SPACINGS } from '@uniswap/v3-sdk'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, Shine, Text } from 'ui/src'
@@ -19,6 +19,7 @@ import { ChartEntry } from '~/features/Liquidity/charts/LiquidityRangeInput/type
 import { useAllPoolTicks } from '~/features/Liquidity/hooks/usePoolTickData'
 import { getTokenOrZeroAddress } from '~/features/Liquidity/utils/currency'
 import { useColor } from '~/hooks/useColor'
+import { selectPoolById } from '~/pages/PoolDetails/components/ChartSection/selectPoolById'
 import { unwrappedToken } from '~/utils/unwrappedToken'
 
 const PDP_CHART_HEIGHT_PX = 356
@@ -244,8 +245,10 @@ function useD3LiquidityPoolChartData({
     true,
   )
 
-  const tickSpacing = poolData?.pools[0]?.tickSpacing
-  const currentTick = poolData?.pools[0]?.tick
+  const pool = useMemo(() => selectPoolById(poolData?.pools, poolId), [poolData?.pools, poolId])
+
+  const tickSpacing = pool?.tickSpacing ?? TICK_SPACINGS[feeTier]
+  const currentTick = pool?.tick
 
   const sdkCurrencies = useMemo(() => ({ TOKEN0: tokenA, TOKEN1: tokenB }), [tokenA, tokenB])
 

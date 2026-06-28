@@ -1,4 +1,4 @@
-// Lists we use as fallbacks on chains that our backend doesn't support
-const COINGECKO_AVAX_LIST = 'https://tokens.coingecko.com/avalanche/all.json'
+import { GNOSIS_TOKEN_LIST_SOURCE_URI } from 'uniswap/src/features/tokens/gnosisTokenList'
 
-export const DEFAULT_INACTIVE_LIST_URLS: string[] = [COINGECKO_AVAX_LIST]
+// Gnosis-only token-list fallback used by the legacy Redux list updater.
+export const DEFAULT_INACTIVE_LIST_URLS: string[] = [GNOSIS_TOKEN_LIST_SOURCE_URI]

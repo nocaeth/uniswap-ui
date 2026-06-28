@@ -92,7 +92,7 @@ export type GetQuickQuoteArgs = {
   outputTax: Percent
 }
 
-// from https://github.com/Uniswap/routing-api/blob/main/lib/handlers/schema.ts
+// from the routing API handler schema
 export type TokenInRoute = Pick<Token, 'address' | 'chainId' | 'symbol' | 'decimals'> & {
   buyFeeBps?: string
   sellFeeBps?: string
@@ -132,7 +132,7 @@ export type V2PoolInRoute = {
   address?: string
 }
 
-// From `ClassicQuoteDataJSON` in https://github.com/Uniswap/unified-routing-api/blob/main/lib/entities/quote/ClassicQuote.ts
+// From `ClassicQuoteDataJSON` in the ClassicQuote backend entity
 export interface ClassicQuoteData {
   requestId?: string
   quoteId?: string
@@ -159,7 +159,7 @@ export interface ClassicQuoteData {
   quoteGasAndPortionAdjustedDecimals?: string
 }
 
-// From `DutchQuoteDataJSON` https://github.com/Uniswap/unified-routing-api/blob/main/lib/entities/quote/DutchQuote.ts
+// From `DutchQuoteDataJSON` the DutchQuote backend entity
 export type URADutchOrderQuoteData = {
   orderInfo: DutchOrderInfoJSON
   quoteId?: string
@@ -176,7 +176,7 @@ export type URADutchOrderQuoteData = {
   portionRecipient?: string
 }
 
-// From `DutchV2QuoteDataJSON` in https://github.com/Uniswap/unified-routing-api/blob/main/lib/entities/quote/DutchV2Quote.ts
+// From `DutchV2QuoteDataJSON` in the DutchV2Quote backend entity
 export type URADutchOrderV2QuoteData = {
   orderInfo: UnsignedV2DutchOrderInfoJSON
   quoteId?: string
@@ -205,7 +205,7 @@ export type URADutchOrderV3QuoteData = {
   portionRecipient?: string
 }
 
-// from `PriorityQuoteDataJSON` in https://github.com/Uniswap/backend/blob/main/packages/services/unified-routing-api/lib/entities/quote/PriorityQuote.ts
+// from `PriorityQuoteDataJSON` in the PriorityQuote backend entity
 export type URAPriorityOrderQuoteData = {
   orderInfo: UnsignedPriorityOrderInfoJSON
   startTimeBufferSecs: number // ignore for priority order
@@ -695,7 +695,7 @@ export class PreviewTrade {
   }
 
   // below methods are copied from router-sdk
-  // Trade https://github.com/Uniswap/router-sdk/blob/main/src/entities/trade.ts#L10
+  // Trade the router SDK Trade type#L10
   public minimumAmountOut(slippageTolerance: Percent, amountOut = this.outputAmount): CurrencyAmount<Currency> {
     if (this.tradeType === TradeType.EXACT_OUTPUT) {
       return amountOut
@@ -969,7 +969,7 @@ export enum URAQuoteType {
   PRIORITY = 'PRIORITY',
 }
 
-/* Config types should match URA config schemas https://github.com/Uniswap/backend/blob/main/packages/services/unified-routing-api/lib/util/validator.ts */
+/* Config types should match URA config schemas the URA config schemas */
 
 export type ClassicAPIConfig = {
   routingType: URAQuoteType.CLASSIC
