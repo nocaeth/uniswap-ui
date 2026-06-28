@@ -33,12 +33,14 @@ export function useGnosisApprovalInfo(params: {
   chainId: UniverseChainId
   wrapType: WrapType
   currencyInAmount: Maybe<CurrencyAmount<Currency>>
+  currencyInApprovalAmount?: Maybe<CurrencyAmount<Currency>>
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
   tradeType?: TradingApi.TradeType
 }): ApprovalTxInfo {
-  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, tradeType } = params
+  const { address, chainId, wrapType, currencyInAmount, currencyInApprovalAmount, currencyOutAmount, tradeType } =
+    params
 
-  const currencyIn = currencyInAmount?.currency
+  const currencyIn = currencyInApprovalAmount?.currency ?? currencyInAmount?.currency
   const currencyOut = currencyOutAmount?.currency
   const isWrap = wrapType !== WrapType.NotApplicable
   const isNative = Boolean(currencyIn?.isNative)
@@ -58,7 +60,7 @@ export function useGnosisApprovalInfo(params: {
     zapApprovalSpender ??
     getGnosisSdaiAdapterApprovalSpender({ tokenIn: tokenInAddressForRoute, tokenOut: tokenOutAddressForRoute }) ??
     PERMIT2_ADDRESS
-  const requiredAmount = currencyInAmount?.quotient.toString()
+  const requiredAmount = (currencyInApprovalAmount ?? currencyInAmount)?.quotient.toString()
 
   const gasStrategy = useActiveGasStrategy(chainId, 'general')
 

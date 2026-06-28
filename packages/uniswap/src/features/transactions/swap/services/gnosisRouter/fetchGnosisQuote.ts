@@ -47,13 +47,6 @@ import {
 import { discoverGnosisPoolGraphEdges } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolDiscovery'
 import { annotateGnosisPoolGraphEdgesWithTvl } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolTvl'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
-import { haveSameEndpoints, pickDisjointSet } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
-import {
-  activeLegCount,
-  enumerateAllocations,
-  passesAcceptGate,
-  selectBestSplit,
-} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/splitAllocation'
 import {
   buildGnosisPoolGraph,
   buildGnosisRouteCandidates,
@@ -64,6 +57,10 @@ import {
   type CandidateRoute,
   type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
+import {
+  haveSameEndpoints,
+  pickDisjointSet,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
 import {
   GnosisSdaiAdapterDirection,
   GNOSIS_SDAI_ADAPTER_QUOTE_ID,
@@ -76,6 +73,12 @@ import {
   GnosisSdaiZapDirection,
   getGnosisSdaiZapEligibility,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
+import {
+  activeLegCount,
+  enumerateAllocations,
+  passesAcceptGate,
+  selectBestSplit,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/splitAllocation'
 
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
 
@@ -103,6 +106,32 @@ const sdaiPreviewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
 
 function getGnosisSlippageTolerance(params: Pick<TradingApi.QuoteRequest, 'slippageTolerance'>): number {
   return params.slippageTolerance ?? DEFAULT_GNOSIS_SLIPPAGE_PERCENT
+}
+
+function getSlippageBips(slippagePercent: number): number {
+  return Math.max(0, Math.round(slippagePercent * 100))
+}
+
+export function getGnosisQuoteSlippageAmounts(args: {
+  amountIn: BigNumber
+  amountOut: BigNumber
+  tradeType: TradingApi.TradeType
+  slippagePercent: number
+}): { maximumAmountIn: BigNumber; minimumAmountOut: BigNumber } {
+  const { amountIn, amountOut, tradeType, slippagePercent } = args
+  const slippageBips = getSlippageBips(slippagePercent)
+
+  if (tradeType === TradingApi.TradeType.EXACT_OUTPUT) {
+    return {
+      maximumAmountIn: amountIn.mul(BIPS_BASE + slippageBips).div(BIPS_BASE),
+      minimumAmountOut: amountOut,
+    }
+  }
+
+  return {
+    maximumAmountIn: amountIn,
+    minimumAmountOut: amountOut.mul(BIPS_BASE).div(BIPS_BASE + slippageBips),
+  }
 }
 
 interface TokenMeta {
@@ -919,7 +948,13 @@ async function tryFetchGnosisZapQuote(args: {
         return undefined
       }
       const sub = await fetchGnosisQuoteInner(
-        { ...params, tokenIn: GNOSIS_SDAI, tokenOut: outputToken, amount: sharesIn.toString(), swapper: UNCONNECTED_SWAPPER },
+        {
+          ...params,
+          tokenIn: GNOSIS_SDAI,
+          tokenOut: outputToken,
+          amount: sharesIn.toString(),
+          swapper: UNCONNECTED_SWAPPER,
+        },
         indicative,
       )
       const subQuote = sub.quote as TradingApi.ClassicQuote
@@ -927,11 +962,25 @@ async function tryFetchGnosisZapQuote(args: {
       if (outputAmount.isZero() || (!indicative && !isSingleLegV3Route(subQuote.route))) {
         return undefined
       }
-      return buildGnosisZapQuoteResponse({ params, indicative, inputToken, outputToken, inputAmount: amount, outputAmount, subQuote })
+      return buildGnosisZapQuoteResponse({
+        params,
+        indicative,
+        inputToken,
+        outputToken,
+        inputAmount: amount,
+        outputAmount,
+        subQuote,
+      })
     }
 
     const sub = await fetchGnosisQuoteInner(
-      { ...params, tokenIn: inputToken, tokenOut: GNOSIS_SDAI, amount: amount.toString(), swapper: UNCONNECTED_SWAPPER },
+      {
+        ...params,
+        tokenIn: inputToken,
+        tokenOut: GNOSIS_SDAI,
+        amount: amount.toString(),
+        swapper: UNCONNECTED_SWAPPER,
+      },
       indicative,
     )
     const subQuote = sub.quote as TradingApi.ClassicQuote
@@ -943,7 +992,15 @@ async function tryFetchGnosisZapQuote(args: {
     if (outputAmount.isZero()) {
       return undefined
     }
-    return buildGnosisZapQuoteResponse({ params, indicative, inputToken, outputToken, inputAmount: amount, outputAmount, subQuote })
+    return buildGnosisZapQuoteResponse({
+      params,
+      indicative,
+      inputToken,
+      outputToken,
+      inputAmount: amount,
+      outputAmount,
+      subQuote,
+    })
   } catch {
     return undefined
   }
@@ -1071,6 +1128,13 @@ async function fetchGnosisQuoteInner(
   const totalAmountIn = legs.reduce((sum, leg) => sum.add(leg.amountIn), BigNumber.from(0))
   const totalAmountOut = legs.reduce((sum, leg) => sum.add(leg.amountOut), BigNumber.from(0))
   const totalGasEstimate = legs.reduce((sum, leg) => sum.add(leg.gasEstimate), BigNumber.from(0))
+  const slippage = getGnosisSlippageTolerance(params)
+  const { maximumAmountIn, minimumAmountOut } = getGnosisQuoteSlippageAmounts({
+    amountIn: totalAmountIn,
+    amountOut: totalAmountOut,
+    tradeType,
+    slippagePercent: slippage,
+  })
 
   const [{ metas, poolStatesByRoute, permit2Allowance }, blockNumber, gasPrice] = await Promise.all([
     finalizeRoutes({
@@ -1115,16 +1179,21 @@ async function fetchGnosisQuoteInner(
     permit2Allowance,
     swapper: params.swapper,
     token: executionInputToken,
-    requiredAmount: totalAmountIn,
+    requiredAmount: maximumAmountIn,
   })
 
   const quote: TradingApi.ClassicQuote = {
     chainId: GNOSIS_CHAIN_ID,
     swapper: params.swapper,
-    input: { token: inputToken, amount: totalAmountIn.toString() },
-    output: { token: outputToken, amount: totalAmountOut.toString(), recipient: params.swapper },
+    input: { token: inputToken, amount: totalAmountIn.toString(), maximumAmount: maximumAmountIn.toString() },
+    output: {
+      token: outputToken,
+      amount: totalAmountOut.toString(),
+      minimumAmount: minimumAmountOut.toString(),
+      recipient: params.swapper,
+    },
     tradeType,
-    slippage: getGnosisSlippageTolerance(params),
+    slippage,
     route,
     routeString,
     quoteId: 'gnosis-local',

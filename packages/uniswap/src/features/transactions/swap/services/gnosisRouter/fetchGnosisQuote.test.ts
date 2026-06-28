@@ -3,7 +3,10 @@ import { BigNumber } from '@ethersproject/bignumber'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { PERMIT2_ABI, SDAI_ERC4626_PREVIEW_ABI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
+import {
+  PERMIT2_ABI,
+  SDAI_ERC4626_PREVIEW_ABI,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
 import {
   GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
   GNOSIS_SDAI,
@@ -14,6 +17,7 @@ import {
   buildCandidateRouteSets,
   buildPermitTransactionIfNeeded,
   fetchGnosisQuote,
+  getGnosisQuoteSlippageAmounts,
   isGnosisQuotePriceImpactViable,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
@@ -193,7 +197,7 @@ describe('fetchGnosisQuote sDAI adapter path', () => {
 })
 
 describe('buildPermitTransactionIfNeeded', () => {
-  it('encodes Permit2 approval for the exact required input amount', () => {
+  it('encodes Permit2 approval for the exact required spend amount', () => {
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
     try {
       const permitTransaction = buildPermitTransactionIfNeeded({
@@ -228,6 +232,32 @@ describe('buildPermitTransactionIfNeeded', () => {
     })
 
     expect(permitTransaction).toBeUndefined()
+  })
+})
+
+describe('getGnosisQuoteSlippageAmounts', () => {
+  it('uses the slippage-adjusted max input for exact-output swaps', () => {
+    const amounts = getGnosisQuoteSlippageAmounts({
+      amountIn: BigNumber.from('12345'),
+      amountOut: BigNumber.from('1000'),
+      tradeType: TradingApi.TradeType.EXACT_OUTPUT,
+      slippagePercent: 0.5,
+    })
+
+    expect(amounts.maximumAmountIn.toString()).toBe('12406')
+    expect(amounts.minimumAmountOut.toString()).toBe('1000')
+  })
+
+  it('keeps exact-input approval amount exact while slippage-adjusting minimum output', () => {
+    const amounts = getGnosisQuoteSlippageAmounts({
+      amountIn: BigNumber.from('12345'),
+      amountOut: BigNumber.from('1000'),
+      tradeType: TradingApi.TradeType.EXACT_INPUT,
+      slippagePercent: 0.5,
+    })
+
+    expect(amounts.maximumAmountIn.toString()).toBe('12345')
+    expect(amounts.minimumAmountOut.toString()).toBe('995')
   })
 })
 
