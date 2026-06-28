@@ -13,6 +13,46 @@ import {
   currencyIdToChain,
 } from 'uniswap/src/utils/currencyId'
 
+type GqlToken = NonNullable<ReturnType<typeof GraphQLApi.useTokenQuery>['data']>['token']
+
+function getCurrencyInfoWithLocalFallback(currencyId?: string, gqlToken?: GqlToken): Maybe<CurrencyInfo> {
+  if (!currencyId) {
+    return undefined
+  }
+
+  const chainId = currencyIdToChain(currencyId)
+  let address: Address | undefined
+  try {
+    address = currencyIdToAddress(currencyId)
+  } catch (_error) {
+    return undefined
+  }
+
+  if (chainId && address) {
+    const commonBase = getCommonBase(chainId, address)
+    if (commonBase) {
+      // Creating new object to avoid error "Cannot assign to read only property"
+      const copyCommonBase = { ...commonBase }
+      const gnosisTokenListLogoUrl = getGnosisTokenListLogoURI({ address, chainId })
+      // Related to TODO(WEB-5111): prefer the local Gnosis token-list asset when
+      // present, otherwise fall back to remote project metadata for common bases.
+      if (gnosisTokenListLogoUrl) {
+        copyCommonBase.logoUrl = gnosisTokenListLogoUrl
+      } else if (gqlToken?.project?.logoUrl) {
+        copyCommonBase.logoUrl = gqlToken.project.logoUrl
+      }
+      copyCommonBase.currencyId = currencyId
+
+      // Local common base object will not have remote project id, so we add it here.
+      copyCommonBase.projectId = gqlToken?.project?.id
+
+      return copyCommonBase
+    }
+  }
+
+  return gqlToken ? gqlTokenToCurrencyInfo(gqlToken) : undefined
+}
+
 function useCurrencyInfoQuery(
   _currencyId?: string,
   options?: { refetch?: boolean; skip?: boolean },
@@ -23,42 +63,10 @@ function useCurrencyInfoQuery(
     fetchPolicy: options?.refetch ? 'cache-and-network' : 'cache-first',
   })
 
-  const currencyInfo = useMemo(() => {
-    if (!_currencyId) {
-      return undefined
-    }
-
-    const chainId = currencyIdToChain(_currencyId)
-    let address: Address | undefined
-    try {
-      address = currencyIdToAddress(_currencyId)
-    } catch (_error) {
-      return undefined
-    }
-    if (chainId && address) {
-      const commonBase = getCommonBase(chainId, address)
-      if (commonBase) {
-        // Creating new object to avoid error "Cannot assign to read only property"
-        const copyCommonBase = { ...commonBase }
-        const gnosisTokenListLogoUrl = getGnosisTokenListLogoURI({ address, chainId })
-        // Related to TODO(WEB-5111): prefer the local Gnosis token-list asset when
-        // present, otherwise fall back to remote project metadata for common bases.
-        if (gnosisTokenListLogoUrl) {
-          copyCommonBase.logoUrl = gnosisTokenListLogoUrl
-        } else if (queryResult.data?.token?.project?.logoUrl) {
-          copyCommonBase.logoUrl = queryResult.data.token.project.logoUrl
-        }
-        copyCommonBase.currencyId = _currencyId
-
-        // Local common base object will not have remote project id, so we add it here.
-        copyCommonBase.projectId = queryResult.data?.token?.project?.id
-
-        return copyCommonBase
-      }
-    }
-
-    return queryResult.data?.token && gqlTokenToCurrencyInfo(queryResult.data.token)
-  }, [_currencyId, queryResult.data?.token])
+  const currencyInfo = useMemo(
+    () => getCurrencyInfoWithLocalFallback(_currencyId, queryResult.data?.token),
+    [_currencyId, queryResult.data?.token],
+  )
 
   return {
     currencyInfo,
@@ -99,8 +107,8 @@ export function useCurrencyInfos(
   })
 
   return useMemo(() => {
-    return data?.tokens?.map((token) => token && gqlTokenToCurrencyInfo(token)) ?? []
-  }, [data])
+    return _currencyIds.map((currencyId, index) => getCurrencyInfoWithLocalFallback(currencyId, data?.tokens?.[index]))
+  }, [_currencyIds, data?.tokens])
 }
 
 export function useCurrencyInfosWithLoading(
@@ -117,15 +125,14 @@ export function useCurrencyInfosWithLoading(
 
   return useMemo(() => {
     return {
-      data:
-        queryResult.data?.tokens
-          ?.map((token) => token && gqlTokenToCurrencyInfo(token))
-          .filter((currencyInfo) => !!currencyInfo) ?? [],
+      data: _currencyIds
+        .map((currencyId, index) => getCurrencyInfoWithLocalFallback(currencyId, queryResult.data?.tokens?.[index]))
+        .filter((currencyInfo): currencyInfo is CurrencyInfo => Boolean(currencyInfo)),
       loading: queryResult.loading,
       error: queryResult.error,
       refetch: queryResult.refetch,
     }
-  }, [queryResult.data?.tokens, queryResult.loading, queryResult.error, queryResult.refetch])
+  }, [_currencyIds, queryResult.data?.tokens, queryResult.loading, queryResult.error, queryResult.refetch])
 }
 
 export function useNativeCurrencyInfo(chainId: UniverseChainId): Maybe<CurrencyInfo> {

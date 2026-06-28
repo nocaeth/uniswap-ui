@@ -1,6 +1,6 @@
 import { ProtocolVersion as RestProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
-import { FeeAmount } from '@uniswap/v3-sdk'
+import { FeeAmount, TICK_SPACINGS } from '@uniswap/v3-sdk'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, useSporeColors } from 'ui/src'
@@ -10,6 +10,7 @@ import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { getStablecoinsForChain, isUniverseChainId } from 'uniswap/src/features/chains/utils'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { useUSDCValue } from 'uniswap/src/features/transactions/hooks/useUSDCPrice'
+import { areEvmAddressesEqual } from 'uniswap/src/utils/addresses'
 import { NumberType } from 'utilities/src/format/types'
 import { ChartHeader } from '~/components/Charts/ChartHeader'
 import { Chart } from '~/components/Charts/ChartModel'
@@ -98,6 +99,11 @@ export function DepthChart({
     true,
   )
 
+  const pool = useMemo(
+    () => poolData?.pools.find((p) => areEvmAddressesEqual(p.poolId, poolId)) ?? poolData?.pools[0],
+    [poolData?.pools, poolId],
+  )
+
   const sdkCurrencies = useMemo(() => ({ TOKEN0: tokenA, TOKEN1: tokenB }), [tokenA, tokenB])
 
   const { tickData, activeTick, loading } = useLiquidityBarData({
@@ -108,7 +114,7 @@ export function DepthChart({
     version,
     hooks,
     poolId,
-    tickSpacing: poolData?.pools[0]?.tickSpacing,
+    tickSpacing: pool?.tickSpacing ?? TICK_SPACINGS[feeTier],
   })
 
   const { sellData, buyData, midPrice } = useMemo(() => {

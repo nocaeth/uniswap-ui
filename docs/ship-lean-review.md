@@ -1,102 +1,89 @@
 # Ship-Lean Review: Gnosis-Only Scope
 
-Generated: 2026-06-28T16:35:19Z
-Base commit: `b5fbcf6a2`
+Generated: 2026-06-28T17:09:04Z
+Base commit: `9de1babcd`
 
 Scope: this review assumes the product should remain a Gnosis-only web app. Anything outside that goal is a deletion candidate unless removing it is more work, more risk, or more bundle churn than leaving it inert.
 
 Method notes:
 
-- Read the repo overview, package scripts, Gnosis compose file, recent git history, ship-lean rubric, and current diff.
-- Ran the ship-lean scanner. It emitted the high-stakes detector output, then became dominated by the untracked `universal-router/` checkout and vendored contract trees, so it was interrupted rather than letting an unrelated local tree drive the report.
-- Verified findings with targeted source scans and cited files below.
-- Did not spawn sub-agents because the available delegation tool is restricted to explicit user requests for parallel agents.
+- Read the repo overview, root scripts, Gnosis compose stack, recent git history, ship-lean rubric, and current diff.
+- Ran the ship-lean scanner on a temporary copy that excluded `.git`, `.nx`, `node_modules`, build outputs, vendored contract libs, and the unrelated untracked `universal-router/` checkout.
+- The scanner flagged transaction/signing/approval paths, Gnosis contracts, the Gnosis quote builder, liquidity calldata, oversized adapter files, and inherited UniswapX/Solana surfaces. Findings below are verified against source lines.
+- The skill's Workflow runner is not exposed in this environment, and the available delegation tool requires an explicit user request for sub-agents, so this report is a direct verified pass.
 
 ## Bottom Line
 
-The current PR removes the right kind of code for a Gnosis-only app: dead buy/off-ramp source, visible Uniswap-branded wallet/provider affordances, stale route/test constants, and public help/static links. The highest-value next action is restraint: leave funds-moving Gnosis swap/liquidity code alone, and only prune remaining non-Gnosis shared UI when it is visibly reachable or measurably large in the web bundle.
+This branch is directionally right for a Gnosis-only app: the funds-moving Gnosis swap/liquidity paths are now where they belong, while visible non-Gnosis product surface has been trimmed. The highest-value next action is to stop pruning transaction code and instead either backfill missing backend chart data or hide the affected charts until the backend can serve them.
 
 ## Stakes Map
 
-High-stakes: swap quote construction, approvals, permits, Safe/EIP-5792 batching, Universal Router calls, transaction sagas, signing/broadcast paths, Gnosis router code, and Gnosis liquidity calldata builders. A mistake here can move value incorrectly.
+High-stakes: Gnosis contracts, swap quote construction, approvals, permits, Safe/EIP-5792 batching, Universal Router calls, transaction sagas, signing/broadcast paths, and Gnosis liquidity calldata. A mistake here can move value incorrectly.
 
-Medium-stakes: route definitions, chain enablement, token/pool metadata, pool/position pages, liquidity charts, and URL/service configuration. These define what the Gnosis-only product exposes.
+Medium-stakes: Gnosis adapter data, URL/service configuration, token/pool metadata, pool/position pages, liquidity charts, and token-list fallbacks. These shape what the Gnosis-only product exposes and whether the UI is trustworthy.
 
-Low-stakes: help/static links, docs, i18n copy, test IDs, wallet modal labels, receive-provider presentation, deleted buy/off-ramp UI, and other unreachable product surfaces. Cut these aggressively.
+Low-stakes: public help/static links, docs, labels, unreachable UniswapX/Solana UI, generated schemas, tests, and dormant product surfaces. Cut or hide these aggressively when they render or slow changes.
 
 ## Findings
 
 ### 1. 🟩 FINE · `packages/uniswap/src/data/apiClients/liquidityService/liquidityQueries.ts:59`
 
-Gnosis liquidity now dispatches through the liquidity-service client boundary instead of page components. The Gnosis-specific implementation handles pool info, create, increase, decrease, claim, and approvals at `packages/uniswap/src/data/apiClients/liquidityService/gnosis/buildGnosisLiquidityCalldata.ts:216`, `:385`, `:450`, `:486`, `:529`, and `:551`.
+Gnosis liquidity is implemented behind the existing liquidity-service query boundary: pool info, LP approval checks, create, decrease, increase, and list-pools dispatch to Gnosis-specific builders at `liquidityQueries.ts:59`, `:78`, `:180`, `:199`, `:218`, and `:256`. The actual Gnosis builder explains the backend gap and constructs pool state, approvals, and NPM transactions at `packages/uniswap/src/data/apiClients/liquidityService/gnosis/buildGnosisLiquidityCalldata.ts:30`.
 
-The move: leave it. This is high-stakes transaction construction, so future changes should be hardening/test work, not lean deletion. Effort: none. Reversibility: do not revert without replacing the backend behavior. [HIGH]
+The move: leave it and harden with focused liquidity tests when changing it. This is high-stakes transaction construction, not a lean-deletion target. Effort: none now. Reversibility: high-risk without equivalent backend behavior. [HIGH]
 
-### 2. 🟩 FINE · `packages/uniswap/src/features/transactions/swap/review/hooks/useTokenApprovalInfo.ts:65`
+### 2. 🟩 FINE · `packages/uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote.ts:1`
 
-Gnosis swap approvals are intentionally separated from the Trading API path: `useTokenApprovalInfo.ts:136` skips the hosted approval query for Gnosis, and `classicSwapTxAndGasInfoService.ts:42` handles Gnosis approval batching. The router still has broad routing code, including `fetchGnosisQuote.ts:1277`, but that complexity is on a funds-moving path.
+The scanner correctly flags `fetchGnosisQuote.ts` as oversized at 1,838 LOC, but it is also the Gnosis funds-moving quote path. It discovers pools, evaluates sDAI/aggregation fallbacks, expands route hop tiers, resolves split legs, rejects bad price impact, and builds Permit2 approval transactions at `fetchGnosisQuote.ts:1521`, `:1541`, `:1611`, `:1664`, and `:1676`.
 
-The move: leave it in this PR. If it needs simplification, do it as a hardening pass with transaction-focused tests. Effort: not a lean cleanup. Reversibility: high-risk. [HIGH]
+The move: do not split or delete this in a lean cleanup. Any simplification belongs in a hardening pass with swap-route, exact-output, approval, and split-fill tests. Effort: not a quick cleanup. Reversibility: high-risk. [HIGH]
 
-### 3. 🟩 FINE · `packages/uniswap/src/features/providers/webForNudgeProvider.tsx:38`
+### 3. 🟧 OVER-BUILT · `apps/web/src/features/Liquidity/hooks/usePoolTickData.ts:50`
 
-The dead buy/off-ramp surface is now removed rather than hidden: `/swap` remains the mounted swap route at `apps/web/src/pages/RouteDefinitions.tsx:157`, the old `apps/web/src/pages/Swap/Buy/*` source is deleted in this diff, and the web fiat-on-ramp nudge now always returns false for the Gnosis-only app.
+The pool/position liquidity charts still assume indexed tick pages are available from GraphQL (`useAllV3TicksQuery` / `useAllV4TicksQuery` at `usePoolTickData.ts:50` and `:61`). If Gnosis tick data is missing, the hook returns no chart data at `usePoolTickData.ts:247`, so the UI can look broken even though live pool state is available elsewhere.
 
-The move: ship it. This is exactly the kind of low-stakes deletion that makes the product easier to reason about. Effort: already done. Reversibility: fully reversible from git. [LOW]
+The move: either add backend tick distribution to the Gnosis adapter or hide the liquidity-depth chart tabs when the tick index is empty. Do not fake a histogram from current pool liquidity. Effort: ~1 day to hide cleanly, more to index ticks. Reversibility: easy for hiding, medium for backend indexing. [MEDIUM]
 
-### 4. 🟩 FINE · `packages/uniswap/src/constants/urls.ts:22`
+### 4. 🟧 OVER-BUILT · `gnosis/adapter/src/sync.ts:1`
 
-Public outbound links are centralized and blanked: help/articles/download/social/docs links use `DISABLED_PUBLIC_LINK` from `urls.ts:25` through `:120`, and the now-unmounted buy URL is disabled at `urls.ts:148`. The remaining `UNISWAP_WEB_URL` constant resolves to `swap.gno.now` at `urls.ts:12` through `:14`, not `app.uniswap.org`.
+The Gnosis adapter is right-sized operationally, but three read-heavy files are now bottlenecks: `sync.ts` is 1,035 LOC, `backfill.ts` is 966 LOC, and `dataApiService.ts` is 920 LOC. `sync.ts` mixes HyperSync transport, event parsing, token/pool accounting, rollup refresh, and retry behavior starting at `sync.ts:15`; `dataApiService.ts` mixes ConnectRPC service shape, on-chain position reads, ABI definitions, and portfolio shaping starting at `dataApiService.ts:43`.
 
-The move: keep backend API endpoints separate from public links. Uniswap-hosted service URLs still exist for data, GraphQL, liquidity, and gateway calls; those are dependencies, not user-facing links. Effort: none unless NOCA replaces those services. Reversibility: easy for public links, expensive for backend hosts. [LOW/MEDIUM]
+The move: ship as-is for this PR, then split transport, decoding, rollup math, and service mapping into small modules after behavior stabilizes. Effort: 1-2 days. Reversibility: medium. [MEDIUM]
 
-### 5. 🟩 FINE · `apps/web/src/components/WalletModal/WalletConnectorOption.tsx:40`
+### 5. 🟨 SPECULATIVE · `apps/web/src/state/routing/types.ts:1`
 
-Visible Uniswap wallet branding has been neutralized in the wallet modal: the connector option uses a generic wallet icon, `WalletConnectorOption.tsx:73` displays the actual wallet name, `WalletBrandedIcon.tsx:24` uses `WalletFilled`, and the Coinbase wallet SDK logo points at `https://swap.gno.now/favicon.png` in `apps/web/src/connection/wagmiConfig.ts:89`.
+Inherited UniswapX/off-chain order state remains in the web routing model: the file imports UniswapX SDK types at `routing/types.ts:7` and exposes `RouterPreference.X` at `routing/types.ts:50`. The signing callback still builds UniswapX order variants and fetches nonces from the gateway at `apps/web/src/hooks/useUniswapXSwapCallback.ts:60`.
 
-The move: ship it. There is no reason to spend more time renaming every internal identifier in this PR as long as the rendered product is generic/NOCA-facing. Effort: already done. Reversibility: easy. [LOW]
+The move: do not delete these while they are entangled with shared swap types. First prove the Gnosis production graph cannot reach them, then remove whole branches with swap tests. Effort: medium/high. Reversibility: high-risk if done casually. [LOW until reachable, HIGH if reachable]
 
-### 6. 🟨 SPECULATIVE · `packages/uniswap/src/data/solanaConnection/getSolanaParsedTokenAccountsByOwnerQueryOptions.ts:1`
+### 6. 🟨 SPECULATIVE · `apps/web/src/features/wallet/connection/connectors/solana.ts:1`
 
-Solana/SVM support still exists in shared packages, and some web-visible utilities still account for it, for example `packages/uniswap/src/components/ReceiveQRCode/ReceiveQRCode.tsx:173` and `packages/uniswap/src/features/transactions/swap/form/SwapFormScreen/SwapFormScreenDetails/SwapFormScreenFooter/ExactOutputUnavailableWarningRow.tsx:44`.
+Solana/SVM wallet support still exists in the web tree even though this app is Gnosis-only. The connector builds a `Platform.SVM` connection service at `solana.ts:52`, which is out of scope unless another route still exposes Solana wallets.
 
-The move: defer unless bundle analysis says it matters. Stripping this safely crosses data, wallet, token, and shared swap code; that is more work than carrying inert code today. Effort: multi-day if done safely. Reversibility: medium. [LOW until reachable]
+The move: leave it inert unless bundle analysis or UI testing proves it renders. Removing Solana safely crosses wallet, token, receive, and swap modules, so it is more work than carrying dormant code today. Effort: multi-day if done safely. Reversibility: medium. [LOW]
 
-### 7. 🟩 FINE · `packages/uniswap/src/features/transactions/swap/steps/uniswapxSteps.ts:13`
+### 7. 🟩 FINE · `packages/uniswap/src/constants/urls.ts:22`
 
-UniswapX internals are out of product scope for Gnosis, but the remaining code sits in shared transaction/signing paths. Files such as `uniswapxSteps.ts` and `packages/uniswap/src/features/transactions/swap/review/SwapReviewScreen/SwapErrorScreen.tsx:44` are high-stakes if reachable.
+Public Uniswap outbound links are centrally blanked with `DISABLED_PUBLIC_LINK` at `urls.ts:22`; help article URLs and static docs/social links inherit that from `urls.ts:24` through `:120`. The web app URL now resolves to `swap.gno.now` at `urls.ts:12` through `:14`.
 
-The move: do not lean-delete these inside this PR. First prove the Gnosis quote/routing path cannot reach them, then remove whole feature branches with focused swap tests. Effort: medium/high. Reversibility: high-risk without tests. [HIGH]
+The move: keep public links disabled. Remaining `*.uniswap.org` URLs in API clients, env files, generated schemas, tests, and worker proxies are backend dependencies or fixtures, not user-facing links. Replace them only when NOCA owns equivalent services. Effort: none now. Reversibility: easy for public links, expensive for backend hosts. [LOW/MEDIUM]
 
-### 8. 🟨 SPECULATIVE · `universal-router/`
+### 8. 🟩 FINE · `packages/uniswap/src/features/tokens/gnosisTokenList.ts:16`
 
-The untracked `universal-router/` checkout dominated the scanner output with vendored contracts, tests, and deployment files. It is not part of this PR and should not be staged.
+The token-list direction is correct for Gnosis-only: the default inactive token list points at NOCA's Gnosis list (`apps/web/src/constants/lists.ts:1`), and the static fallback includes Gnosis-native logo assets plus GBPe at `gnosisTokenList.ts:16`, `:19`, and `:86`.
 
-The move: leave it untracked. If router source needs to live in this repository, add only the minimal deployment source or use a deliberate submodule/vendor strategy. Effort: low to keep out, high to curate. Reversibility: easy while untracked. [HIGH if tracked]
+The move: keep this local fallback even if backend metadata improves. It is cheap, reversible, and protects token search/logos from upstream index lag. Effort: none. Reversibility: easy. [MEDIUM]
 
 ## Next Lean Cuts
 
 Recommended:
 
-- Use an Nx graph plus bundle-size check before deleting Solana/SVM shared code.
-- Remove remaining visible UniswapX/Solana labels only where they can actually render in the Gnosis web app.
-- Keep deleting unsupported product surfaces whole, as with Buy and Limit, instead of leaving hidden buttons.
+- Hide or backend-fill charts that need tick distribution before spending more time polishing chart UI.
+- Use the Nx graph and a web bundle check before deleting Solana/SVM or UniswapX internals.
+- Keep deleting unsupported product surfaces whole, as with Buy/Limit, instead of leaving hidden buttons.
 
 Avoid for now:
 
 - Do not simplify approval, permit, Safe batching, router, swap callback, or liquidity calldata code without focused transaction tests.
 - Do not delete shared packages by name alone; first prove they are unused in the web production graph.
 - Do not stage the untracked `universal-router/` tree.
-
-## Verification Status
-
-Current working-tree validation:
-
-- `bun i18n:extract` passed after localized string changes.
-- `bun g:format` passed.
-- `bun g:typecheck` passed.
-- Focused web tests passed: `bunx nx run web:test -- src/components/WalletModal/WalletModals.test.tsx src/pages/routes.test.ts src/pages/paths.test.ts src/hooks/useIsPage.test.tsx --run --reporter=basic` (4 files, 34 tests).
-- Focused package tests passed: `bunx nx run uniswap:test -- src/features/transactions/swap/components/SwapFormButton/hooks/useSwapFormButtonHooks.test.ts src/utils/routingDiagram/routingProviders/uniswapRoutingProvider.test.ts --run --reporter=basic` (2 files, 55 tests).
-- `bun g:lint:fix` completed with existing warnings only.
-- `git diff --check` passed.
-- Broad `bun g:test` and full web test runs were attempted but did not emit final summaries after several minutes of silence and were interrupted; focused tests and typecheck are the completed verification for this PR.

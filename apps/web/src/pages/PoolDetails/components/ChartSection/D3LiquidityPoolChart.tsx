@@ -1,12 +1,13 @@
 import { ProtocolVersion as RestProtocolVersion } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb'
 import { Currency } from '@uniswap/sdk-core'
-import { FeeAmount } from '@uniswap/v3-sdk'
+import { FeeAmount, TICK_SPACINGS } from '@uniswap/v3-sdk'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, Shine, Text } from 'ui/src'
 import { ZERO_ADDRESS } from 'uniswap/src/constants/misc'
 import { useGetPoolsByTokens } from 'uniswap/src/data/rest/getPools'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { areEvmAddressesEqual } from 'uniswap/src/utils/addresses'
 import { ChartHeader } from '~/components/Charts/ChartHeader'
 import { ChartSkeleton } from '~/components/Charts/LoadingState'
 import { ChartType } from '~/components/Charts/utils'
@@ -244,8 +245,13 @@ function useD3LiquidityPoolChartData({
     true,
   )
 
-  const tickSpacing = poolData?.pools[0]?.tickSpacing
-  const currentTick = poolData?.pools[0]?.tick
+  const pool = useMemo(
+    () => poolData?.pools.find((p) => areEvmAddressesEqual(p.poolId, poolId)) ?? poolData?.pools[0],
+    [poolData?.pools, poolId],
+  )
+
+  const tickSpacing = pool?.tickSpacing ?? TICK_SPACINGS[feeTier]
+  const currentTick = pool?.tick
 
   const sdkCurrencies = useMemo(() => ({ TOKEN0: tokenA, TOKEN1: tokenB }), [tokenA, tokenB])
 

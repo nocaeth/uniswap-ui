@@ -653,6 +653,7 @@ function LiquidityPositionRangeChart({
           left={0}
           top={0}
           zIndex={zIndexes.mask}
+          pointerEvents="none"
         >
           <ActiveLiquidityChart
             barColor={colors.surface3.val}
