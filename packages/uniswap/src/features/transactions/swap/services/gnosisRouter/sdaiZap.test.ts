@@ -139,9 +139,17 @@ describe('buildGnosisSdaiZapTransaction', () => {
     const decoded = zapAbi.decodeFunctionData('depositAndSwap', tx!.data as string)
     expect(decoded['amountIn'].toString()).toBe('1000')
     expect((decoded['path'] as string).toLowerCase().startsWith('0x' + SDAI.toLowerCase().slice(2))).toBe(true)
-    // 0.5% slippage floor on 990 -> 985
-    expect(decoded['amountOutMinimum'].toString()).toBe(BigNumber.from(990).mul(9950).div(10_000).toString())
+    // 0.5% slippage floor on 990 -> 985 (canonical mul(BIPS_BASE)/(BIPS_BASE+bips))
+    expect(decoded['amountOutMinimum'].toString()).toBe(BigNumber.from(990).mul(10_000).div(10_050).toString())
     expect(decoded['recipient'].toLowerCase()).toBe(SWAPPER.toLowerCase())
+  })
+
+  it('keeps amountOutMinimum strictly positive even at 100% slippage (never a zero floor)', () => {
+    const tx = buildGnosisSdaiZapTransaction({ quote: zapQuote({ slippage: 100 }) })
+    const decoded = zapAbi.decodeFunctionData('depositAndSwap', tx!.data as string)
+    // canonical floor at 100% = 990 * 10000 / 20000 = 495, never 0
+    expect(decoded['amountOutMinimum'].toString()).toBe(BigNumber.from(990).mul(10_000).div(20_000).toString())
+    expect(BigNumber.from(decoded['amountOutMinimum']).gt(0)).toBe(true)
   })
 
   it('builds depositAndSwap for native xDAI input (value carries amount, amountIn=0)', () => {

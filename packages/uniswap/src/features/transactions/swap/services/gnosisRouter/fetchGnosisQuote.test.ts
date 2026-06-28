@@ -18,6 +18,8 @@ import {
   buildPermitTransactionIfNeeded,
   fetchGnosisQuote,
   getGnosisQuoteSlippageAmounts,
+  getGnosisSlippageTolerance,
+  GNOSIS_MAX_SLIPPAGE_PERCENT,
   isGnosisQuotePriceImpactViable,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
@@ -246,6 +248,29 @@ describe('getGnosisQuoteSlippageAmounts', () => {
 
     expect(amounts.maximumAmountIn.toString()).toBe('12345')
     expect(amounts.minimumAmountOut.toString()).toBe('995')
+  })
+})
+
+describe('getGnosisSlippageTolerance', () => {
+  it('clamps requests above the Gnosis max down to the ceiling', () => {
+    // The deployed routers only enforce an absolute amountOutMinimum, so the percentage cap
+    // lives here. A 100% custom slippage must never reach the builders as 100%.
+    expect(getGnosisSlippageTolerance({ slippageTolerance: 100 })).toBe(GNOSIS_MAX_SLIPPAGE_PERCENT)
+    expect(getGnosisSlippageTolerance({ slippageTolerance: GNOSIS_MAX_SLIPPAGE_PERCENT + 1 })).toBe(
+      GNOSIS_MAX_SLIPPAGE_PERCENT,
+    )
+  })
+
+  it('passes through tolerances at or below the ceiling', () => {
+    expect(getGnosisSlippageTolerance({ slippageTolerance: 0.5 })).toBe(0.5)
+    expect(getGnosisSlippageTolerance({ slippageTolerance: GNOSIS_MAX_SLIPPAGE_PERCENT })).toBe(
+      GNOSIS_MAX_SLIPPAGE_PERCENT,
+    )
+  })
+
+  it('uses the default when unset and floors negatives to zero', () => {
+    expect(getGnosisSlippageTolerance({})).toBe(0.5)
+    expect(getGnosisSlippageTolerance({ slippageTolerance: -1 })).toBe(0)
   })
 })
 

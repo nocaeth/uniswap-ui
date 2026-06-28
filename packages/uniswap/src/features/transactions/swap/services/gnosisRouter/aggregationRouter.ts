@@ -355,7 +355,16 @@ export function buildGnosisAggregationTransaction(args: {
     throw new Error('Malformed Gnosis aggregation quote: every leg must have positive input and at least one step')
   }
 
-  const amountOutMinimum = BigNumber.from(quote.output?.minimumAmount ?? quote.output?.amount ?? '0')
+  // Fail closed: never ship a zero floor. The deployed router enforces only this absolute
+  // amountOutMinimum, so a missing/zero value would strip all slippage protection.
+  const minimumAmountRaw = quote.output?.minimumAmount ?? quote.output?.amount
+  if (minimumAmountRaw === undefined) {
+    throw new Error('Malformed Gnosis aggregation quote: missing output minimum amount')
+  }
+  const amountOutMinimum = BigNumber.from(minimumAmountRaw)
+  if (amountOutMinimum.isZero()) {
+    throw new Error('Malformed Gnosis aggregation quote: output minimum amount is zero')
+  }
   const recipient = quote.output?.recipient ?? quote.swapper ?? ZERO_ADDRESS
   const deadline = (args.deadline ?? Math.floor(Date.now() / 1000) + AGGREGATION_DEADLINE_SECONDS).toString()
   const legs = quote.aggregation.legs.map((leg) => [leg.amountIn, leg.steps.map((step) => [step.stepType, step.data])])
