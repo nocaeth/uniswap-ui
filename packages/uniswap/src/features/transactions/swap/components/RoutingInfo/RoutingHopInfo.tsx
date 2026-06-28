@@ -41,7 +41,7 @@ export function RoutingHopInfo({
     gasFeeUSD !== undefined ? convertFiatAmountFormatted(gasFeeUSD, NumberType.FiatGasPrice) : undefined
 
   const routes = useRoutingEntries({ trade })
-  const routingProvider = useRoutingProvider({ routing: trade.routing })
+  const routingProvider = useRoutingProvider({ routing: trade.routing, trade })
   const isUniswapXTrade = isUniswapX(trade)
 
   const caption = useMemo(() => {

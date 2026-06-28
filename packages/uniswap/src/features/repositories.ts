@@ -1,6 +1,7 @@
 import { TradingApi } from '@universe/api'
 import { TradingApiClient } from 'uniswap/src/data/apiClients/tradingApi/TradingApiClient'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { fetchGnosisBestQuote } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisBestQuote'
 import { fetchGnosisQuote } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
 import {
   createTradeRepository,
@@ -28,7 +29,7 @@ export function getEVMTradeRepository(): TradeRepository {
     // Every other chain continues to use the Trading API.
     fetchQuote: (params) =>
       Number(params.tokenInChainId) === UniverseChainId.Gnosis
-        ? fetchGnosisQuote(params)
+        ? fetchGnosisBestQuote(params)
         : TradingApiClient.fetchQuote(params),
     fetchIndicativeQuote: (params) =>
       Number(params.tokenInChainId) === UniverseChainId.Gnosis

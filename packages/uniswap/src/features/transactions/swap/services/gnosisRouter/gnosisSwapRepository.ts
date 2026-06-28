@@ -22,6 +22,10 @@ import {
   isGnosisSdaiAdapterQuote,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
 import { buildGnosisSdaiZapTransaction } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
+import {
+  buildGnosisVeloraTransaction,
+  getGnosisVeloraFallbackQuote,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/velora'
 import { areAddressesEqual } from 'uniswap/src/utils/addresses'
 
 const DEFAULT_SLIPPAGE_PERCENT = 0.5
@@ -122,7 +126,26 @@ export function buildGnosisSdaiAdapterTransaction(quote: TradingApi.ClassicQuote
 export function createGnosisEVMSwapRepository(): EVMSwapRepository {
   return {
     fetchSwapData: async (params: SwapRequestParams): Promise<SwapData> => {
-      const quote = params.quote as TradingApi.ClassicQuote
+      let quote = params.quote as TradingApi.ClassicQuote
+      try {
+        const veloraTransaction = await buildGnosisVeloraTransaction({ quote, deadline: params.deadline })
+        if (veloraTransaction) {
+          return {
+            requestId: quote.quoteId ?? 'gnosis-velora',
+            transactions: [veloraTransaction],
+            gasFee: quote.gasFee ?? '0',
+          }
+        }
+      } catch (error) {
+        const fallbackQuote = getGnosisVeloraFallbackQuote(quote)
+        // ERC20 Velora quotes approve Augustus, while local Gnosis routes use Permit2.
+        // Only fall back at tx-build time when there is no approval-spender mismatch.
+        if (!fallbackQuote || !isGnosisNativeAddress(quote.input?.token)) {
+          throw error
+        }
+        quote = fallbackQuote
+      }
+
       const sdaiAdapterTransaction = buildGnosisSdaiAdapterTransaction(quote)
       if (sdaiAdapterTransaction) {
         return {

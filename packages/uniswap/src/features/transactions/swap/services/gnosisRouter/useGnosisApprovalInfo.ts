@@ -35,8 +35,17 @@ export function useGnosisApprovalInfo(params: {
   currencyInAmount: Maybe<CurrencyAmount<Currency>>
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
   tradeType?: TradingApi.TradeType
+  approvalSpenderOverride?: string
 }): ApprovalTxInfo {
-  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, tradeType } = params
+  const {
+    address,
+    chainId,
+    wrapType,
+    currencyInAmount,
+    currencyOutAmount,
+    tradeType,
+    approvalSpenderOverride,
+  } = params
 
   const currencyIn = currencyInAmount?.currency
   const currencyOut = currencyOutAmount?.currency
@@ -47,14 +56,15 @@ export function useGnosisApprovalInfo(params: {
   const tokenOutAddressForRoute = currencyOut?.isNative
     ? '0x0000000000000000000000000000000000000000'
     : currencyOut?.wrapped.address
-  // Resolved the same way the quoter decides to use the zap (shared eligibility), so the approved
-  // spender always matches the route that executes: zap > adapter > Permit2.
+  // Resolved the same way the selected route executes. Velora quotes approve Augustus;
+  // local quotes use zap > adapter > Permit2.
   const zapApprovalSpender = getGnosisSdaiZapApprovalSpender({
     tokenIn: tokenInAddressForRoute,
     tokenOut: tokenOutAddressForRoute,
     tradeType: tradeType ?? TradingApi.TradeType.EXACT_INPUT,
   })
   const approvalSpender =
+    approvalSpenderOverride ??
     zapApprovalSpender ??
     getGnosisSdaiAdapterApprovalSpender({ tokenIn: tokenInAddressForRoute, tokenOut: tokenOutAddressForRoute }) ??
     PERMIT2_ADDRESS

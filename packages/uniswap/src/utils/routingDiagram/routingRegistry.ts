@@ -6,6 +6,10 @@ import {
   uniswapChainedRoutingProvider,
   uniswapRoutingProvider,
 } from 'uniswap/src/utils/routingDiagram/routingProviders/uniswapRoutingProvider'
+import {
+  isGnosisVeloraRoutableTrade,
+  veloraRoutingProvider,
+} from 'uniswap/src/utils/routingDiagram/routingProviders/veloraRoutingProvider'
 import type { RoutingDiagramEntry, RoutingProvider } from 'uniswap/src/utils/routingDiagram/types'
 import { logger } from 'utilities/src/logger/logger'
 
@@ -31,12 +35,29 @@ export function getRoutingProvider(routing: TradingApi.Routing): RoutingProvider
   return ROUTING_PROVIDER_MAP[routing]
 }
 
-export function useRoutingProvider({ routing }: { routing?: TradingApi.Routing }): RoutingProvider | undefined {
-  return useMemo(() => (routing ? getRoutingProvider(routing) : undefined), [routing])
+export function getRoutingProviderForTrade(trade: Trade): RoutingProvider | undefined {
+  if (isGnosisVeloraRoutableTrade(trade)) {
+    return veloraRoutingProvider
+  }
+
+  return getRoutingProvider(trade.routing)
+}
+
+export function useRoutingProvider({
+  routing,
+  trade,
+}: {
+  routing?: TradingApi.Routing
+  trade?: Trade
+}): RoutingProvider | undefined {
+  return useMemo(
+    () => (trade ? getRoutingProviderForTrade(trade) : routing ? getRoutingProvider(routing) : undefined),
+    [routing, trade],
+  )
 }
 
 export function getRoutingEntries(trade: Trade): RoutingDiagramEntry[] {
-  const provider = getRoutingProvider(trade.routing)
+  const provider = getRoutingProviderForTrade(trade)
 
   if (!provider) {
     return []

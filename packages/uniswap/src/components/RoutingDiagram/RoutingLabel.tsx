@@ -9,7 +9,7 @@ import { useRoutingProvider } from 'uniswap/src/utils/routingDiagram/routingRegi
 export function RoutingLabel({ trade }: { trade: Trade }): JSX.Element {
   const { t } = useTranslation()
 
-  const routingProvider = useRoutingProvider({ routing: trade.routing })
+  const routingProvider = useRoutingProvider({ routing: trade.routing, trade })
 
   if (isBridge(trade)) {
     return (

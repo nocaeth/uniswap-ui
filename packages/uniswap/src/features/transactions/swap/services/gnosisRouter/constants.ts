@@ -102,6 +102,11 @@ export const GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT = 90
 export const GNOSIS_UNIVERSAL_ROUTER_ADDRESS: string =
   process.env['REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS'] ?? '0x0000000000000000000000000000000000000000'
 
+export const GNOSIS_VELORA_BASE_URL: string =
+  process.env['REACT_APP_GNOSIS_VELORA_BASE_URL'] ?? 'https://api.velora.xyz'
+export const GNOSIS_VELORA_PARTNER: string = process.env['REACT_APP_GNOSIS_VELORA_PARTNER'] ?? 'noca'
+export const GNOSIS_VELORA_DISABLED: boolean = process.env['REACT_APP_GNOSIS_VELORA_DISABLED'] === 'true'
+
 // Permit2 is the canonical singleton (same address everywhere).
 export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 

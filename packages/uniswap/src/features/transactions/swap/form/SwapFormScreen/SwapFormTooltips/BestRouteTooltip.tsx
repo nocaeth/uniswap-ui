@@ -13,7 +13,7 @@ export function BestRouteTooltip(): JSX.Element | null {
   const { t } = useTranslation()
   const trade = useSwapTxStore((s) => s.trade)
 
-  const routingProvider = useRoutingProvider({ routing: trade?.routing })
+  const routingProvider = useRoutingProvider({ routing: trade?.routing, trade })
 
   const routes = useRoutingEntries({ trade })
 

@@ -292,6 +292,7 @@ export function useSwapParams(): {
       exactCurrencyField === CurrencyField.INPUT
         ? TradingApi.TradeType.EXACT_INPUT
         : TradingApi.TradeType.EXACT_OUTPUT,
+    quote: trade?.quote,
   })
 
   return {
