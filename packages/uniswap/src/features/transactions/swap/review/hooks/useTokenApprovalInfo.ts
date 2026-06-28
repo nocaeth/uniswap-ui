@@ -22,6 +22,8 @@ export interface TokenApprovalInfoParams {
   chainId: UniverseChainId
   wrapType: WrapType
   currencyInAmount: Maybe<CurrencyAmount<Currency>>
+  // Used only by Gnosis local approvals; exact-output swaps must approve the quote max spend.
+  currencyInApprovalAmount?: Maybe<CurrencyAmount<Currency>>
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
   routing: TradingApi.Routing | undefined
   address?: string
@@ -45,7 +47,16 @@ function useApprovalWillBeBatchedWithSwap(chainId: UniverseChainId, routing: Tra
 }
 
 export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalTxInfo {
-  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, routing, tradeType } = params
+  const {
+    address,
+    chainId,
+    wrapType,
+    currencyInAmount,
+    currencyInApprovalAmount,
+    currencyOutAmount,
+    routing,
+    tradeType,
+  } = params
 
   // Gnosis has no Trading API; resolve ERC20 -> Permit2 approval client-side instead.
   const isGnosis = chainId === UniverseChainId.Gnosis
@@ -54,6 +65,7 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
     chainId,
     wrapType,
     currencyInAmount,
+    currencyInApprovalAmount,
     currencyOutAmount,
     tradeType,
   })
