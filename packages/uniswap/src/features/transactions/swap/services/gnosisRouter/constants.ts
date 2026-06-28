@@ -52,6 +52,13 @@ export const GNOSIS_PREFERRED_STABLE_ROUTE_HUBS: string[] = [GNOSIS_USDCE, GNOSI
 export const GNOSIS_ETH_CORRELATED_ROUTE_TOKENS: string[] = [GNOSIS_WETH, GNOSIS_WSTETH]
 export const GNOSIS_PREFERRED_ETH_ROUTE_HUBS: string[] = [GNOSIS_WSTETH]
 
+// Counterparties for which a WXDAI/xDAI swap routes better through the sDAI zap (SdaiZapRouter):
+// WXDAI's only direct v3 edge is the shallow WXDAI/USDC.e pool, while these tokens sit on the deep
+// sDAI-centered cluster (sDAI/EURe, sDAI/wstETH, EURe/USDC.e). Bridging WXDAI<->sDAI is free via the
+// savings adapter, so WXDAI<->{these} is quoted as adapter + a single deep v3 path. Curated to
+// tokens we know route well from sDAI; extend as deeper pools appear. See ./sdaiZap.ts.
+export const GNOSIS_SDAI_ZAP_COUNTERPARTIES: string[] = [GNOSIS_USDCE, GNOSIS_EURE_V2, GNOSIS_WSTETH, GNOSIS_WETH]
+
 export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH]
 
 // Upper bound on candidate routes quoted per request. With Multicall3 every route is
@@ -97,6 +104,15 @@ export const GNOSIS_UNIVERSAL_ROUTER_ADDRESS: string =
 
 // Permit2 is the canonical singleton (same address everywhere).
 export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
+
+/**
+ * SdaiZapRouter address on Gnosis (see gnosis/contracts/sdai-zap). Like UniversalRouter it has no
+ * canonical address; set REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS to your deployment to enable sDAI-zap
+ * routing. While it is the zero address the zap is fully disabled: no zap quotes are produced and
+ * no zap approvals are requested, so behavior is unchanged from the v3-only router.
+ */
+export const GNOSIS_SDAI_ZAP_ADDRESS: string =
+  process.env['REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS'] ?? '0x0000000000000000000000000000000000000000'
 
 /**
  * Split-fill routing (see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).

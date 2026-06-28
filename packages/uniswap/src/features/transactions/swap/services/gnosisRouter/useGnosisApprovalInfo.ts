@@ -1,6 +1,7 @@
 import { BigNumber } from '@ethersproject/bignumber'
 import { useQuery } from '@tanstack/react-query'
 import { Currency, CurrencyAmount } from '@uniswap/sdk-core'
+import { TradingApi } from '@universe/api'
 import { useMemo } from 'react'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { convertGasFeeToDisplayValue, useActiveGasStrategy } from 'uniswap/src/features/gas/hooks'
@@ -12,6 +13,7 @@ import {
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/approvals'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
 import { getGnosisSdaiAdapterApprovalSpender } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
+import { getGnosisSdaiZapApprovalSpender } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
 import { ApprovalAction } from 'uniswap/src/features/transactions/swap/types/trade'
 import { WrapType } from 'uniswap/src/features/transactions/types/wrap'
 import { ONE_MINUTE_MS, ONE_SECOND_MS } from 'utilities/src/time/time'
@@ -32,8 +34,9 @@ export function useGnosisApprovalInfo(params: {
   wrapType: WrapType
   currencyInAmount: Maybe<CurrencyAmount<Currency>>
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
+  tradeType?: TradingApi.TradeType
 }): ApprovalTxInfo {
-  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount } = params
+  const { address, chainId, wrapType, currencyInAmount, currencyOutAmount, tradeType } = params
 
   const currencyIn = currencyInAmount?.currency
   const currencyOut = currencyOutAmount?.currency
@@ -44,7 +47,15 @@ export function useGnosisApprovalInfo(params: {
   const tokenOutAddressForRoute = currencyOut?.isNative
     ? '0x0000000000000000000000000000000000000000'
     : currencyOut?.wrapped.address
+  // Resolved the same way the quoter decides to use the zap (shared eligibility), so the approved
+  // spender always matches the route that executes: zap > adapter > Permit2.
+  const zapApprovalSpender = getGnosisSdaiZapApprovalSpender({
+    tokenIn: tokenInAddressForRoute,
+    tokenOut: tokenOutAddressForRoute,
+    tradeType: tradeType ?? TradingApi.TradeType.EXACT_INPUT,
+  })
   const approvalSpender =
+    zapApprovalSpender ??
     getGnosisSdaiAdapterApprovalSpender({ tokenIn: tokenInAddressForRoute, tokenOut: tokenOutAddressForRoute }) ??
     PERMIT2_ADDRESS
   const requiredAmount = currencyInAmount?.quotient.toString()
