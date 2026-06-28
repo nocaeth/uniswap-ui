@@ -35,6 +35,7 @@ import { Token } from '@uniswap/sdk-core'
 import { FeeAmount, Pool, Position as V3Position, TICK_SPACINGS } from '@uniswap/v3-sdk'
 import { fetchExploreStats, getTokenRow } from './envio.js'
 import type { EnvioToken } from './envio.js'
+import { deriveOsgnoPriceUsd, fetchOsgnoRate, GNO_ADDRESS, isOsgnoAddress, OSGNO_ADDRESS } from './osgnoOracle.js'
 import type { ServiceType } from '@bufbuild/protobuf'
 import type { ConnectRouter, ServiceImpl } from '@connectrpc/connect'
 import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem'
@@ -90,6 +91,35 @@ const RPC_URL =
   'http://localhost:8545'
 
 const client: PublicClient = createPublicClient({ chain: gnosis, transport: http(RPC_URL) })
+const OSGNO_RATE_CACHE_MS = 60_000
+
+let cachedOsgnoRate: { value: number | undefined; expiresAt: number } | undefined
+
+async function getCachedOsgnoRate(): Promise<number | undefined> {
+  const now = Date.now()
+  if (cachedOsgnoRate && cachedOsgnoRate.expiresAt > now) {
+    return cachedOsgnoRate.value
+  }
+  const value = await fetchOsgnoRate(client).catch((error) => {
+    console.warn('osGNO oracle price unavailable; falling back to indexed osGNO price', error)
+    return undefined
+  })
+  cachedOsgnoRate = { value, expiresAt: now + OSGNO_RATE_CACHE_MS }
+  return value
+}
+
+function getIndexedTokenPriceUSD(address: string): number | undefined {
+  const priceUSD = getTokenRow(address)?.priceUSD
+  return priceUSD && priceUSD > 0 ? priceUSD : undefined
+}
+
+async function getEffectiveTokenPriceUSD(address: string, indexedPriceUSD?: number): Promise<number | undefined> {
+  const fallbackPriceUSD = indexedPriceUSD && indexedPriceUSD > 0 ? indexedPriceUSD : getIndexedTokenPriceUSD(address)
+  if (!isOsgnoAddress(address)) {
+    return fallbackPriceUSD
+  }
+  return deriveOsgnoPriceUsd(getIndexedTokenPriceUSD(GNO_ADDRESS), await getCachedOsgnoRate()) ?? fallbackPriceUSD
+}
 
 const Q128 = 1n << 128n
 const MAX_UINT256 = (1n << 256n) - 1n
@@ -608,9 +638,10 @@ async function getPosition(req: GetPositionRequest): Promise<GetPositionResponse
 }
 
 // USD spot prices for the swap UI ($ values, gas, fiat<->token). Uniswap's hosted
-// price backend has no Gnosis coverage, so serve the indexer's priceUSD (the same
-// value Explore shows). Native xDAI (zero address) maps to WXDAI.
-function getTokenPrices(req: GetTokenPricesRequest): GetTokenPricesResponse {
+// price backend has no Gnosis coverage, so serve the adapter's priceUSD snapshot.
+// Native xDAI (zero address) maps to WXDAI. osGNO is valued from its GNO-rate
+// oracle because V3-only spot propagation can price the wrapper incorrectly.
+async function getTokenPrices(req: GetTokenPricesRequest): Promise<GetTokenPricesResponse> {
   const tokenPrices: TokenPrice[] = []
   for (const t of req.tokens) {
     if (Number(t.chainId) !== GNOSIS_CHAIN_ID) {
@@ -618,8 +649,9 @@ function getTokenPrices(req: GetTokenPricesRequest): GetTokenPricesResponse {
     }
     const lookup = !t.address || t.address.toLowerCase() === ZERO_ADDRESS ? WXDAI_ADDRESS : t.address
     const row = getTokenRow(lookup)
-    if (row && row.priceUSD > 0) {
-      tokenPrices.push(new TokenPrice({ chainId: GNOSIS_CHAIN_ID, address: t.address, priceUsd: row.priceUSD }))
+    const priceUsd = await getEffectiveTokenPriceUSD(lookup, row?.priceUSD)
+    if (priceUsd !== undefined) {
+      tokenPrices.push(new TokenPrice({ chainId: GNOSIS_CHAIN_ID, address: t.address, priceUsd }))
     }
   }
   return new GetTokenPricesResponse({ tokenPrices })
@@ -772,7 +804,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
       return canonical === undefined || !presentAddrs.has(canonical)
     })
 
-    const [results, nativeBalance] = await Promise.all([
+    const [results, nativeBalance, osGnoPriceUsd] = await Promise.all([
       entries.length
         ? client.multicall({
             allowFailure: true,
@@ -785,6 +817,9 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
           })
         : Promise.resolve([] as { status: 'success' | 'failure'; result?: unknown }[]),
       client.getBalance({ address: owner }).catch(() => 0n),
+      entries.some((entry) => isOsgnoAddress(entry.address))
+        ? getEffectiveTokenPriceUSD(OSGNO_ADDRESS)
+        : Promise.resolve(undefined),
     ])
 
     const balances: PortfolioBalance[] = []
@@ -859,7 +894,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
         name: entry.token.name,
         decimals: entry.token.decimals,
         raw,
-        priceUsd: entry.token.priceUSD,
+        priceUsd: isOsgnoAddress(entry.address) ? (osGnoPriceUsd ?? entry.token.priceUSD) : entry.token.priceUSD,
         priceChange1d: entry.token.priceChange1d,
         logoUrl: entry.token.logo,
         type: TokenType.ERC20,

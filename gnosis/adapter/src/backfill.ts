@@ -34,6 +34,7 @@ import { createPublicClient, http, parseAbi, getAddress } from 'viem'
 import { gnosis } from 'viem/chains'
 import { pathToFileURL } from 'node:url'
 import { getDb, initSchema } from './db.js'
+import { applyOsgnoOracleUsdPrice, fetchOsgnoRate } from './osgnoOracle.js'
 
 const HYPERSYNC_URL = 'https://gnosis.hypersync.xyz/query'
 const HEIGHT_URL = 'https://gnosis.hypersync.xyz/height'
@@ -225,6 +226,10 @@ interface RawTx {
 export async function runBackfill(): Promise<void> {
   const t0 = Date.now()
   const client = createPublicClient({ chain: gnosis, transport: http(RPC_URL) })
+  const osgnoRate = await fetchOsgnoRate(client).catch((error) => {
+    console.warn('osGNO oracle price unavailable; leaving indexed osGNO price unchanged', error)
+    return undefined
+  })
   const height = await hyperHeight()
   const nowTs = Math.floor(Date.now() / 1000)
   const windowFromBlock =
@@ -541,6 +546,7 @@ export async function runBackfill(): Promise<void> {
         return (usd.get(p.token0) ?? 0) * Math.max(0, pd.reserve0[i]) + (usd.get(p.token1) ?? 0) * Math.max(0, pd.reserve1[i])
       }
       const usd = propagateUSD(pools, price1per0, depth)
+      applyOsgnoOracleUsdPrice(usd, osgnoRate)
 
       const tokenTvl = new Map<string, number>()
       const tokenVol = new Map<string, number>()
@@ -615,6 +621,7 @@ export async function runBackfill(): Promise<void> {
         return (usd.get(p.token0) ?? 0) * Math.max(0, pd.reserve0[di2]) + (usd.get(p.token1) ?? 0) * Math.max(0, pd.reserve1[di2])
       }
       const usd = propagateUSD(pools, price1per0, depth)
+      applyOsgnoOracleUsdPrice(usd, osgnoRate)
       const tokenVol = new Map<string, number>()
       for (const p of pools) {
         const a = agg.get(p.pool)!
@@ -651,6 +658,7 @@ export async function runBackfill(): Promise<void> {
     const p = poolById.get(poolId)!
     return (usd.get(p.token0) ?? 0) * st.reserve0 + (usd.get(p.token1) ?? 0) * st.reserve1
   })
+  applyOsgnoOracleUsdPrice(curUSD, osgnoRate)
 
   // 10) Token + pool snapshot rows (with trailing volumes + percent changes).
   const sumHour = (m: Map<number, number>, fromTs: number): number => {
