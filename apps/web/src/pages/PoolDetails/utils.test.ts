@@ -6,7 +6,7 @@ import { validBEPoolToken0, validBEPoolToken1 } from '~/test-utils/pools/fixture
 describe('getPoolDetailPageTitle', () => {
   it('should return the base title when tokens are undefined', () => {
     const result = getPoolDetailPageTitle(i18n.t)
-    expect(result).toBe('Buy and sell on Uniswap')
+    expect(result).toBe('Buy and sell on NOCA')
   })
 
   it('should return the base title when token symbols are undefined', () => {
@@ -14,11 +14,11 @@ describe('getPoolDetailPageTitle', () => {
       token0: { symbol: undefined } as GraphQLApi.Token,
       token1: { symbol: undefined } as GraphQLApi.Token,
     })
-    expect(result).toBe('Buy and sell on Uniswap')
+    expect(result).toBe('Buy and sell on NOCA')
   })
 
   it('should order the symbols by waterfall priority (stablecoin as quote)', () => {
     const result = getPoolDetailPageTitle(i18n.t, { token0: validBEPoolToken0, token1: validBEPoolToken1 })
-    expect(result).toBe('WETH/USDC: Buy and sell on Uniswap')
+    expect(result).toBe('WETH/USDC: Buy and sell on NOCA')
   })
 })

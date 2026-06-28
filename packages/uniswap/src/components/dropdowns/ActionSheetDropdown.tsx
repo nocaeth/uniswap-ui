@@ -221,7 +221,7 @@ const ActionSheetBackdropWithContent = memo(function ActionSheetBackdropWithCont
     There is a race condition when we switch from a view with one Portal to another view with a Portal.
     It seems that if we mount a second Portal while the first is still mounted, the second would not work properly.
     setTimeout with 0ms is a workaround to avoid this issue for now
-    Remove when https://linear.app/uniswap/issue/WALL-4817 is resolved
+    Remove once the underlying portal race is fixed.
   */
   const [shouldRender, setShouldRender] = useState(false)
   useTimeout(() => setShouldRender(true), 0)

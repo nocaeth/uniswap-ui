@@ -123,7 +123,7 @@ export function useUniversalRouterSwapCallback({
         from: account.address,
         to: UNIVERSAL_ROUTER_ADDRESS(UniversalRouterVersion.V1_2, chainId),
         data,
-        // TODO(https://github.com/Uniswap/universal-router-sdk/issues/113): universal-router-sdk returns a non-hexlified value.
+        // TODO(the universal-router-sdk issue): universal-router-sdk returns a non-hexlified value.
         ...(value && !isZero(value) ? { value: toHex(value) } : {}),
       }
 

@@ -12,7 +12,6 @@ import { Flex, styled, Text, useMedia } from 'ui/src'
 import { LearnMoreLink } from 'uniswap/src/components/text/LearnMoreLink'
 import { getNativeAddress } from 'uniswap/src/constants/addresses'
 import { BIPS_BASE } from 'uniswap/src/constants/misc'
-import { UNI } from 'uniswap/src/constants/tokens'
 import { UniswapStaticUrls } from 'uniswap/src/constants/urls'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -26,7 +25,6 @@ import { type FiatNumberType, NumberType } from 'utilities/src/format/types'
 import { supportedChainIdFromGQLChain } from '~/appGraphql/data/chainUtils'
 import { PoolSortFields, TablePool } from '~/appGraphql/data/pools/useTopPools'
 import { gqlToCurrency, OrderDirection, unwrapToken } from '~/appGraphql/data/util'
-import { CurrencyLogo } from '~/components/Logo/CurrencyLogo'
 import { DoubleCurrencyLogo } from '~/components/Logo/DoubleLogo'
 import { Table } from '~/components/Table'
 import { Cell } from '~/components/Table/Cell'
@@ -698,7 +696,6 @@ function RewardAprCell({ apr, isLoading, rewardApr, token0CurrencyId, token1Curr
         <TableText color="$accent1" mr="$spacing4">
           {formatPercent(rewardApr)}
         </TableText>
-        <CurrencyLogo currency={UNI[UniverseChainId.Mainnet]} size={16} />
       </Cell>
     </MouseoverTooltip>
   )

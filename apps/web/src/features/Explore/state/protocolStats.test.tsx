@@ -20,6 +20,11 @@ vi.mock('uniswap/src/data/rest/protocolStats', () => ({
 
 const createTimestampedAmount = (timestamp: number, value: number) => ({ timestamp, value })
 
+const createVolumeWindowData = (currentValue: number, previousValue: number) => [
+  ...Array.from({ length: 30 }, (_, index) => createTimestampedAmount(60 - index, currentValue)),
+  ...Array.from({ length: 30 }, (_, index) => createTimestampedAmount(30 - index, previousValue)),
+]
+
 const mockHistoricalProtocolVolume = {
   Month: {
     v2: [createTimestampedAmount(1, 100)],
@@ -82,6 +87,31 @@ describe('use24hProtocolVolume', () => {
     expect(result.totalVolume).toBe(900)
     expect(result.totalChangePercent).toBe(100)
     expect(result.protocolVolumes).toEqual({ v2: 200, v3: 300, v4: 400 })
+  })
+
+  it('calculates rolling 7d and 30d volume windows', () => {
+    mockUseProtocolStatsQuery.mockReturnValue({
+      ...defaultMockQueryResult,
+      data: {
+        historicalProtocolVolume: {
+          Month: {
+            v2: createVolumeWindowData(10, 5),
+            v3: createVolumeWindowData(20, 10),
+            v4: createVolumeWindowData(30, 15),
+          },
+        },
+      } as unknown as ProtocolStatsResponse,
+    })
+
+    renderWithProvider(<TestComponent24hProtocolVolume />)
+    const resultDiv = screen.getByTestId('result-24h')
+    const result = JSON.parse(resultDiv.textContent || '{}')
+
+    expect(result.totalVolume).toBe(60)
+    expect(result.totalVolume7d).toBe(420)
+    expect(result.totalVolume30d).toBe(1800)
+    expect(result.totalVolume7dChangePercent).toBe(0)
+    expect(result.totalVolume30dChangePercent).toBe(100)
   })
 
   it('uses latest available data per protocol when timestamps differ', () => {

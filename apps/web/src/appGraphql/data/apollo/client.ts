@@ -1,4 +1,5 @@
 import { ApolloClient, from, HttpLink } from '@apollo/client'
+import { UNISWAP_WEB_URL } from 'uniswap/src/constants/urls'
 import { setupSharedApolloCache } from 'uniswap/src/data/cache'
 import { getDatadogApolloLink } from 'utilities/src/logger/datadog/datadogLink'
 import { getRetryLink } from '~/appGraphql/data/apollo/retryLink'
@@ -15,7 +16,7 @@ export const apolloClient = new ApolloClient({
   link: from([datadogLink, retryLink, httpLink]),
   headers: {
     'Content-Type': 'application/json',
-    Origin: 'https://app.uniswap.org',
+    Origin: UNISWAP_WEB_URL,
   },
   cache: setupSharedApolloCache(),
   defaultOptions: {

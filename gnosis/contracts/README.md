@@ -40,7 +40,7 @@ cast code 0x000000000022D473030F116dDEE9F6B43aC78BA3 --rpc-url "$GNOSIS_RPC_URL"
 If absent, deploy from the official repo (it uses the deterministic deployer):
 
 ```bash
-git clone https://github.com/Uniswap/permit2 && cd permit2
+gh repo clone Uniswap/permit2 && cd permit2
 forge install
 forge build
 # Deploys to the canonical address via CREATE2 (salt 0):
@@ -74,7 +74,7 @@ must be wired back into the app (step 3).
 > `permissionsAdapterFactory`; 2.1.0's struct is the **10 fields** in `DeployGnosis.s.sol`.)
 
 ```bash
-git clone https://github.com/Uniswap/universal-router && cd universal-router
+gh repo clone Uniswap/universal-router && cd universal-router
 git checkout 67553d8b067249dd7841d9d1b0eb2997b19d4bf9   # == @uniswap/universal-router@2.1.0
 forge install                  # lib/ submodules (forge-std, v4-periphery, …)
 yarn install --ignore-engines  # REQUIRED: node_modules/@uniswap/{v2-core,v3-core}

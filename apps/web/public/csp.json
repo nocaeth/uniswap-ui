@@ -21,11 +21,9 @@
     "https://challenges.cloudflare.com",
     "https://verify.walletconnect.com/",
     "https://verify.walletconnect.org/",
-    "https://wrapped.uniswap.org",
     "https://auth.privy.io",
     "https://privy.dev.ew.unihq.org",
-    "https://privy.app.corn-staging.com",
-    "https://privy.app.uniswap.org"
+    "https://privy.app.corn-staging.com"
   ],
   "mediaSrc": ["'self'", "*"],
   "formAction": ["'none'"],
@@ -92,7 +90,6 @@
     "https://sparrow.cloudflare.com/",
     "https://statsigapi.net",
     "https://trustwallet.com",
-    "https://uniswap.org",
     "https://valid.rpki.cloudflare.com",
     "https://vercel.com",
     "https://vercel.live/",
@@ -111,7 +108,6 @@
     "https://auth.privy.io",
     "https://privy.dev.ew.unihq.org",
     "https://privy.app.corn-staging.com",
-    "https://privy.app.uniswap.org",
     "https://ipv4-check-perf.radar.cloudflare.com",
     "https://ipv6-check-perf.radar.cloudflare.com/",
     "https://performance.radar.cloudflare.com/",

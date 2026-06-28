@@ -27,7 +27,7 @@ export const addJitter = (date: Date): Date => {
 export const hashAddress = (address: Address): string => namehash(address)
 
 export const getExternalConversionLeadsCookie = (): { key: PlatformIdType; value: string } | void => {
-  // Note: External cookie will be set from other uniswap subdomains (e.g. wallet.uniswap.org)
+  // Note: External cookie may be set by another app surface on the same parent domain.
   // oxlint-disable-next-line typescript/no-unnecessary-condition -- biome-parity: oxlint is stricter here
   const cookieValue = document.cookie
     .split('; ')

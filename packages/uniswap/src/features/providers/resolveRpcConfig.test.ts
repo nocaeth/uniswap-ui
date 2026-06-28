@@ -5,7 +5,7 @@ import type { RpcConfig } from 'uniswap/src/features/providers/rpcUrlSelector'
 import type { Mock } from 'vitest'
 
 const UNIRPC_CONFIG: UniRpcConfig = {
-  rpcUrl: 'https://entry-gateway.example.uniswap.org/rpc',
+  rpcUrl: 'https://entry-gateway.example.org/rpc',
   headers: { 'x-request-source': 'test' },
 }
 

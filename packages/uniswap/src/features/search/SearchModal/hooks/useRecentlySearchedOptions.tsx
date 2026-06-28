@@ -10,7 +10,6 @@ import {
   TokenOption,
   WalletByAddressOption,
 } from 'uniswap/src/components/lists/items/types'
-import { MAX_RECENT_SEARCH_RESULTS } from 'uniswap/src/components/TokenSelector/constants'
 import { useCurrencyInfosToTokenOptions } from 'uniswap/src/components/TokenSelector/hooks/useCurrencyInfosToTokenOptions'
 import { getNativeAddress } from 'uniswap/src/constants/addresses'
 import { normalizeCurrencyIdForMapLookup, normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
@@ -71,7 +70,7 @@ function multichainHistoryToTokenOption(
 export function useRecentlySearchedOptions({
   chainFilter,
   activeTab,
-  numberOfRecentSearchResults = MAX_RECENT_SEARCH_RESULTS,
+  numberOfRecentSearchResults,
 }: {
   chainFilter: UniverseChainId | null
   activeTab: SearchTab

@@ -245,9 +245,7 @@ describe('urls', () => {
     it('builds an article URL without a section', async () => {
       mockEnvironmentAndPlatform(envConfigs.webProd)
       const { createHelpArticleUrl } = await import('./urls')
-      expect(createHelpArticleUrl('12345-Example-Article')).toBe(
-        'https://support.uniswap.org/hc/en-us/articles/12345-Example-Article?product_link=web',
-      )
+      expect(createHelpArticleUrl('12345-Example-Article')).toBe('')
     })
 
     it('appends the section fragment after the query string', async () => {
@@ -257,9 +255,7 @@ describe('urls', () => {
         createHelpArticleUrl('12345-Example-Article', {
           section: 'example-section',
         }),
-      ).toBe(
-        'https://support.uniswap.org/hc/en-us/articles/12345-Example-Article?product_link=web#example-section',
-      )
+      ).toBe('')
     })
 
     it('uses the app-specific product_link for the section URL', async () => {
@@ -269,9 +265,7 @@ describe('urls', () => {
         createHelpArticleUrl('123', {
           section: 'example-section',
         }),
-      ).toBe(
-        'https://support.uniswap.org/hc/en-us/articles/123?product_link=mobileApp#example-section',
-      )
+      ).toBe('')
     })
   })
 })

@@ -7,8 +7,6 @@ import { Flex } from 'ui/src'
 import type { TransactionSettingConfig } from 'uniswap/src/features/transactions/components/settings/types'
 import { TransactionModalInnerContainer } from 'uniswap/src/features/transactions/components/TransactionModal/TransactionModal'
 import { useTransactionModalContext } from 'uniswap/src/features/transactions/components/TransactionModal/TransactionModalContext'
-import { Slippage } from 'uniswap/src/features/transactions/swap/components/SwapFormSettings/settingsConfigurations/slippage/Slippage/Slippage'
-import { TradeRoutingPreference } from 'uniswap/src/features/transactions/swap/components/SwapFormSettings/settingsConfigurations/TradeRoutingPreference/TradeRoutingPreference'
 import { SwapFormSettings } from 'uniswap/src/features/transactions/swap/components/SwapFormSettings/SwapFormSettings'
 import { SwapFormScreenStoreContextProvider } from 'uniswap/src/features/transactions/swap/form/stores/swapFormScreenStore/SwapFormScreenStoreContextProvider'
 import { SwapFormCurrencyInputPanel } from 'uniswap/src/features/transactions/swap/form/SwapFormScreen/SwapFormCurrencyInputPanel'
@@ -41,7 +39,7 @@ const EXIT_STYLE: FlexProps['exitStyle'] = { opacity: 0 }
  */
 export function SwapFormScreen({
   hideContent,
-  settings = [Slippage, TradeRoutingPreference],
+  settings,
   tokenColor,
   focusHook,
   onCurrencyPanelsLayout,

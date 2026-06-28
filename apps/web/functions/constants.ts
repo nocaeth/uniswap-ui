@@ -1,4 +1,5 @@
-export const WATERMARK_URL = 'https://app.uniswap.org/images/324x74_App_Watermark.png'
+export const NOCA_WEB_ORIGIN = 'https://swap.gno.now'
+export const WATERMARK_URL = `${NOCA_WEB_ORIGIN}/images/324x74_App_Watermark.png`
 
 // Cap how long upstream data fetches in the meta-tag injector and image
 // handlers can hang before we fall through to a 404 / un-injected SPA HTML.

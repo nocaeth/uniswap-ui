@@ -104,8 +104,7 @@ export function useWrapCallback({
                   type: WrapType.Wrap,
                 })
                 // oxlint-disable-next-line no-shadow
-                const error = new Error(`Invalid WETH contract
-Please file a bug detailing how this happened - https://github.com/Uniswap/interface/issues/new?labels=bug&template=bug-report.md&title=Invalid%20WETH%20contract`)
+                const error = new Error('Invalid WETH contract. Please report this with the transaction details.')
                 setError(error)
                 throw error
               }

@@ -19,7 +19,7 @@ export function createSession(adapter: SessionAdapter): Session {
     ready: ({ timeoutMs = DEFAULT_READY_TIMEOUT_MS } = {}): Promise<void> => {
       // Fast path: an already-successful session needs no fetch or timer. `ready()`
       // runs on every gated request, so skip the timeout + Promise.race churn.
-      if (adapter.getStatus() === 'success') return Promise.resolve()
+      if (adapter.getStatus() === 'success') {return Promise.resolve()}
       let timer: ReturnType<typeof setTimeout> | undefined
       const timeout = new Promise<void>((_, reject) => {
         timer = setTimeout(() => reject(new SessionReadyTimeoutError(timeoutMs)), timeoutMs)
@@ -33,8 +33,8 @@ export function createSession(adapter: SessionAdapter): Session {
 }
 
 function mapState(status: ReturnType<SessionAdapter['getStatus']>, hasData: boolean): SessionGateState {
-  if (status === 'success') return 'ready'
-  if (status === 'error') return 'failed'
-  if (status === 'idle') return 'idle'
+  if (status === 'success') {return 'ready'}
+  if (status === 'error') {return 'failed'}
+  if (status === 'idle') {return 'idle'}
   return hasData ? 'recovering' : 'initializing'
 }

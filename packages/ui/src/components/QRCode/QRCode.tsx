@@ -154,7 +154,7 @@ export function QRCode({
   size,
   color,
   backgroundColor: inputBackgroundColor,
-  overlayColor = '#FFFFFF',
+  overlayColor,
   quietZone = 8,
   ecl = 'H',
 }: QRCodeProps): JSX.Element | null {

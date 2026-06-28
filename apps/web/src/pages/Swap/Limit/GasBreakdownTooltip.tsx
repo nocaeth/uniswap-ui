@@ -3,7 +3,6 @@ import { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Flex, styled, Text } from 'ui/src'
 import { nativeOnChain } from 'uniswap/src/constants/tokens'
-import { UniswapHelpUrls } from 'uniswap/src/constants/urls'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { useSupportedChainId } from 'uniswap/src/features/chains/hooks/useSupportedChainId'
 import { getChainLabel } from 'uniswap/src/features/chains/utils'
@@ -13,7 +12,6 @@ import { UniswapXRouterLabel, UniswapXGradient } from '~/pages/Swap/Limit/Router
 import { InterfaceTrade } from '~/state/routing/types'
 import { isLimitTrade, isPreviewTrade, isUniswapXTrade } from '~/state/routing/utils'
 import { Divider } from '~/theme/components/Dividers'
-import { ExternalLink } from '~/theme/components/Links'
 
 type GasCostItemProps = { title: ReactNode; itemValue?: React.ReactNode; amount?: number }
 
@@ -88,10 +86,7 @@ function NetworkCostDescription({ native }: { native: Currency }) {
 
   return (
     <Text variant="body4" color="$neutral2">
-      {t('swap.networkCost.paidIn', { sym: native.symbol, chainName })}{' '}
-      <ExternalLink href="https://support.uniswap.org/hc/en-us/articles/8370337377805-What-is-a-network-fee-">
-        {t('common.button.learn')}
-      </ExternalLink>
+      {t('swap.networkCost.paidIn', { sym: native.symbol, chainName })}
     </Text>
   )
 }
@@ -101,7 +96,6 @@ const InlineUniswapXGradient = styled(UniswapXGradient, {
 })
 
 export function UniswapXDescription() {
-  const { t } = useTranslation()
   return (
     <Text variant="body4" color="$neutral2">
       <Trans
@@ -109,8 +103,7 @@ export function UniswapXDescription() {
         components={{
           logo: <InlineUniswapXGradient>UniswapX</InlineUniswapXGradient>,
         }}
-      />{' '}
-      <ExternalLink href={UniswapHelpUrls.articles.uniswapXInfo}>{t('common.button.learn')}</ExternalLink>
+      />
     </Text>
   )
 }

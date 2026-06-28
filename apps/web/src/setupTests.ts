@@ -119,7 +119,7 @@ setupi18n()
 
 // Sets origin to the production origin, because some tests depend on this.
 // This prevents each test file from needing to set this manually.
-globalThis.origin = 'https://app.uniswap.org'
+globalThis.origin = 'https://swap.gno.now'
 
 // Polyfill browser APIs (jest is a node.js environment):
 // oxlint-disable-next-line no-lone-blocks -- block used to scope polyfill assignments

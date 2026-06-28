@@ -1,5 +1,6 @@
 import { GraphQLApi } from '@universe/api'
 import client from 'functions/client'
+import { NOCA_WEB_ORIGIN } from 'functions/constants'
 import { Data, PositionStatus } from 'functions/utils/cache'
 import getPool from 'functions/utils/getPool'
 import { URL_PARAM_TO_CHAIN_ID } from 'uniswap/src/features/chains/chainUrlParam'
@@ -42,7 +43,7 @@ export default async function getPosition({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Origin: 'https://app.uniswap.com',
+        Origin: NOCA_WEB_ORIGIN,
       },
       body: JSON.stringify({
         chainId,
@@ -77,7 +78,7 @@ export default async function getPosition({
     const token0Address = token0.address as string | undefined
     const token1Address = token1.address as string | undefined
     const name = `${token0Symbol}/${token1Symbol}`
-    const title = `${name} on Uniswap`
+    const title = `${name} on NOCA`
     const rawFeeTier = positionData.feeTier != null ? Number(positionData.feeTier) : undefined
     const feeTier = rawFeeTier != null ? `${rawFeeTier / 10_000}%` : undefined
 

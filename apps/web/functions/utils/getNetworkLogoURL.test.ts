@@ -9,7 +9,7 @@ import getNetworkLogoUrl, { OG_NETWORK_BADGE_CHAINS } from 'functions/utils/getN
 describe('getNetworkLogoUrl — UI ?inline / worker build coupling', () => {
   it('every OG badge chain resolves to a PNG data URL inlined from packages/ui', () => {
     for (const chain of OG_NETWORK_BADGE_CHAINS) {
-      const src = getNetworkLogoUrl(chain, 'https://app.uniswap.org')
+      const src = getNetworkLogoUrl(chain, 'https://swap.gno.now')
       expect(src, `${chain}: expected Vite ?inline of ui logos/png; check asset path and worker bundler`).toMatch(
         /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/,
       )

@@ -29,9 +29,9 @@ export function getInitialLogoUrl({
     return CELO_LOGO
   }
 
-  if (checksummedAddress) {
+  if (checksummedAddress && UniswapStaticUrls.uniswapAssetsBlockchainsBaseUrl) {
     return `${UniswapStaticUrls.uniswapAssetsBlockchainsBaseUrl}/${networkName}/assets/${checksummedAddress}/logo.png`
-  } else {
-    return backupImg ?? undefined
   }
+
+  return backupImg ?? undefined
 }

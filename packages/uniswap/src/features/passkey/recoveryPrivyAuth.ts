@@ -4,7 +4,7 @@
  *   - `apps/web/src/components/Passkey/useRecoveryPrivyAuth.ts` uses `@privy-io/react-auth`
  *   - `apps/mobile/.../useRecoveryPrivyAuth.ts` uses `@privy-io/expo`
  *
- * Both surfaces (web app + extension pop-up at app.uniswap.org) share the web
+ * Both surfaces (web app + extension pop-up on the NOCA app origin) share the web
  * implementation. Only the interface lives here so the shared state machine has a
  * stable contract without taking on Privy SDK packages as transitive dependencies.
  */

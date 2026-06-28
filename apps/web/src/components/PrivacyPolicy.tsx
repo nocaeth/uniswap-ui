@@ -1,15 +1,13 @@
 import { SharedEventName } from '@uniswap/analytics-events'
 import { isMobileWeb } from '@universe/environment'
-import { ReactNode, useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, ModalCloseIcon, Text } from 'ui/src'
-import { ArrowUpRight } from 'ui/src/components/icons/ArrowUpRight'
 import { InfoCircle } from 'ui/src/components/icons/InfoCircle'
 import { Modal } from 'uniswap/src/components/modals/Modal'
-import { UniswapStaticUrls } from 'uniswap/src/constants/urls'
 import { ModalName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
-import { Card, DarkGrayCard } from '~/components/Card/cards'
+import { DarkGrayCard } from '~/components/Card/cards'
 import { useModalState } from '~/hooks/useModalState'
 
 export function PrivacyPolicyModal() {
@@ -37,30 +35,6 @@ export function PrivacyPolicyModal() {
         <PrivacyPolicy />
       </Flex>
     </Modal>
-  )
-}
-
-function ExternalLinkCard({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-      <Card
-        backgroundColor="$accent2"
-        width="100%"
-        cursor="pointer"
-        hoverStyle={{ opacity: 0.8 }}
-        pressStyle={{ opacity: 0.7 }}
-      >
-        <Flex row width="100%" justifyContent="space-between" alignItems="center">
-          <Flex row flexWrap="wrap" gap="$gap4" alignItems="center">
-            <InfoCircle size="$icon.20" color="$accent1" strokeWidth={0} />
-            <Text variant="body3" color="$accent1">
-              {children}
-            </Text>
-          </Flex>
-          <ArrowUpRight size="$icon.20" strokeWidth={0} color="$neutral2" />
-        </Flex>
-      </Card>
-    </a>
   )
 }
 
@@ -105,10 +79,6 @@ function PrivacyPolicy() {
       }}
     >
       <Flex gap="$spacing16">
-        <Flex gap="$gap8" width="100%">
-          <ExternalLinkCard href={UniswapStaticUrls.termsOfServiceUrl}>{t('privacy.uniswaptos')}</ExternalLinkCard>
-          <ExternalLinkCard href={UniswapStaticUrls.privacyPolicyUrl}>{t('common.privacyPolicy')}</ExternalLinkCard>
-        </Flex>
         <Text variant="body3" color="$neutral2">
           {t('privacy.thirdPartyApis')}
         </Text>

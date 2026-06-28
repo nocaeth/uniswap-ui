@@ -17,6 +17,7 @@ vi.mock('@universe/api', () => {
   return {
     getEntryGatewayUrl: vi.fn(() => '/entry-gateway'),
     getTransport: vi.fn(() => ({})),
+    tryProvideSession: vi.fn(() => null),
   }
 })
 

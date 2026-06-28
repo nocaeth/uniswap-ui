@@ -154,12 +154,12 @@ function PositionPage({ chainId }: { chainId: EVMUniverseChainId | undefined }) 
     const token0Symbol = positionInfo?.currency0Amount.currency.symbol
     const token1Symbol = positionInfo?.currency1Amount.currency.symbol
     if (!token0Symbol || !token1Symbol || !chainInfo?.urlParam || !tokenIdFromUrl) {
-      return { title: 'Position on Uniswap', url: window.location.href }
+      return { title: 'Position on NOCA', url: window.location.href }
     }
     const poolName = `${token0Symbol}/${token1Symbol}`
     const version = pathname.includes('v3') ? 'v3' : 'v4'
     return {
-      title: `${poolName} on Uniswap`,
+      title: `${poolName} on NOCA`,
       url: window.location.href,
       image: `${window.location.origin}/api/image/positions/${version}/${chainInfo.urlParam}/${tokenIdFromUrl}`,
     }

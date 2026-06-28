@@ -34,7 +34,7 @@ export function requireSessionInterceptor({
       return next(request)
     }
     const session = getSession()
-    if (!session) return next(request)
+    if (!session) {return next(request)}
     return gated({
       session,
       call: () => next(request),

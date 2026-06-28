@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Flex, Text, TouchableArea, useIsDarkMode, useSporeColors } from 'ui/src'
+import { Flex, Text, TouchableArea, useIsDarkMode } from 'ui/src'
 import { iconSizes } from 'ui/src/theme'
 import { NetworkLogo } from 'uniswap/src/components/CurrencyLogo/NetworkLogo'
-import { UniswapStaticUrls } from 'uniswap/src/constants/urls'
 import { MAINNET_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/mainnet'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { SOLANA_CHAIN_INFO } from 'uniswap/src/features/chains/svm/info/solana'
@@ -19,18 +18,11 @@ import { shortenAddress } from 'utilities/src/addresses'
 import { uuid } from 'utilities/src/primitives/uuid'
 import { useEvent } from 'utilities/src/react/hooks'
 import { useActiveAddresses } from '~/features/accounts/store/hooks'
-import { deprecatedStyled } from '~/lib/deprecated-styled'
 import { ProviderConnectedView } from '~/pages/Swap/Buy/ProviderConnectedView'
 import { ProviderConnectionError } from '~/pages/Swap/Buy/ProviderConnectionError'
 import { ConnectingViewWrapper } from '~/pages/Swap/Buy/shared'
 import { addFiatOnRampTransaction } from '~/state/fiatOnRampTransactions/reducer'
 import { FiatOnRampTransactionStatus, FiatOnRampTransactionType } from '~/state/fiatOnRampTransactions/types'
-import { ExternalLink } from '~/theme/components/Links'
-
-const StyledLink = deprecatedStyled(ExternalLink)`
-  font-weight: 535;
-  color: ${({ theme }) => theme.neutral3};
-`
 
 interface ChooseMultiPlatformProviderProps {
   selectedServiceProvider: FORServiceProvider
@@ -157,7 +149,6 @@ export function ChooseMultiPlatformProvider({
 }: ChooseMultiPlatformProviderProps) {
   const isDarkMode = useIsDarkMode()
   const { t } = useTranslation()
-  const colors = useSporeColors()
 
   const activeAddresses = useActiveAddresses()
 
@@ -211,16 +202,8 @@ export function ChooseMultiPlatformProvider({
               serviceProvider: selectedServiceProvider.name,
             }}
             components={{
-              tosLink: (
-                <StyledLink color={colors.neutral3.val} href={UniswapStaticUrls.termsOfServiceUrl}>
-                  {t('common.termsOfService')}
-                </StyledLink>
-              ),
-              privacyLink: (
-                <StyledLink color={colors.neutral3.val} href={UniswapStaticUrls.privacyPolicyUrl}>
-                  {t('common.privacyPolicy')}
-                </StyledLink>
-              ),
+              tosLink: <Text variant="buttonLabel4" display="inline" color="$neutral3" />,
+              privacyLink: <Text variant="buttonLabel4" display="inline" color="$neutral3" />,
             }}
           />
         </Text>

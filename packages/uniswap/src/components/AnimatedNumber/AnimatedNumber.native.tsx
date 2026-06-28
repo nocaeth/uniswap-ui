@@ -338,7 +338,7 @@ const ReanimatedNumber = ({
   balance,
   currency,
   value,
-  loading = false,
+  loading,
   loadingPlaceholderText,
   colorIndicationDuration,
   shouldFadeDecimals,

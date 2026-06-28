@@ -4,11 +4,10 @@ import { UNIVERSAL_ROUTER_ADDRESS, UniversalRouterVersion } from '@uniswap/unive
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { Anchor, Button, Flex, styled, Text, useIsShortMobileDevice } from 'ui/src'
+import { Button, Flex, styled, Text, useIsShortMobileDevice } from 'ui/src'
 import { AlertTriangleFilled } from 'ui/src/components/icons/AlertTriangleFilled'
 import { ArrowDown } from 'ui/src/components/icons/ArrowDown'
 import { nativeOnChain } from 'uniswap/src/constants/tokens'
-import { UniswapHelpUrls } from 'uniswap/src/constants/urls'
 import { LIMIT_SUPPORTED_CHAINS } from 'uniswap/src/features/chains/chainInfo'
 import { useIsSupportedChainId } from 'uniswap/src/features/chains/hooks/useSupportedChainId'
 import { getPrimaryStablecoin } from 'uniswap/src/features/chains/utils'
@@ -58,18 +57,6 @@ const CustomHeightSwapSection = styled(SwapSection, {
 const ShortArrowWrapper = styled(ArrowWrapper, {
   mt: -22,
   mb: -22,
-})
-
-const LearnMore = styled(Text, {
-  variant: 'body3',
-  color: '$accent1',
-  animation: '100ms',
-  hoverStyle: {
-    opacity: 0.6,
-  },
-  focusStyle: {
-    opacity: 0.4,
-  },
 })
 
 type LimitFormProps = {
@@ -449,31 +436,9 @@ function LimitForm({ onCurrencyChange }: LimitFormProps) {
           />
           <Text variant="body3">
             {!isLimitSupportedChain ? (
-              <Trans
-                i18nKey="limits.form.disclaimer.mainnet"
-                components={{
-                  link: (
-                    <Anchor
-                      textDecorationLine="none"
-                      href={UniswapHelpUrls.articles.limitsNetworkSupport}
-                      target="_blank"
-                    >
-                      <LearnMore>{t('common.button.learn')}</LearnMore>
-                    </Anchor>
-                  ),
-                }}
-              />
+              <Trans i18nKey="limits.form.disclaimer.mainnet" />
             ) : (
-              <Trans
-                i18nKey="limits.form.disclaimer.uniswapx"
-                components={{
-                  link: (
-                    <Anchor textDecorationLine="none" href={UniswapHelpUrls.articles.limitsFailure} target="_blank">
-                      <LearnMore>{t('common.button.learn')}</LearnMore>
-                    </Anchor>
-                  ),
-                }}
-              />
+              <Trans i18nKey="limits.form.disclaimer.uniswapx" />
             )}
           </Text>
         </Flex>

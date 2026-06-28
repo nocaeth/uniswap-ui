@@ -1,12 +1,10 @@
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { Flex, Text } from 'ui/src'
 import { Blocked } from 'ui/src/components/icons/Blocked'
-import { CopyHelper } from 'uniswap/src/components/CopyHelper/CopyHelper'
 import { Modal } from 'uniswap/src/components/modals/Modal'
 import { ModalName } from 'uniswap/src/features/telemetry/constants'
 import { useModalInitialState } from '~/hooks/useModalInitialState'
 import { ModalState } from '~/hooks/useModalState'
-import { ExternalLink } from '~/theme/components/Links'
 
 export function ConnectedAccountBlocked({ isOpen, closeModal }: ModalState) {
   const blockedAddress = useModalInitialState(ModalName.BlockedAccount)?.blockedAddress
@@ -23,24 +21,10 @@ export function ConnectedAccountBlocked({ isOpen, closeModal }: ModalState) {
         </Flex>
         <Flex centered gap="$spacing8">
           <Text color="$neutral2" variant="body4" textAlign="center">
-            <Trans
-              i18nKey="common.blocked.reason"
-              components={{ link: <ExternalLink href="https://help.uniswap.org/en/articles/6149816" /> }}
-            />
+            {t('common.blocked.reason')}
           </Text>
           <Text color="$neutral2" variant="body4" textAlign="center">
-            <Trans
-              i18nKey="common.blocked.ifError"
-              components={{
-                emailAddress: (
-                  <Flex mt="$spacing12" alignItems="center">
-                    <CopyHelper toCopy="compliance@uniswap.org" iconSize={16} color="$accent1" iconPosition="right">
-                      compliance@uniswap.org
-                    </CopyHelper>
-                  </Flex>
-                ),
-              }}
-            />
+            {t('common.blocked.ifError')}
           </Text>
         </Flex>
       </Flex>

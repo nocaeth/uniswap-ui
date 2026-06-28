@@ -20,7 +20,7 @@ export enum TrafficFlows {
   DataApi = 'data-api',
 }
 
-export const helpUrl = 'https://support.uniswap.org/hc/en-us'
+export const helpUrl: string = ''
 
 const FLOWS_USING_BETA = [TrafficFlows.FOR]
 
@@ -81,6 +81,10 @@ export function getCloudflareApiBaseUrl(params?: { flow?: TrafficFlows; postfix?
 }
 
 export function createHelpArticleUrl(resourceId: string, options?: { path?: string; section?: string }): string {
+  if (!helpUrl) {
+    return ''
+  }
+
   const { path = 'articles', section } = options ?? {}
   const product = isMobileApp ? 'mobileApp' : isExtensionApp ? 'extension' : 'web'
   // The fragment must come after the query string so the browser resolves it to a section anchor.

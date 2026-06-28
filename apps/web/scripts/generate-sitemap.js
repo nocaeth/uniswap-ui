@@ -19,6 +19,7 @@ function normalizeTokenAddressForCache(address) {
 
 const weekMs = 7 * 24 * 60 * 60 * 1000
 const nowISO = new Date().toISOString()
+const SITE_ORIGIN = 'https://swap.gno.now'
 
 const getTopPoolsQuery = (v3Chain) => `
   query {
@@ -70,7 +71,7 @@ fs.readFile('./public/tokens-sitemap.xml', 'utf8', async (_err, data) => {
         method: 'GET',
         headers: {
           accept: '*/*',
-          origin: 'https://app.uniswap.org',
+          origin: SITE_ORIGIN,
           'content-type': 'application/json',
         },
       },
@@ -82,7 +83,7 @@ fs.readFile('./public/tokens-sitemap.xml', 'utf8', async (_err, data) => {
     })
 
     tokenAddresses.forEach(({ chainName, address }) => {
-      const tokenURL = `https://app.uniswap.org/explore/tokens/${chainName}/${normalizeTokenAddressForCache(address)}`
+      const tokenURL = `${SITE_ORIGIN}/explore/tokens/${chainName}/${normalizeTokenAddressForCache(address)}`
       if (!(tokenURL in tokenURLs)) {
         sitemap.urlset.url.push({
           loc: [tokenURL],
@@ -132,7 +133,7 @@ fs.readFile('./public/pools-sitemap.xml', 'utf8', async (_err, data) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: 'https://app.uniswap.org',
+          Origin: SITE_ORIGIN,
         },
         body: JSON.stringify({ query: getTopPoolsQuery(chainName) }),
       })
@@ -142,7 +143,7 @@ fs.readFile('./public/pools-sitemap.xml', 'utf8', async (_err, data) => {
       const poolAddresses = v3PoolAddresses.concat(v2PoolAddresses)
 
       poolAddresses.forEach((address) => {
-        const poolUrl = `https://app.uniswap.org/explore/pools/${chainName.toLowerCase()}/${normalizeTokenAddressForCache(address)}`
+        const poolUrl = `${SITE_ORIGIN}/explore/pools/${chainName.toLowerCase()}/${normalizeTokenAddressForCache(address)}`
         if (!(poolUrl in poolURLs)) {
           sitemap.urlset.url.push({
             loc: [poolUrl],

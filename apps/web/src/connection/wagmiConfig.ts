@@ -87,7 +87,7 @@ function createWagmiConnectors(params: {
     // so we can disable it to reduce log noise.
     ...(isTestEnv() && !isE2eTestEnv() ? [] : [walletConnect(WC_PARAMS)]),
     coinbaseWallet({
-      appName: 'Uniswap',
+      appName: 'NOCA',
       // CB SDK doesn't pass the parent origin context to their passkey site
       // Flagged to CB team and can remove UNISWAP_WEB_URL once fixed
       appLogoUrl: `${UNISWAP_WEB_URL}${UNISWAP_LOGO}`,

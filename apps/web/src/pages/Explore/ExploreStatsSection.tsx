@@ -26,13 +26,15 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
   const {
     protocolVolumes,
     totalVolume,
+    totalVolume7d,
+    totalVolume30d,
     totalChangePercent: volume24hChangePercent,
+    totalVolume7dChangePercent,
+    totalVolume30dChangePercent,
     isLoading: isVolumeLoading,
   } = use24hProtocolVolume()
   const {
-    totalTVL,
     protocolTVL,
-    totalChangePercent: totalTVL24hrChangePercent,
     protocolChangePercent,
     isLoading: isTVLLoading,
   } = useDailyTVLWithChange()
@@ -53,10 +55,17 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
           { label: t('common.protocol.v2'), value: protocolVolumes.v2 },
         ],
       },
-      { label: t('common.totalUniswapTVL'), value: formatPrice(totalTVL), change: totalTVL24hrChangePercent },
-      { label: t('explore.v2TVL'), value: formatPrice(protocolTVL.v2), change: protocolChangePercent.v2 },
+      {
+        label: t('stats.volume.7d.long'),
+        value: formatPrice(totalVolume7d),
+        change: totalVolume7dChangePercent,
+      },
+      {
+        label: t('stats.volume.30d.long'),
+        value: formatPrice(totalVolume30d),
+        change: totalVolume30dChangePercent,
+      },
       { label: t('explore.v3TVL'), value: formatPrice(protocolTVL.v3), change: protocolChangePercent.v3 },
-      { label: t('explore.v4TVL'), value: formatPrice(protocolTVL.v4), change: protocolChangePercent.v4 },
     ]
 
     // oxlint-disable-next-line typescript/no-unnecessary-condition
@@ -69,14 +78,12 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
     protocolVolumes.v4,
     protocolVolumes.v3,
     protocolVolumes.v2,
-    totalTVL,
-    totalTVL24hrChangePercent,
-    protocolTVL.v2,
+    totalVolume7d,
+    totalVolume30d,
+    totalVolume7dChangePercent,
+    totalVolume30dChangePercent,
     protocolTVL.v3,
-    protocolTVL.v4,
-    protocolChangePercent.v2,
     protocolChangePercent.v3,
-    protocolChangePercent.v4,
   ])
 
   const visibleStats = media.md ? exploreStatsSectionData.slice(0, 2) : exploreStatsSectionData

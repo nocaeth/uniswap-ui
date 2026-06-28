@@ -358,6 +358,9 @@ async function openSupportLink(transactionDetails: TransactionDetails): Promise<
     case TransactionType.OffRampSale:
       return openFORSupportLink(transactionDetails.typeInfo.serviceProvider)
     default:
+      if (!UniswapHelpUrls.requestUrl) {
+        return
+      }
       params.append(SupportLinkParams.WalletAddress, transactionDetails.ownerAddress ?? '') // Wallet Address
       params.append(SupportLinkParams.ReportType, isWebPlatform ? 'uniswap_extension_issue' : 'uw_ios_app') // Report Type Dropdown
       params.append(SupportLinkParams.IssueType, 'uw_transaction_details_page_submission') // Issue type Dropdown

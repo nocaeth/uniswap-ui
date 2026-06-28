@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated } from 'react-native'
 
-export const PulseRipple = ({ rippleColor, size = 24 }: { rippleColor?: string; size: number }): JSX.Element | null => {
+export const PulseRipple = ({ rippleColor, size }: { rippleColor?: string; size: number }): JSX.Element | null => {
   const scaleAnimation = useRef(new Animated.Value(1)).current
   const opacityAnimation = useRef(new Animated.Value(1)).current
   useEffect(() => {

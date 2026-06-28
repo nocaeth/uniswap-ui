@@ -280,7 +280,7 @@ export function useUniswapXSwapCallback({
       // X v2 orders are posted to GPA; X v1 orders are posted to order-service. Their payloads are different.
       if (trade.offchainOrderType === OffchainOrderType.DUTCH_V2_AUCTION) {
         endpoint = 'rfq'
-        // Should follow HardQuoteRequestBody schema type: https://github.com/Uniswap/uniswapx-parameterization-api/blob/main/lib/handlers/hard-quote/schema.ts
+        // Should follow the HardQuoteRequestBody schema type.
         body = {
           encodedInnerOrder: encodedOrder,
           innerSig: signature,

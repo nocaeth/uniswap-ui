@@ -6,10 +6,6 @@ type DynamicConfigOptions = ComponentProps<typeof DynamicConfigDropdown>['option
 
 export const EMBEDDED_WALLET_BASE_URL_OPTIONS: DynamicConfigOptions = [
   {
-    value: 'https://app.uniswap.org',
-    label: 'app.uniswap.org (prod)',
-  },
-  {
     value: 'https://app.corn-staging.com',
     label: 'app.corn-staging.com (staging)',
   },

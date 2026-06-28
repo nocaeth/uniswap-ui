@@ -33,7 +33,7 @@ async function setErc20BalanceViaStorage({
   erc20Address,
   user,
   newBalance,
-  mappingSlot = 0,
+  mappingSlot,
 }: {
   client: AnvilClient
   erc20Address: Address

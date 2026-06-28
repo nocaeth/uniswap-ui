@@ -18,7 +18,7 @@ export function bootstrapSession(ctx: {
   getService: () => SessionInitializationService
   getLogger?: () => Logger
 }): Session {
-  if (cachedSession) return cachedSession
+  if (cachedSession) {return cachedSession}
 
   const options = sessionInitQuery({ getService: ctx.getService, getLogger: ctx.getLogger })
   const queryKey = options.queryKey
@@ -39,7 +39,7 @@ export function bootstrapSession(ctx: {
     hasData: () => SharedQueryClient.getQueryState(queryKey)?.data != null,
     subscribe: (listener) =>
       SharedQueryClient.getQueryCache().subscribe((event) => {
-        if (event.query.queryHash === targetHash) listener()
+        if (event.query.queryHash === targetHash) {listener()}
       }),
   })
 
@@ -71,7 +71,7 @@ export function tryProvideSession(): Session | null {
   try {
     return provideSession()
   } catch (err) {
-    if (err instanceof SessionNotBootstrappedError) return null
+    if (err instanceof SessionNotBootstrappedError) {return null}
     throw err
   }
 }
