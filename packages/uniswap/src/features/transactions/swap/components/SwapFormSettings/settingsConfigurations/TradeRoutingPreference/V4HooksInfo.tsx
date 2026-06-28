@@ -2,7 +2,6 @@ import { isWebPlatform } from '@universe/environment'
 import { useTranslation } from 'react-i18next'
 import { Flex, Text } from 'ui/src'
 import { InfoCircleFilled } from 'ui/src/components/icons/InfoCircleFilled'
-import { UniswapLogo } from 'ui/src/components/icons/UniswapLogo'
 import { zIndexes } from 'ui/src/theme'
 import { WarningSeverity } from 'uniswap/src/components/modals/WarningModal/types'
 import { WarningInfo } from 'uniswap/src/components/modals/WarningModal/WarningInfo'
@@ -22,7 +21,7 @@ export function V4HooksInfo(): JSX.Element {
         rejectText: t('common.button.close'),
         severity: WarningSeverity.None,
         modalName: ModalName.V4HooksInfo,
-        icon: <UniswapLogo size="$icon.24" />,
+        icon: <InfoCircleFilled size="$icon.24" color="$neutral1" />,
         zIndex: zIndexes.popover,
       }}
       trigger={

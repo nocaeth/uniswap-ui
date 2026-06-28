@@ -23,7 +23,7 @@ export function CompanyMenu() {
   return (
     <Trace logPress element={ElementName.NavbarCompanyMenuLogo}>
       <Link to="/" style={{ textDecoration: 'none' }}>
-        <Flex row alignItems="center" p="$spacing8" cursor="pointer" data-testid={TestID.NavUniswapLogo}>
+        <Flex row alignItems="center" p="$spacing8" cursor="pointer" data-testid={TestID.NavBrandLogo}>
           <NocaWordmark />
         </Flex>
       </Link>

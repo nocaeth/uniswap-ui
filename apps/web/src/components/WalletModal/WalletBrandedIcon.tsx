@@ -1,13 +1,13 @@
 import { Flex } from 'ui/src'
-import { UniswapLogo } from 'ui/src/components/icons/UniswapLogo'
+import { WalletFilled } from 'ui/src/components/icons/WalletFilled'
 import { GoogleChromeLogo } from 'ui/src/components/logos/GoogleChromeLogo'
 
-interface UniswapBrandedIconProps {
+interface WalletBrandedIconProps {
   size?: number
   withChromeBadge?: boolean
 }
 
-export function UniswapBrandedIcon({ size = 32, withChromeBadge }: UniswapBrandedIconProps): JSX.Element {
+export function WalletBrandedIcon({ size = 32, withChromeBadge }: WalletBrandedIconProps): JSX.Element {
   const badgeSize = Math.round(size * 0.375)
   const chromeLogoSize = badgeSize - 2
   return (
@@ -21,7 +21,7 @@ export function UniswapBrandedIcon({ size = 32, withChromeBadge }: UniswapBrande
       backgroundColor="$accent2"
       borderRadius="$rounded8"
     >
-      <UniswapLogo color="$accent1" size={size * 0.7} />
+      <WalletFilled color="$accent1" size={size * 0.7} />
       {withChromeBadge && (
         <Flex
           position="absolute"

@@ -13,7 +13,7 @@ import { useEvent } from 'utilities/src/react/hooks'
 import { MenuStateVariant, useSetMenu } from '~/components/AccountDrawer/menuState'
 import { useAccountDrawer } from '~/components/AccountDrawer/MiniPortfolio/hooks'
 import { DetectedBadge } from '~/components/WalletModal/shared'
-import { UniswapBrandedIcon } from '~/components/WalletModal/UniswapBrandedIcon'
+import { WalletBrandedIcon } from '~/components/WalletModal/WalletBrandedIcon'
 import { useRecentConnectorId } from '~/connection/constants'
 import { useIsInjectedWallet } from '~/features/accounts/store/hooks'
 import { ExternalWallet } from '~/features/accounts/store/types'
@@ -42,17 +42,14 @@ function OtherWalletsIcon() {
   )
 }
 
-/**
- * We have custom icons for certain Uniswap Connectors.
- * This function returns the correct icon for the connector.
- */
+/** Returns the correct icon for custom wallet connectors. */
 function getIcon({ wallet, themeColors }: { wallet: ExternalWallet; themeColors: UseSporeColorsReturn }) {
   const iconSize = iconSizes.icon40
 
   if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID) {
-    return <UniswapBrandedIcon size={iconSize} />
+    return <WalletBrandedIcon size={iconSize} />
   } else if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_EXTENSION_RDNS) {
-    return <UniswapBrandedIcon size={iconSize} withChromeBadge />
+    return <WalletBrandedIcon size={iconSize} withChromeBadge />
   } else if (wallet.id === CONNECTION_PROVIDER_IDS.BINANCE_WALLET_CONNECTOR_ID) {
     return <BinanceWalletIcon iconSize={iconSize} />
   } else {
@@ -72,12 +69,8 @@ function getIcon({ wallet, themeColors }: { wallet: ExternalWallet; themeColors:
   }
 }
 
-function getConnectorText({ wallet, t }: { wallet: ExternalWallet; t: ReturnType<typeof useTranslation>['t'] }) {
-  if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID) {
-    return t('common.uniswapMobile')
-  } else {
-    return wallet.name
-  }
+function getConnectorText({ wallet }: { wallet: ExternalWallet }) {
+  return wallet.name
 }
 
 function RightSideDetail({
@@ -108,8 +101,6 @@ export function WalletConnectorOption({
   connectOnPlatform?: Platform | 'any'
   rightSideDetail?: JSX.Element | null
 }) {
-  const { t } = useTranslation()
-
   const { connectWallet, pendingWallet } = useConnectWallet()
 
   const isPendingConnection = pendingWallet?.id === wallet.id
@@ -119,7 +110,7 @@ export function WalletConnectorOption({
 
   const themeColors = useSporeColors()
   const icon = getIcon({ wallet, themeColors })
-  const text = getConnectorText({ wallet, t })
+  const text = getConnectorText({ wallet })
   const isDetected = useIsInjectedWallet(wallet.id)
   // TODO(WEB-4173): Remove isIFrame check when we can update wagmi to version >= 2.9.4
   const isDisabled = Boolean(isPendingConnection && !isIFramed())

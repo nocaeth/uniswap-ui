@@ -8,11 +8,11 @@ import { useENSName } from 'uniswap/src/features/ens/api'
 import { FORServiceProvider } from 'uniswap/src/features/fiatOnRamp/types'
 import { useCexTransferProviders } from 'uniswap/src/features/fiatOnRamp/useCexTransferProviders'
 import { AccountOption } from '~/components/ReceiveCryptoModal/AccountOption'
+import { ProviderConnectedView } from '~/components/ReceiveCryptoModal/ProviderConnectedView'
+import { ProviderConnectionError } from '~/components/ReceiveCryptoModal/ProviderConnectionError'
 import { ProviderOption } from '~/components/ReceiveCryptoModal/ProviderOption'
 import { useOpenReceiveCryptoModal } from '~/components/ReceiveCryptoModal/useOpenReceiveCryptoModal'
 import { useActiveAddresses } from '~/features/accounts/store/hooks'
-import { ProviderConnectedView } from '~/pages/Swap/Buy/ProviderConnectedView'
-import { ProviderConnectionError } from '~/pages/Swap/Buy/ProviderConnectionError'
 import { ReceiveModalState } from '~/types/receiveCryptoModal'
 
 function ActionIcon({ Icon }: { Icon: GeneratedIcon }) {

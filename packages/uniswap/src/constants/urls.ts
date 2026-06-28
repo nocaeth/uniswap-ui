@@ -145,7 +145,7 @@ export const UniswapStaticUrls = {
   webInterfaceTokensUrl: `${UNISWAP_WEB_URL}/explore/tokens`,
   webInterfacePoolsUrl: `${UNISWAP_WEB_URL}/explore/pools`,
   webInterfacePortfolioUrl: `${UNISWAP_WEB_URL}/portfolio`,
-  webInterfaceBuyUrl: `${UNISWAP_WEB_URL}/buy`,
+  webInterfaceBuyUrl: DISABLED_PUBLIC_LINK,
 
   // Feedback Links
   walletFeedbackForm:

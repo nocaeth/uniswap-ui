@@ -3,7 +3,7 @@ import { Flex, Text, useIsDarkMode } from 'ui/src'
 import { ServiceProviderLogoStyles } from 'uniswap/src/features/fiatOnRamp/constants'
 import { FORServiceProvider } from 'uniswap/src/features/fiatOnRamp/types'
 import { getOptionalServiceProviderLogo } from 'uniswap/src/features/fiatOnRamp/utils'
-import { ConnectingViewWrapper } from '~/pages/Swap/Buy/shared'
+import { ConnectingViewWrapper } from '~/components/ReceiveCryptoModal/shared'
 
 interface ProviderConnectedViewProps {
   closeModal?: () => void
