@@ -10,6 +10,21 @@ interface ISdaiZapRouterCheck {
     function swapRouter() external view returns (address);
 }
 
+interface IUSDCTransmuterCheck {
+    function USDC_ON_XDAI() external view returns (address);
+    function USDC_E() external view returns (address);
+    function isEnabled() external view returns (bool);
+}
+
+interface IGnosisAggregationRouterCheck {
+    function swapRouter() external view returns (address);
+    function curveRouter() external view returns (address);
+    function usdcTransmuter() external view returns (address);
+    function USDC() external view returns (address);
+    function USDCE() external view returns (address);
+    function allowedCurveRouteHash(bytes32 routeHash) external view returns (bool);
+}
+
 /// @notice Asserts that every contract the Gnosis-only UI depends on is the expected deployment.
 /// Run BEFORE pointing users at the app:
 ///   forge script CheckDeployments.s.sol --rpc-url "$GNOSIS_RPC_URL"
@@ -26,14 +41,31 @@ contract CheckDeployments is Script {
     address private constant WXDAI = 0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d;
     address private constant SDAI = 0xaf204776c7245bF4147c2612BF6e5972Ee483701;
     address private constant SDAI_ADAPTER = 0xD499b51fcFc66bd31248ef4b28d656d67E591A94;
+    address private constant USDC = 0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83;
+    address private constant USDCE = 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0;
+    address private constant USDT = 0x4ECaBa5870353805a9F068101A40E0f32ed605C6;
+    address private constant GNO = 0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb;
+    address private constant OSGNO = 0xF490c80aAE5f2616d3e3BDa2483E30C4CB21d1A0;
+    address private constant USDC_TRANSMUTER = 0x0392A2F5Ac47388945D8c84212469F545fAE52B2;
+    address private constant CURVE_X3POOL = 0x7f90122BF0700F9E7e1F688fe926940E8839F353;
+    address private constant CURVE_USDCE_SDAI = 0x4a053d86BccCdFB6f85c46B38C5873129212dc1F;
+    address private constant CURVE_GNO_OSGNO = 0xb5814811dC4fC2aC127A1F8Fb708460bF9Fad619;
     address private constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     address private constant EXPECTED_UNIVERSAL_ROUTER = 0xF4f2b4C183a3d412F5de04236c318940ac8e415e;
     address private constant EXPECTED_SDAI_ZAP = 0xd3B13be5822Bcf3949F447840Db33D5556f96824;
+    address private constant EXPECTED_CURVE_ROUTER = 0x0DCDED3545D565bA3B19E683431381007245d983;
+    address private constant EXPECTED_AGGREGATION_ROUTER = 0xC617d916822E554F3a8660D620325Ca4c2f1f1aD;
     bytes32 private constant EXPECTED_UNIVERSAL_ROUTER_CODEHASH =
         0x209fd2a960560715f5abe1413086b46d5c8cc1de09fccdc4582842eaaf3c9cbb;
     bytes32 private constant EXPECTED_SDAI_ZAP_CODEHASH =
         0x0f75440fa5bd1160ae534d521d9810b2a51fe828318666cf72d01306f487221f;
+    bytes32 private constant EXPECTED_CURVE_X3POOL_CODEHASH =
+        0x855fc847a134dc1d35593a59c460e334938f53cb115b2befa8174138a1bb3df6;
+    bytes32 private constant EXPECTED_CURVE_USDCE_SDAI_CODEHASH =
+        0xf45eb6614ddec302ea893b07e94b59ed76d8c8e3c8557a1a51a1118f92fdc5b5;
+    bytes32 private constant EXPECTED_CURVE_GNO_OSGNO_CODEHASH =
+        0xffcbc014a68c4472c911758f87af0f9edade7495bd8d05e29cf8f36657ee6b8f;
 
     bytes4 private constant UR_EXECUTE_SELECTOR = 0x3593564c;
     bytes4 private constant SLICE_OUT_OF_BOUNDS_SELECTOR = 0x3b99b53d;
@@ -51,6 +83,13 @@ contract CheckDeployments is Script {
         _require("WXDAI", WXDAI);
         _require("sDAI", SDAI);
         _require("Savings xDAI adapter", SDAI_ADAPTER);
+        _require("Omnibridge USDC", USDC);
+        _require("USDC.e", USDCE);
+        _require("USDT", USDT);
+        _require("GNO", GNO);
+        _require("osGNO", OSGNO);
+        _require("USDCTransmuter", USDC_TRANSMUTER);
+        _requireUsdcTransmuter();
 
         // Contracts we deploy.
         _require("Permit2", PERMIT2);
@@ -65,6 +104,23 @@ contract CheckDeployments is Script {
         _requireCodeHash("SdaiZapRouter", zap, EXPECTED_SDAI_ZAP_CODEHASH);
         _requireZapWiring(zap);
 
+        address curveRouter = vm.envOr("REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS", EXPECTED_CURVE_ROUTER);
+        address aggregationRouter = vm.envOr("REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS", EXPECTED_AGGREGATION_ROUTER);
+        require(curveRouter == EXPECTED_CURVE_ROUTER, "Unexpected REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS");
+        require(aggregationRouter == EXPECTED_AGGREGATION_ROUTER, "Unexpected GnosisAggregationRouter address");
+        _requireOptionalCodeHash(
+            "Curve Router NG", curveRouter, vm.envOr("EXPECTED_GNOSIS_CURVE_ROUTER_CODEHASH", bytes32(0))
+        );
+        _requireOptionalCodeHash(
+            "GnosisAggregationRouter",
+            aggregationRouter,
+            vm.envOr("EXPECTED_GNOSIS_AGGREGATION_ROUTER_CODEHASH", bytes32(0))
+        );
+        _requireCodeHash("Curve x3pool", CURVE_X3POOL, EXPECTED_CURVE_X3POOL_CODEHASH);
+        _requireCodeHash("Curve USDC.e/sDAI", CURVE_USDCE_SDAI, EXPECTED_CURVE_USDCE_SDAI_CODEHASH);
+        _requireCodeHash("Curve GNO/osGNO", CURVE_GNO_OSGNO, EXPECTED_CURVE_GNO_OSGNO_CODEHASH);
+        _requireAggregationRouterWiring(aggregationRouter, curveRouter);
+
         console2.log("All checked contracts have bytecode on Gnosis.");
     }
 
@@ -78,6 +134,13 @@ contract CheckDeployments is Script {
         require(a.codehash == expected, string.concat(name, " codehash mismatch"));
     }
 
+    function _requireOptionalCodeHash(string memory name, address a, bytes32 expected) internal view {
+        _require(name, a);
+        if (expected != bytes32(0)) {
+            require(a.codehash == expected, string.concat(name, " codehash mismatch"));
+        }
+    }
+
     function _requireZapWiring(address zap) internal view {
         ISdaiZapRouterCheck z = ISdaiZapRouterCheck(zap);
         require(z.WXDAI() == WXDAI, "SdaiZapRouter WXDAI mismatch");
@@ -85,6 +148,60 @@ contract CheckDeployments is Script {
         require(z.adapter() == SDAI_ADAPTER, "SdaiZapRouter adapter mismatch");
         require(z.swapRouter() == SWAP_ROUTER_02, "SdaiZapRouter SwapRouter02 mismatch");
         console2.log("ok: SdaiZapRouter immutables");
+    }
+
+    function _requireUsdcTransmuter() internal view {
+        IUSDCTransmuterCheck t = IUSDCTransmuterCheck(USDC_TRANSMUTER);
+        require(t.USDC_ON_XDAI() == USDC, "USDCTransmuter USDC mismatch");
+        require(t.USDC_E() == USDCE, "USDCTransmuter USDC.e mismatch");
+        require(t.isEnabled(), "USDCTransmuter disabled");
+        console2.log("ok: USDCTransmuter wiring and enabled state");
+    }
+
+    function _requireAggregationRouterWiring(address router, address curveRouter) internal view {
+        IGnosisAggregationRouterCheck r = IGnosisAggregationRouterCheck(router);
+        require(r.swapRouter() == SWAP_ROUTER_02, "AggregationRouter SwapRouter02 mismatch");
+        require(r.curveRouter() == curveRouter, "AggregationRouter Curve router mismatch");
+        require(r.usdcTransmuter() == USDC_TRANSMUTER, "AggregationRouter transmuter mismatch");
+        require(r.USDC() == USDC, "AggregationRouter USDC mismatch");
+        require(r.USDCE() == USDCE, "AggregationRouter USDC.e mismatch");
+
+        address[3] memory x3Tokens = [WXDAI, USDC, USDT];
+        for (uint256 i = 0; i < x3Tokens.length; i++) {
+            for (uint256 j = 0; j < x3Tokens.length; j++) {
+                if (i == j) continue;
+                _requireAggregationCurveRouteHash(r, CURVE_X3POOL, x3Tokens[i], x3Tokens[j], i, j, 1, 3);
+            }
+        }
+        _requireAggregationCurveRouteHash(r, CURVE_USDCE_SDAI, USDCE, SDAI, 0, 1, 1, 2);
+        _requireAggregationCurveRouteHash(r, CURVE_USDCE_SDAI, SDAI, USDCE, 1, 0, 1, 2);
+        _requireAggregationCurveRouteHash(r, CURVE_GNO_OSGNO, GNO, OSGNO, 0, 1, 1, 2);
+        _requireAggregationCurveRouteHash(r, CURVE_GNO_OSGNO, OSGNO, GNO, 1, 0, 1, 2);
+
+        console2.log("ok: GnosisAggregationRouter immutables and Curve route allowlist");
+    }
+
+    function _requireAggregationCurveRouteHash(
+        IGnosisAggregationRouterCheck router,
+        address pool,
+        address tokenIn,
+        address tokenOut,
+        uint256 i,
+        uint256 j,
+        uint256 poolType,
+        uint256 nCoins
+    ) internal view {
+        address[11] memory route;
+        uint256[5][5] memory swapParams;
+        address[5] memory pools;
+        route[0] = tokenIn;
+        route[1] = pool;
+        route[2] = tokenOut;
+        swapParams[0] = [i, j, uint256(1), poolType, nCoins];
+        require(
+            router.allowedCurveRouteHash(keccak256(abi.encode(route, swapParams, pools))),
+            "AggregationRouter Curve route not allowed"
+        );
     }
 
     function _requireUniversalRouterDecodesSdkV3Swap(address ur) internal {

@@ -106,7 +106,9 @@ describe('sdaiZap eligibility', () => {
   it('approval spender is the zap for ERC20 input, none for native input', () => {
     expect(getGnosisSdaiZapApprovalSpender({ tokenIn: WXDAI, tokenOut: USDCE, tradeType: EXACT_INPUT })).toBe(ZAP)
     expect(getGnosisSdaiZapApprovalSpender({ tokenIn: USDCE, tokenOut: WXDAI, tradeType: EXACT_INPUT })).toBe(ZAP)
-    expect(getGnosisSdaiZapApprovalSpender({ tokenIn: NATIVE, tokenOut: USDCE, tradeType: EXACT_INPUT })).toBeUndefined()
+    expect(
+      getGnosisSdaiZapApprovalSpender({ tokenIn: NATIVE, tokenOut: USDCE, tradeType: EXACT_INPUT }),
+    ).toBeUndefined()
     expect(getGnosisSdaiZapApprovalSpender({ tokenIn: USDCE, tokenOut: EURE, tradeType: EXACT_INPUT })).toBeUndefined()
   })
 })

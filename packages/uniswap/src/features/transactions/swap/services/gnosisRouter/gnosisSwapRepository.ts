@@ -11,6 +11,7 @@ import type {
   SwapRequestParams,
 } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/evm/evmSwapRepository'
 import { SDAI_ADAPTER_ABI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
+import { buildGnosisAggregationTransaction } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
 import {
   GNOSIS_SDAI_ADAPTER_ADDRESS,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
@@ -130,6 +131,15 @@ export function createGnosisEVMSwapRepository(): EVMSwapRepository {
         return {
           requestId: 'gnosis-local',
           transactions: [sdaiZapTransaction],
+          gasFee: quote.gasFee ?? '0',
+        }
+      }
+
+      const aggregationTransaction = buildGnosisAggregationTransaction({ quote, deadline: params.deadline })
+      if (aggregationTransaction) {
+        return {
+          requestId: 'gnosis-local',
+          transactions: [aggregationTransaction],
           gasFee: quote.gasFee ?? '0',
         }
       }

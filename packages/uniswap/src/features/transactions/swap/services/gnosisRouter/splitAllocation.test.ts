@@ -134,9 +134,15 @@ describe('splitAllocation', () => {
     it('accepts only when the split clears the bps improvement floor', () => {
       // realistic amount so 5 bps is meaningful; threshold = 1_000_000 * 10005/10000 = 1_000_500
       const single = bn(1_000_000)
-      expect(passesAcceptGate({ splitOutput: bn(1_000_400), singleBestOutput: single, minImprovementBps: 5 })).toBe(false) // ~4 bps
-      expect(passesAcceptGate({ splitOutput: bn(1_000_500), singleBestOutput: single, minImprovementBps: 5 })).toBe(false) // exactly 5 bps, not strictly greater
-      expect(passesAcceptGate({ splitOutput: bn(1_000_600), singleBestOutput: single, minImprovementBps: 5 })).toBe(true) // ~6 bps
+      expect(passesAcceptGate({ splitOutput: bn(1_000_400), singleBestOutput: single, minImprovementBps: 5 })).toBe(
+        false,
+      ) // ~4 bps
+      expect(passesAcceptGate({ splitOutput: bn(1_000_500), singleBestOutput: single, minImprovementBps: 5 })).toBe(
+        false,
+      ) // exactly 5 bps, not strictly greater
+      expect(passesAcceptGate({ splitOutput: bn(1_000_600), singleBestOutput: single, minImprovementBps: 5 })).toBe(
+        true,
+      ) // ~6 bps
       expect(passesAcceptGate({ splitOutput: single, singleBestOutput: single, minImprovementBps: 5 })).toBe(false) // no gain
       expect(passesAcceptGate({ splitOutput: bn(999_000), singleBestOutput: single, minImprovementBps: 5 })).toBe(false) // worse
     })

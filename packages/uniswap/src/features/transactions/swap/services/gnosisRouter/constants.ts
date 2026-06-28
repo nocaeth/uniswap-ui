@@ -24,11 +24,18 @@ export const GNOSIS_V3_FACTORY_ADDRESS = V3_CORE_FACTORY_ADDRESSES[UniverseChain
 // Routing hubs used to build multi-hop candidate paths (lowercased addresses).
 export const GNOSIS_WXDAI = '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
 export const GNOSIS_USDCE = '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0'
-export const GNOSIS_USDT = '0x4eCAbA5870353805a9f068101A8e0e64dD33cD47'
+export const GNOSIS_USDT = '0x4ECaBa5870353805a9F068101A40E0f32ed605C6'
 export const GNOSIS_WETH = '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1'
 export const GNOSIS_WSTETH = '0x6c76971f98945ae98dd7d4dfca8711ebea946ea6'
 export const GNOSIS_SDAI = '0xaf204776c7245bf4147c2612bf6e5972ee483701'
+export const GNOSIS_GNO = '0x9c58bacc331c9aa871afd802db6379a98e80cedb'
+export const GNOSIS_OSGNO = '0xf490c80aae5f2616d3e3bda2483e30c4cb21d1a0'
 export const GNOSIS_SDAI_ADAPTER_ADDRESS = '0xD499b51fcFc66bd31248ef4b28d656d67E591A94'
+export const GNOSIS_USDC = '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
+export const GNOSIS_USDC_TRANSMUTER_ADDRESS = '0x0392A2F5Ac47388945D8c84212469F545fAE52B2'
+export const GNOSIS_CURVE_XDAI_USDC_USDT_POOL = '0x7f90122BF0700F9E7e1F688fe926940E8839F353'
+export const GNOSIS_CURVE_USDCE_SDAI_POOL = '0x4a053d86bcccdfb6f85c46b38c5873129212dc1f'
+export const GNOSIS_CURVE_GNO_OSGNO_POOL = '0xb5814811dc4fc2ac127a1f8fb708460bf9fad619'
 export const GNOSIS_EURE_V2 = GNOSIS_EURE_CANONICAL_ADDRESS
 // EURe v1 is intentionally not a routing hub.
 export const GNOSIS_EURE_V1 = GNOSIS_EURE_LEGACY_ADDRESS
@@ -113,6 +120,22 @@ export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
  */
 export const GNOSIS_SDAI_ZAP_ADDRESS: string =
   process.env['REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS'] ?? '0x0000000000000000000000000000000000000000'
+
+/**
+ * Purpose-built exact-input aggregation router for Gnosis. It can atomically split across typed
+ * Uniswap V3 / Curve / USDC-transmuter steps and enforce one aggregate min-out. Defaults to the
+ * production Gnosis deployment; override with REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS for tests
+ * or replacement deployments.
+ */
+export const GNOSIS_AGGREGATION_ROUTER_ADDRESS: string =
+  process.env['REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS'] ?? '0xC617d916822E554F3a8660D620325Ca4c2f1f1aD'
+
+/**
+ * Curve Router NG address used for quoting the curated Curve leg set. Defaults to Curve's Gnosis
+ * deployment; override with REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS for tests or replacement routing.
+ */
+export const GNOSIS_CURVE_ROUTER_ADDRESS: string =
+  process.env['REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS'] ?? '0x0DCDED3545D565bA3B19E683431381007245d983'
 
 /**
  * Split-fill routing (see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).

@@ -3,6 +3,8 @@ import { BigNumber } from '@ethersproject/bignumber'
 import { Contract } from '@ethersproject/contracts'
 import type { JsonRpcProvider } from '@ethersproject/providers'
 import { FeeAmount } from '@uniswap/v3-sdk'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import {
   MULTICALL3_ABI,
   V3_FACTORY_ABI,
@@ -14,8 +16,6 @@ import {
   GNOSIS_MULTICALL3_ADDRESS,
   GNOSIS_V3_FACTORY_ADDRESS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
-import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import {
   normalizeGnosisRouteTokenAddress,
   type GnosisPoolGraphEdge,

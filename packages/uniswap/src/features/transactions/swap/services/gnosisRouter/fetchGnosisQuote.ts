@@ -17,6 +17,24 @@ import {
   V3_POOL_STATE_ABI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
 import {
+  GNOSIS_AGGREGATION_QUOTE_ID,
+  GnosisAggregationStepType,
+  GnosisTransmuteDirection,
+  type GnosisAggregationLeg,
+  type GnosisAggregationQuote,
+  type GnosisAggregationStep,
+  type GnosisCurveRouteSpec,
+  curveRouterInterface,
+  encodeGnosisAggregationCurveStepData,
+  encodeGnosisAggregationTransmuteStepData,
+  encodeGnosisAggregationV3StepData,
+  getGnosisCurveDirectPoolRoute,
+  getGnosisCurveX3PoolRoute,
+  getGnosisTransmuteDirection,
+  isGnosisAggregationEnabled,
+  usdcTransmuterInterface,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
+import {
   buildPermit2ApproveData,
   PERMIT2_ADDRESS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/approvals'
@@ -31,12 +49,15 @@ import {
   GNOSIS_MIN_CANDIDATE_POOL_TVL_USD,
   GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
   GNOSIS_MULTICALL3_ADDRESS,
+  GNOSIS_CURVE_ROUTER_ADDRESS,
   GNOSIS_QUOTE_TIMEOUT_MS,
   GNOSIS_QUOTER_ADDRESS,
   GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_SDAI,
   GNOSIS_SPLIT_ENABLED,
   GNOSIS_SPLIT_GRID_STEPS,
+  GNOSIS_USDC,
+  GNOSIS_USDC_TRANSMUTER_ADDRESS,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
   GNOSIS_USDCE,
   GNOSIS_USDT,
@@ -103,6 +124,7 @@ const poolInterface = new Interface(V3_POOL_STATE_ABI)
 const erc20MetaInterface = new Interface(ERC20_METADATA_ABI)
 const permit2Interface = new Interface(PERMIT2_ABI)
 const sdaiPreviewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
+const erc20BalanceInterface = new Interface(['function balanceOf(address) view returns (uint256)'])
 
 function getGnosisSlippageTolerance(params: Pick<TradingApi.QuoteRequest, 'slippageTolerance'>): number {
   return params.slippageTolerance ?? DEFAULT_GNOSIS_SLIPPAGE_PERCENT
@@ -142,6 +164,7 @@ interface TokenMeta {
 
 const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   [GNOSIS_WXDAI.toLowerCase()]: { symbol: 'WXDAI', decimals: 18 },
+  [GNOSIS_USDC.toLowerCase()]: { symbol: 'USDC', decimals: 6 },
   [GNOSIS_USDCE.toLowerCase()]: { symbol: 'USDC.e', decimals: 6 },
   [GNOSIS_USDT.toLowerCase()]: { symbol: 'USDT', decimals: 6 },
   [GNOSIS_WETH.toLowerCase()]: { symbol: 'WETH', decimals: 18 },
@@ -559,6 +582,462 @@ async function resolveQuoteLegs(args: {
     minImprovementBps: GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
   })
   return accepted ? split.legs : singleLeg
+}
+
+const AGGREGATION_ROUTER_OVERHEAD_GAS = BigNumber.from(70_000)
+const AGGREGATION_V3_STEP_OVERHEAD_GAS = BigNumber.from(25_000)
+const AGGREGATION_CURVE_STEP_GAS = BigNumber.from(220_000)
+const AGGREGATION_TRANSMUTER_GAS = BigNumber.from(95_000)
+
+interface AggregationState {
+  transmuterEnabled: boolean
+  transmuterUsdcBalance: BigNumber
+}
+
+interface CurveAggregationTemplate {
+  label: string
+  curve: GnosisCurveRouteSpec
+  preTransmute?: GnosisTransmuteDirection
+  postTransmute?: GnosisTransmuteDirection
+}
+
+interface AggregationLegQuote {
+  label: string
+  amountIn: BigNumber
+  amountOut: BigNumber
+  gasEstimate: BigNumber
+  steps: GnosisAggregationStep[]
+}
+
+interface AggregationCandidate {
+  legs: AggregationLegQuote[]
+  totalOut: BigNumber
+  gasEstimate: BigNumber
+  routeString: string
+}
+
+function isSameAddress(a: string | undefined, b: string): boolean {
+  return Boolean(a && a.toLowerCase() === b.toLowerCase())
+}
+
+async function readAggregationState(provider: JsonRpcProvider): Promise<AggregationState> {
+  const calls: ReadCall[] = [
+    {
+      target: GNOSIS_USDC_TRANSMUTER_ADDRESS,
+      allowFailure: true,
+      callData: usdcTransmuterInterface.encodeFunctionData('isEnabled'),
+    },
+    {
+      target: GNOSIS_USDC,
+      allowFailure: true,
+      callData: erc20BalanceInterface.encodeFunctionData('balanceOf', [GNOSIS_USDC_TRANSMUTER_ADDRESS]),
+    },
+  ]
+  let enabledResult: { success: boolean; returnData: string } | undefined
+  let balanceResult: { success: boolean; returnData: string } | undefined
+  try {
+    ;[enabledResult, balanceResult] = await getMulticall(provider).callStatic.aggregate3(calls)
+  } catch {
+    return { transmuterEnabled: false, transmuterUsdcBalance: BigNumber.from(0) }
+  }
+
+  let transmuterEnabled = false
+  if (enabledResult?.success) {
+    try {
+      transmuterEnabled = Boolean(
+        usdcTransmuterInterface.decodeFunctionResult('isEnabled', enabledResult.returnData)[0],
+      )
+    } catch {
+      transmuterEnabled = false
+    }
+  }
+
+  let transmuterUsdcBalance = BigNumber.from(0)
+  if (balanceResult?.success) {
+    try {
+      transmuterUsdcBalance = BigNumber.from(
+        erc20BalanceInterface.decodeFunctionResult('balanceOf', balanceResult.returnData)[0],
+      )
+    } catch {
+      transmuterUsdcBalance = BigNumber.from(0)
+    }
+  }
+  return { transmuterEnabled, transmuterUsdcBalance }
+}
+
+function buildCurveAggregationTemplate(args: {
+  tokenIn: string
+  tokenOut: string
+}): CurveAggregationTemplate | undefined {
+  const direct = getGnosisCurveDirectPoolRoute({ tokenIn: args.tokenIn, tokenOut: args.tokenOut })
+  if (direct) {
+    return { label: direct.label, curve: direct }
+  }
+
+  if (isSameAddress(args.tokenIn, GNOSIS_USDCE)) {
+    const curve = getGnosisCurveX3PoolRoute({ tokenIn: GNOSIS_USDC, tokenOut: args.tokenOut })
+    if (curve) {
+      return { label: 'USDC.e->USDC + Curve x3pool', curve, preTransmute: GnosisTransmuteDirection.UsdceToUsdc }
+    }
+  }
+
+  if (isSameAddress(args.tokenOut, GNOSIS_USDCE)) {
+    const curve = getGnosisCurveX3PoolRoute({ tokenIn: args.tokenIn, tokenOut: GNOSIS_USDC })
+    if (curve) {
+      return { label: 'Curve x3pool + USDC->USDC.e', curve, postTransmute: GnosisTransmuteDirection.UsdcToUsdce }
+    }
+  }
+
+  return undefined
+}
+
+function buildDirectTransmuterLeg(args: {
+  amount: BigNumber
+  direction: GnosisTransmuteDirection
+}): AggregationLegQuote {
+  return {
+    label:
+      args.direction === GnosisTransmuteDirection.UsdceToUsdc ? 'USDC.e->USDC transmuter' : 'USDC->USDC.e transmuter',
+    amountIn: args.amount,
+    amountOut: args.amount,
+    gasEstimate: AGGREGATION_TRANSMUTER_GAS,
+    steps: [
+      {
+        stepType: GnosisAggregationStepType.Transmute,
+        data: encodeGnosisAggregationTransmuteStepData(args.direction),
+      },
+    ],
+  }
+}
+
+function buildV3AggregationLeg(quoted: QuotedRoute): AggregationLegQuote {
+  return {
+    label: 'Uniswap V3',
+    amountIn: quoted.amountIn,
+    amountOut: quoted.amountOut,
+    gasEstimate: quoted.gasEstimate.add(AGGREGATION_V3_STEP_OVERHEAD_GAS),
+    steps: [
+      {
+        stepType: GnosisAggregationStepType.V3,
+        data: encodeGnosisAggregationV3StepData({
+          path: encodePath({ tokens: quoted.route.tokens, fees: quoted.route.fees, exactOutput: false }),
+          amountOutMinimum: 0,
+        }),
+      },
+    ],
+  }
+}
+
+function buildCurveAggregationLeg(args: {
+  template: CurveAggregationTemplate
+  amountIn: BigNumber
+  amountOut: BigNumber
+}): AggregationLegQuote {
+  const steps: GnosisAggregationStep[] = []
+  let gasEstimate = AGGREGATION_CURVE_STEP_GAS
+  if (args.template.preTransmute !== undefined) {
+    gasEstimate = gasEstimate.add(AGGREGATION_TRANSMUTER_GAS)
+    steps.push({
+      stepType: GnosisAggregationStepType.Transmute,
+      data: encodeGnosisAggregationTransmuteStepData(args.template.preTransmute),
+    })
+  }
+  steps.push({
+    stepType: GnosisAggregationStepType.Curve,
+    data: encodeGnosisAggregationCurveStepData({
+      route: args.template.curve.route,
+      swapParams: args.template.curve.swapParams,
+      pools: args.template.curve.pools,
+      amountOutMinimum: 0,
+    }),
+  })
+  if (args.template.postTransmute !== undefined) {
+    gasEstimate = gasEstimate.add(AGGREGATION_TRANSMUTER_GAS)
+    steps.push({
+      stepType: GnosisAggregationStepType.Transmute,
+      data: encodeGnosisAggregationTransmuteStepData(args.template.postTransmute),
+    })
+  }
+
+  return {
+    label: args.template.label,
+    amountIn: args.amountIn,
+    amountOut: args.amountOut,
+    gasEstimate,
+    steps,
+  }
+}
+
+function curveTemplateCanSpend(args: {
+  template: CurveAggregationTemplate
+  state: AggregationState
+  amount: BigNumber
+}): boolean {
+  if (
+    !args.state.transmuterEnabled &&
+    (args.template.preTransmute !== undefined || args.template.postTransmute !== undefined)
+  ) {
+    return false
+  }
+  if (args.template.preTransmute === GnosisTransmuteDirection.UsdceToUsdc) {
+    return args.state.transmuterUsdcBalance.gte(args.amount)
+  }
+  return true
+}
+
+async function quoteCurveTemplateAmountPairs(args: {
+  provider: JsonRpcProvider
+  template: CurveAggregationTemplate
+  state: AggregationState
+  amounts: BigNumber[]
+}): Promise<Map<string, AggregationLegQuote>> {
+  const spendableAmounts = args.amounts.filter((amount) =>
+    curveTemplateCanSpend({ template: args.template, state: args.state, amount }),
+  )
+  if (!spendableAmounts.length) {
+    return new Map()
+  }
+
+  const calls: ReadCall[] = spendableAmounts.map((amount) => ({
+    target: GNOSIS_CURVE_ROUTER_ADDRESS,
+    allowFailure: true,
+    callData: curveRouterInterface.encodeFunctionData('get_dy', [
+      args.template.curve.route,
+      args.template.curve.swapParams,
+      amount,
+      args.template.curve.pools,
+    ]),
+  }))
+  let results: { success: boolean; returnData: string }[]
+  try {
+    results = await getMulticall(args.provider).callStatic.aggregate3(calls)
+  } catch {
+    return new Map()
+  }
+
+  const quotedByAmount = new Map<string, AggregationLegQuote>()
+  results.forEach((result, index) => {
+    const amountIn = spendableAmounts[index]
+    if (!amountIn || !result.success) {
+      return
+    }
+    try {
+      const amountOut = BigNumber.from(curveRouterInterface.decodeFunctionResult('get_dy', result.returnData)[0])
+      if (!amountOut.isZero()) {
+        quotedByAmount.set(
+          amountIn.toString(),
+          buildCurveAggregationLeg({ template: args.template, amountIn, amountOut }),
+        )
+      }
+    } catch {
+      // Ignore undecodable Curve quote results.
+    }
+  })
+  return quotedByAmount
+}
+
+function buildAggregationCandidate(legs: AggregationLegQuote[]): AggregationCandidate {
+  return {
+    legs,
+    totalOut: legs.reduce((sum, leg) => sum.add(leg.amountOut), BigNumber.from(0)),
+    gasEstimate: AGGREGATION_ROUTER_OVERHEAD_GAS.add(
+      legs.reduce((sum, leg) => sum.add(leg.gasEstimate), BigNumber.from(0)),
+    ),
+    routeString: legs.map((leg) => leg.label).join(' + '),
+  }
+}
+
+async function buildAggregationSplitCandidate(args: {
+  provider: JsonRpcProvider
+  amount: BigNumber
+  v3: QuotedRoute
+  curveTemplate: CurveAggregationTemplate
+  aggregationState: AggregationState
+}): Promise<AggregationCandidate | undefined> {
+  const allocations = enumerateAllocations({
+    total: args.amount,
+    legs: 2,
+    steps: GNOSIS_SPLIT_GRID_STEPS,
+    deepestLegIndex: 0,
+  })
+  const amounts = [...new Set(allocations.flatMap((allocation) => allocation.map((legAmount) => legAmount.toString())))]
+    .map((amount) => BigNumber.from(amount))
+    .filter((amount) => !amount.isZero())
+
+  let quotedV3: (QuotedRoute | undefined)[]
+  let quotedCurve: Map<string, AggregationLegQuote>
+  try {
+    ;[quotedV3, quotedCurve] = await Promise.all([
+      quoteRouteAmountPairs({
+        provider: args.provider,
+        pairs: amounts.map((amount) => ({ route: args.v3.route, amount })),
+        tradeType: TradingApi.TradeType.EXACT_INPUT,
+      }),
+      quoteCurveTemplateAmountPairs({
+        provider: args.provider,
+        template: args.curveTemplate,
+        state: args.aggregationState,
+        amounts,
+      }),
+    ])
+  } catch {
+    return undefined
+  }
+  const v3ByAmount = new Map<string, AggregationLegQuote>()
+  quotedV3.forEach((quoted) => {
+    if (quoted) {
+      v3ByAmount.set(quoted.amountIn.toString(), buildV3AggregationLeg(quoted))
+    }
+  })
+
+  const best = selectBestSplit({
+    allocations,
+    outputForLeg: (legIndex, legAmount) =>
+      legIndex === 0
+        ? v3ByAmount.get(legAmount.toString())?.amountOut
+        : quotedCurve.get(legAmount.toString())?.amountOut,
+  })
+  if (!best || activeLegCount(best.allocation) < 2) {
+    return undefined
+  }
+
+  const v3Leg = v3ByAmount.get(best.allocation[0]?.toString() ?? '')
+  const curveLeg = quotedCurve.get(best.allocation[1]?.toString() ?? '')
+  if (!v3Leg || !curveLeg) {
+    return undefined
+  }
+  return buildAggregationCandidate([v3Leg, curveLeg])
+}
+
+async function tryBuildAggregationQuote(args: {
+  provider: JsonRpcProvider
+  params: TradingApi.QuoteRequest & { isUSDQuote?: boolean }
+  inputToken: string
+  outputToken: string
+  amount: BigNumber
+  bestV3?: QuotedRoute
+  v3BaselineOut?: BigNumber
+}): Promise<DiscriminatedQuoteResponse | undefined> {
+  if (
+    args.params.type !== TradingApi.TradeType.EXACT_INPUT ||
+    args.params.isUSDQuote ||
+    !isGnosisAggregationEnabled()
+  ) {
+    return undefined
+  }
+
+  const directTransmute = getGnosisTransmuteDirection({ tokenIn: args.inputToken, tokenOut: args.outputToken })
+  const curveTemplate = buildCurveAggregationTemplate({ tokenIn: args.inputToken, tokenOut: args.outputToken })
+  if (directTransmute === undefined && !curveTemplate) {
+    return undefined
+  }
+
+  const aggregationState = await readAggregationState(args.provider)
+  const candidates: AggregationCandidate[] = []
+  if (
+    directTransmute !== undefined &&
+    aggregationState.transmuterEnabled &&
+    (directTransmute !== GnosisTransmuteDirection.UsdceToUsdc ||
+      aggregationState.transmuterUsdcBalance.gte(args.amount))
+  ) {
+    candidates.push(
+      buildAggregationCandidate([buildDirectTransmuterLeg({ amount: args.amount, direction: directTransmute })]),
+    )
+  }
+
+  if (curveTemplate) {
+    const quotedCurve = await quoteCurveTemplateAmountPairs({
+      provider: args.provider,
+      template: curveTemplate,
+      state: aggregationState,
+      amounts: [args.amount],
+    })
+    const curveLeg = quotedCurve.get(args.amount.toString())
+    if (curveLeg) {
+      candidates.push(buildAggregationCandidate([curveLeg]))
+    }
+    if (args.bestV3) {
+      const split = await buildAggregationSplitCandidate({
+        provider: args.provider,
+        amount: args.amount,
+        v3: args.bestV3,
+        curveTemplate,
+        aggregationState,
+      })
+      if (split) {
+        candidates.push(split)
+      }
+    }
+  }
+
+  if (!candidates.length) {
+    return undefined
+  }
+  candidates.sort((a, b) => (a.totalOut.gt(b.totalOut) ? -1 : a.totalOut.lt(b.totalOut) ? 1 : 0))
+  const best = candidates[0]
+  if (!best) {
+    return undefined
+  }
+  const baselineOut = args.v3BaselineOut ?? BigNumber.from(0)
+  if (
+    !baselineOut.isZero() &&
+    !passesAcceptGate({
+      splitOutput: best.totalOut,
+      singleBestOutput: baselineOut,
+      minImprovementBps: GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
+    })
+  ) {
+    return undefined
+  }
+
+  const slippage = getGnosisSlippageTolerance(args.params)
+  const { maximumAmountIn, minimumAmountOut } = getGnosisQuoteSlippageAmounts({
+    amountIn: args.amount,
+    amountOut: best.totalOut,
+    tradeType: TradingApi.TradeType.EXACT_INPUT,
+    slippagePercent: slippage,
+  })
+  const [blockNumber, gasPrice] = await Promise.all([args.provider.getBlockNumber(), args.provider.getGasPrice()])
+  const quote: TradingApi.ClassicQuote = {
+    chainId: GNOSIS_CHAIN_ID,
+    swapper: args.params.swapper,
+    input: { token: args.inputToken, amount: args.amount.toString(), maximumAmount: maximumAmountIn.toString() },
+    output: {
+      token: args.outputToken,
+      amount: best.totalOut.toString(),
+      minimumAmount: minimumAmountOut.toString(),
+      recipient: args.params.recipient ?? args.params.swapper,
+    },
+    tradeType: TradingApi.TradeType.EXACT_INPUT,
+    slippage,
+    route: [],
+    routeString: best.routeString,
+    quoteId: GNOSIS_AGGREGATION_QUOTE_ID,
+    gasUseEstimate: best.gasEstimate.toString(),
+    gasFee: best.gasEstimate.mul(gasPrice).toString(),
+    blockNumber: String(blockNumber),
+    priceImpact: 0,
+    portionBips: 0,
+  }
+  const aggregationQuote = quote as GnosisAggregationQuote
+  aggregationQuote.aggregation = {
+    tokenIn: args.inputToken,
+    tokenOut: args.outputToken,
+    legs: best.legs.map(
+      (leg): GnosisAggregationLeg => ({
+        amountIn: leg.amountIn.toString(),
+        steps: leg.steps,
+        label: leg.label,
+      }),
+    ),
+  }
+
+  return {
+    requestId: 'gnosis-local',
+    routing: TradingApi.Routing.CLASSIC,
+    permitData: null,
+    quote: aggregationQuote,
+  } as DiscriminatedQuoteResponse
 }
 
 interface ReadCall {
@@ -1018,6 +1497,10 @@ async function fetchGnosisQuoteInner(
   const nativeOut = isNativeSentinel(params.tokenOut)
   const resolvedIn = nativeIn ? GNOSIS_WXDAI : params.tokenIn
   const resolvedOut = nativeOut ? GNOSIS_WXDAI : params.tokenOut
+  // The swap pipeline detects native via the zero/eee sentinel on the quote's input/output
+  // token, while the route pools stay denominated in the wrapped (WXDAI) tokens.
+  const inputToken = nativeIn ? params.tokenIn : resolvedIn
+  const outputToken = nativeOut ? params.tokenOut : resolvedOut
 
   const sdaiAdapterQuote = await fetchGnosisSdaiAdapterQuote({ provider, params, tradeType, amount, indicative })
   if (sdaiAdapterQuote) {
@@ -1042,6 +1525,10 @@ async function fetchGnosisQuoteInner(
   })
   const poolEdges = await annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges)
   if (!poolEdges.length) {
+    const aggregationQuote = await tryBuildAggregationQuote({ provider, params, inputToken, outputToken, amount })
+    if (aggregationQuote) {
+      return aggregationQuote
+    }
     throw new Error(`No initialized Gnosis V3 pools found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
   const poolStateByKey = buildPoolStateByKey(poolEdges)
@@ -1074,14 +1561,14 @@ async function fetchGnosisQuoteInner(
       break
     }
   }
+
   if (!best) {
+    const aggregationQuote = await tryBuildAggregationQuote({ provider, params, inputToken, outputToken, amount })
+    if (aggregationQuote) {
+      return aggregationQuote
+    }
     throw new Error(`No Gnosis V3 route found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
-
-  // The swap pipeline detects native via the zero/eee sentinel on the quote's input/output
-  // token, while the route pools stay denominated in the wrapped (WXDAI) tokens.
-  const inputToken = nativeIn ? params.tokenIn : resolvedIn
-  const outputToken = nativeOut ? params.tokenOut : resolvedOut
 
   // Indicative quotes only need input/output amounts; skip all the extra reads. Apply the same
   // absurd-quote guard as the firm path here too, using the cheap discovery-state impact estimate,
@@ -1127,6 +1614,20 @@ async function fetchGnosisQuoteInner(
   const totalAmountIn = legs.reduce((sum, leg) => sum.add(leg.amountIn), BigNumber.from(0))
   const totalAmountOut = legs.reduce((sum, leg) => sum.add(leg.amountOut), BigNumber.from(0))
   const totalGasEstimate = legs.reduce((sum, leg) => sum.add(leg.gasEstimate), BigNumber.from(0))
+
+  const aggregationQuote = await tryBuildAggregationQuote({
+    provider,
+    params,
+    inputToken,
+    outputToken,
+    amount,
+    bestV3: best,
+    v3BaselineOut: totalAmountOut,
+  })
+  if (aggregationQuote) {
+    return aggregationQuote
+  }
+
   const slippage = getGnosisSlippageTolerance(params)
   const { maximumAmountIn, minimumAmountOut } = getGnosisQuoteSlippageAmounts({
     amountIn: totalAmountIn,

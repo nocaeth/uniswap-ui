@@ -1,6 +1,8 @@
 import { BigNumber, type BigNumberish } from '@ethersproject/bignumber'
 import { FeeAmount } from '@uniswap/v3-sdk'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
+import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import {
   GNOSIS_BASE_TOKENS,
   GNOSIS_ETH_CORRELATED_ROUTE_TOKENS,
@@ -12,8 +14,6 @@ import {
   GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_STABLE_ROUTE_TOKENS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
-import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import { getValidAddress } from 'uniswap/src/utils/addresses'
 
 export interface CandidateRoute {

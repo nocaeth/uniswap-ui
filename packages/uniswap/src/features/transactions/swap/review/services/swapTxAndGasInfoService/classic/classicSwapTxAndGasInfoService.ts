@@ -8,7 +8,10 @@ import {
   createGetPermitTxInfo,
   getClassicSwapTxAndGasInfo,
 } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/utils'
-import { type ClassicSwapTxAndGasInfo, PermitMethod } from 'uniswap/src/features/transactions/swap/types/swapTxAndGasInfo'
+import {
+  type ClassicSwapTxAndGasInfo,
+  PermitMethod,
+} from 'uniswap/src/features/transactions/swap/types/swapTxAndGasInfo'
 import type { ClassicTrade } from 'uniswap/src/features/transactions/swap/types/trade'
 import type {
   PopulatedTransactionRequestArray,

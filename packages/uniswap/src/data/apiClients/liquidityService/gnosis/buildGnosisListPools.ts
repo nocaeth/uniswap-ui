@@ -2,11 +2,11 @@ import { PartialMessage } from '@bufbuild/protobuf'
 import { createQueryOptions } from '@connectrpc/connect-query'
 import { exploreStats } from '@uniswap/client-explore/dist/uniswap/explore/v1/service-ExploreStatsService_connectquery'
 import { ExploreStatsResponse, PoolStats } from '@uniswap/client-explore/dist/uniswap/explore/v1/service_pb'
+import { Protocols } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/types_pb'
 import { ListPoolsRequest, ListPoolsResponse } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v2/api_pb'
 import { PoolSortBy, PoolSummary, TokenMetadata } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v2/types_pb'
-import { Protocols } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/types_pb'
-import { SharedQueryClient } from '@universe/api'
 import { FeeAmount, TICK_SPACINGS } from '@uniswap/v3-sdk'
+import { SharedQueryClient } from '@universe/api'
 import { uniswapGetTransport } from 'uniswap/src/data/rest/base'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { ONE_HOUR_MS, ONE_MINUTE_MS } from 'utilities/src/time/time'
@@ -59,11 +59,7 @@ function sortValue(ps: PoolStats, sortBy: PoolSortBy | undefined): number {
  */
 export async function buildGnosisListPools(params: PartialMessage<ListPoolsRequest>): Promise<ListPoolsResponse> {
   const response = await SharedQueryClient.fetchQuery({
-    ...createQueryOptions(
-      exploreStats,
-      { chainId: GNOSIS_CHAIN_ID.toString() },
-      { transport: uniswapGetTransport },
-    ),
+    ...createQueryOptions(exploreStats, { chainId: GNOSIS_CHAIN_ID.toString() }, { transport: uniswapGetTransport }),
     staleTime: ONE_MINUTE_MS,
     gcTime: ONE_HOUR_MS,
   })

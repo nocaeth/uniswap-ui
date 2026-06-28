@@ -6,6 +6,7 @@ import { useMemo } from 'react'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { convertGasFeeToDisplayValue, useActiveGasStrategy } from 'uniswap/src/features/gas/hooks'
 import type { ApprovalTxInfo } from 'uniswap/src/features/transactions/swap/review/hooks/useTokenApprovalInfo'
+import { getGnosisAggregationApprovalSpender } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
 import {
   buildErc20ApproveData,
   PERMIT2_ADDRESS,
@@ -78,7 +79,8 @@ export function useGnosisApprovalInfo(params: {
     quoteId === GNOSIS_SDAI_ADAPTER_QUOTE_ID
       ? getGnosisSdaiAdapterApprovalSpender({ tokenIn: tokenInAddressForRoute, tokenOut: tokenOutAddressForRoute })
       : undefined
-  const approvalSpender = zapApprovalSpender ?? adapterApprovalSpender ?? PERMIT2_ADDRESS
+  const aggregationApprovalSpender = getGnosisAggregationApprovalSpender(quoteId)
+  const approvalSpender = zapApprovalSpender ?? adapterApprovalSpender ?? aggregationApprovalSpender ?? PERMIT2_ADDRESS
   const requiredAmount = (currencyInApprovalAmount ?? currencyInAmount)?.quotient.toString()
 
   const gasStrategy = useActiveGasStrategy(chainId, 'general')
