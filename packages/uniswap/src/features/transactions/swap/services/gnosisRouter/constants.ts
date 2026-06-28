@@ -123,18 +123,19 @@ export const GNOSIS_SDAI_ZAP_ADDRESS: string =
 
 /**
  * Purpose-built exact-input aggregation router for Gnosis. It can atomically split across typed
- * Uniswap V3 / Curve / USDC-transmuter steps and enforce one aggregate min-out. Disabled until
- * deployed and wired with REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS.
+ * Uniswap V3 / Curve / USDC-transmuter steps and enforce one aggregate min-out. Defaults to the
+ * production Gnosis deployment; override with REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS for tests
+ * or replacement deployments.
  */
 export const GNOSIS_AGGREGATION_ROUTER_ADDRESS: string =
-  process.env['REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS'] ?? '0x0000000000000000000000000000000000000000'
+  process.env['REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS'] ?? '0xC617d916822E554F3a8660D620325Ca4c2f1f1aD'
 
 /**
- * Curve Router NG address used for quoting the curated Curve leg set. Keep this env-pinned so the
- * deployment checker can require an exact codehash before production enables aggregation routing.
+ * Curve Router NG address used for quoting the curated Curve leg set. Defaults to Curve's Gnosis
+ * deployment; override with REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS for tests or replacement routing.
  */
 export const GNOSIS_CURVE_ROUTER_ADDRESS: string =
-  process.env['REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS'] ?? '0x0000000000000000000000000000000000000000'
+  process.env['REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS'] ?? '0x0DCDED3545D565bA3B19E683431381007245d983'
 
 /**
  * Split-fill routing (see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).

@@ -54,6 +54,8 @@ contract CheckDeployments is Script {
 
     address private constant EXPECTED_UNIVERSAL_ROUTER = 0xF4f2b4C183a3d412F5de04236c318940ac8e415e;
     address private constant EXPECTED_SDAI_ZAP = 0xd3B13be5822Bcf3949F447840Db33D5556f96824;
+    address private constant EXPECTED_CURVE_ROUTER = 0x0DCDED3545D565bA3B19E683431381007245d983;
+    address private constant EXPECTED_AGGREGATION_ROUTER = 0xC617d916822E554F3a8660D620325Ca4c2f1f1aD;
     bytes32 private constant EXPECTED_UNIVERSAL_ROUTER_CODEHASH =
         0x209fd2a960560715f5abe1413086b46d5c8cc1de09fccdc4582842eaaf3c9cbb;
     bytes32 private constant EXPECTED_SDAI_ZAP_CODEHASH =
@@ -102,25 +104,22 @@ contract CheckDeployments is Script {
         _requireCodeHash("SdaiZapRouter", zap, EXPECTED_SDAI_ZAP_CODEHASH);
         _requireZapWiring(zap);
 
-        address aggregationRouter = vm.envOr("REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS", address(0));
-        if (aggregationRouter != address(0)) {
-            address curveRouter = vm.envAddress("REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS");
-            address expectedCurveRouter = vm.envAddress("EXPECTED_GNOSIS_CURVE_ROUTER_ADDRESS");
-            bytes32 expectedCurveRouterCodeHash = vm.envBytes32("EXPECTED_GNOSIS_CURVE_ROUTER_CODEHASH");
-            address expectedAggregationRouter = vm.envAddress("EXPECTED_GNOSIS_AGGREGATION_ROUTER_ADDRESS");
-            bytes32 expectedAggregationRouterCodeHash = vm.envBytes32("EXPECTED_GNOSIS_AGGREGATION_ROUTER_CODEHASH");
-
-            require(curveRouter == expectedCurveRouter, "Unexpected REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS");
-            require(
-                aggregationRouter == expectedAggregationRouter, "Unexpected REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS"
-            );
-            _requireCodeHash("Curve Router NG", curveRouter, expectedCurveRouterCodeHash);
-            _requireCodeHash("GnosisAggregationRouter", aggregationRouter, expectedAggregationRouterCodeHash);
-            _requireCodeHash("Curve x3pool", CURVE_X3POOL, EXPECTED_CURVE_X3POOL_CODEHASH);
-            _requireCodeHash("Curve USDC.e/sDAI", CURVE_USDCE_SDAI, EXPECTED_CURVE_USDCE_SDAI_CODEHASH);
-            _requireCodeHash("Curve GNO/osGNO", CURVE_GNO_OSGNO, EXPECTED_CURVE_GNO_OSGNO_CODEHASH);
-            _requireAggregationRouterWiring(aggregationRouter, curveRouter);
-        }
+        address curveRouter = vm.envOr("REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS", EXPECTED_CURVE_ROUTER);
+        address aggregationRouter = vm.envOr("REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS", EXPECTED_AGGREGATION_ROUTER);
+        require(curveRouter == EXPECTED_CURVE_ROUTER, "Unexpected REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS");
+        require(aggregationRouter == EXPECTED_AGGREGATION_ROUTER, "Unexpected GnosisAggregationRouter address");
+        _requireOptionalCodeHash(
+            "Curve Router NG", curveRouter, vm.envOr("EXPECTED_GNOSIS_CURVE_ROUTER_CODEHASH", bytes32(0))
+        );
+        _requireOptionalCodeHash(
+            "GnosisAggregationRouter",
+            aggregationRouter,
+            vm.envOr("EXPECTED_GNOSIS_AGGREGATION_ROUTER_CODEHASH", bytes32(0))
+        );
+        _requireCodeHash("Curve x3pool", CURVE_X3POOL, EXPECTED_CURVE_X3POOL_CODEHASH);
+        _requireCodeHash("Curve USDC.e/sDAI", CURVE_USDCE_SDAI, EXPECTED_CURVE_USDCE_SDAI_CODEHASH);
+        _requireCodeHash("Curve GNO/osGNO", CURVE_GNO_OSGNO, EXPECTED_CURVE_GNO_OSGNO_CODEHASH);
+        _requireAggregationRouterWiring(aggregationRouter, curveRouter);
 
         console2.log("All checked contracts have bytecode on Gnosis.");
     }
@@ -133,6 +132,13 @@ contract CheckDeployments is Script {
     function _requireCodeHash(string memory name, address a, bytes32 expected) internal view {
         _require(name, a);
         require(a.codehash == expected, string.concat(name, " codehash mismatch"));
+    }
+
+    function _requireOptionalCodeHash(string memory name, address a, bytes32 expected) internal view {
+        _require(name, a);
+        if (expected != bytes32(0)) {
+            require(a.codehash == expected, string.concat(name, " codehash mismatch"));
+        }
     }
 
     function _requireZapWiring(address zap) internal view {
