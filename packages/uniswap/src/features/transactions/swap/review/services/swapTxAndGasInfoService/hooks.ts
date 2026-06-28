@@ -280,18 +280,20 @@ export function useSwapParams(): {
   } = derivedSwapInfo
 
   const address = useActiveAddress(derivedSwapInfo.chainId)
+  const tradeType =
+    exactCurrencyField === CurrencyField.INPUT ? TradingApi.TradeType.EXACT_INPUT : TradingApi.TradeType.EXACT_OUTPUT
+  const currencyInApprovalAmount =
+    tradeType === TradingApi.TradeType.EXACT_OUTPUT ? trade?.maxAmountIn : currencyAmounts[CurrencyField.INPUT]
 
   const approvalTxInfo = useTokenApprovalInfo({
     address,
     chainId,
     wrapType,
     currencyInAmount: currencyAmounts[CurrencyField.INPUT],
+    currencyInApprovalAmount,
     currencyOutAmount: currencyAmounts[CurrencyField.OUTPUT],
     routing: trade?.routing,
-    tradeType:
-      exactCurrencyField === CurrencyField.INPUT
-        ? TradingApi.TradeType.EXACT_INPUT
-        : TradingApi.TradeType.EXACT_OUTPUT,
+    tradeType,
   })
 
   return {
