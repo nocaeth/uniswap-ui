@@ -14,6 +14,10 @@ export function AddLiquidityV3WithTokenRedirects() {
   const { chainId: connectedChainId } = useAccount()
   const { defaultChainId } = useEnabledChains()
 
+  if (currencyIdA === 'v2') {
+    return <Navigate to="/not-found" replace />
+  }
+
   if (tokenId) {
     const chainUrlParam = getChainUrlParam(connectedChainId ?? defaultChainId)
     return <Navigate to={`/positions/v3/${chainUrlParam}/${tokenId}`} replace />

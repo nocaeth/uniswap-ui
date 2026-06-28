@@ -38,7 +38,7 @@ export const defaultFeeTiers: Record<FeeAmount, FeeDataWithChain> = {
   },
 } as const
 
-export const LP_POSITION_PROTOCOL_VERSIONS = [ProtocolVersion.V4, ProtocolVersion.V3, ProtocolVersion.V2]
+export const LP_POSITION_PROTOCOL_VERSIONS: ProtocolVersion[] = [ProtocolVersion.V3]
 export const LP_POSITION_STATUS_FILTER_OPTIONS = [
   PositionStatus.IN_RANGE,
   PositionStatus.OUT_OF_RANGE,

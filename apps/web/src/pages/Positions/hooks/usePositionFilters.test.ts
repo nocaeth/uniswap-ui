@@ -39,21 +39,30 @@ describe('usePositionFilters', () => {
     expect(result.current.chainFilter).toBeNull()
   })
 
-  it('toggleVersion removes a version that was present', () => {
+  it('toggleVersion removes the V3 version that is present', () => {
     const { result } = renderUsePositionFilters()
 
-    act(() => result.current.toggleVersion(ProtocolVersion.V2))
+    act(() => result.current.toggleVersion(ProtocolVersion.V3))
 
-    expect(result.current.versionFilter).toEqual([ProtocolVersion.V4, ProtocolVersion.V3])
+    expect(result.current.versionFilter).toEqual([])
   })
 
-  it('toggleVersion re-adds a version after removing it', () => {
+  it('toggleVersion re-adds V3 after removing it', () => {
+    const { result } = renderUsePositionFilters()
+
+    act(() => result.current.toggleVersion(ProtocolVersion.V3))
+    act(() => result.current.toggleVersion(ProtocolVersion.V3))
+
+    expect(result.current.versionFilter).toEqual([ProtocolVersion.V3])
+  })
+
+  it('toggleVersion ignores unsupported protocol versions', () => {
     const { result } = renderUsePositionFilters()
 
     act(() => result.current.toggleVersion(ProtocolVersion.V2))
-    act(() => result.current.toggleVersion(ProtocolVersion.V2))
+    act(() => result.current.toggleVersion(ProtocolVersion.V4))
 
-    expect(result.current.versionFilter).toEqual([ProtocolVersion.V4, ProtocolVersion.V3, ProtocolVersion.V2])
+    expect(result.current.versionFilter).toEqual([ProtocolVersion.V3])
   })
 
   it('toggleStatus adds a status that was absent', () => {
@@ -79,10 +88,10 @@ describe('usePositionFilters', () => {
   it('toggleVersion does not mutate statusFilter, and toggleStatus does not mutate versionFilter', () => {
     const { result } = renderUsePositionFilters()
 
-    act(() => result.current.toggleVersion(ProtocolVersion.V2))
+    act(() => result.current.toggleVersion(ProtocolVersion.V3))
     act(() => result.current.toggleStatus(PositionStatus.CLOSED))
 
-    expect(result.current.versionFilter).toEqual([ProtocolVersion.V4, ProtocolVersion.V3])
+    expect(result.current.versionFilter).toEqual([])
     expect(result.current.statusFilter).toEqual([
       PositionStatus.IN_RANGE,
       PositionStatus.OUT_OF_RANGE,
@@ -99,13 +108,13 @@ describe('usePositionFilters', () => {
     // Mutate state via a different handler so the atom value diverges from
     // what the captured handler "saw" at capture time.
     act(() => result.current.toggleVersion(ProtocolVersion.V3))
-    // versionFilter is now [V4, V2]
+    // versionFilter is now []
 
     // Invoke the captured handler — if the toggle closed over a stale snapshot,
-    // it would re-derive against the original [V4, V3, V2] and produce a wrong array.
-    // With a functional setter, it applies relative to the latest [V4, V2].
-    act(() => capturedToggle(ProtocolVersion.V4))
+    // it would re-derive against the original [V3] and produce a wrong array.
+    // With a functional setter, it applies relative to the latest [].
+    act(() => capturedToggle(ProtocolVersion.V3))
 
-    expect(result.current.versionFilter).toEqual([ProtocolVersion.V2])
+    expect(result.current.versionFilter).toEqual([ProtocolVersion.V3])
   })
 })

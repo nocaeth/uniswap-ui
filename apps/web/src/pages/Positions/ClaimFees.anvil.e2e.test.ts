@@ -47,33 +47,5 @@ test.describe(
         await expect(page.getByTestId(TestID.ActivityPopup).getByText('Collecting fees')).toBeVisible()
       })
     })
-
-    test('should claim fees from a v4 position', async ({ page, anvil }) => {
-      const expectSingleTransaction = createExpectSingleTransaction({
-        anvil,
-        address: TEST_WALLET_ADDRESS,
-        options: { blocks: 2 },
-      })
-
-      await stubLiquidityServiceEndpoint({
-        page,
-        endpoint: LiquidityService.methods.claimFees,
-        service: LiquidityService,
-      })
-      await page.route(
-        `${getUniswapServiceUrls().apiBaseUrlV2}/${getPosition.service.typeName}/${getPosition.name}`,
-        async (route) => {
-          await route.fulfill({ path: Mocks.Positions.get_v4_position })
-        },
-      )
-      await page.goto('/positions/v4/ethereum/13281')
-
-      // Perform fee claiming and verify transaction was submitted
-      await expectSingleTransaction(async () => {
-        await page.getByRole('button', { name: 'Collect fees' }).click()
-        await page.getByTestId(TestID.ClaimFees).click()
-        await expect(page.getByTestId(TestID.ActivityPopup).getByText('Collecting fees')).toBeVisible()
-      })
-    })
   },
 )

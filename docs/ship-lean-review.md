@@ -1,7 +1,7 @@
 # Ship-Lean Review: Gnosis-Only Scope
 
-Generated: 2026-06-28 15:06:04 UTC
-Base commit: `cb309adb8`
+Generated: 2026-06-28 15:30:15 UTC
+Base commit: `905e8f46a`
 
 Scope: this review assumes the product should remain a Gnosis-only web app. Anything not serving that goal is a candidate for removal, unless removing it is riskier or more expensive than carrying it.
 
@@ -14,9 +14,9 @@ Method notes:
 
 ## Bottom Line
 
-This PR is now scoped correctly for a Gnosis-only launch: liquidity tick enumeration lives in the backend adapter, Explore pools are V3-only, token logos prefer the NOCA Gnosis token list, legacy fallback token lists point at the NOCA list, active sitemap generation is Gnosis-only, CSP no longer grants obvious non-Gnosis product/network hosts, and the unused wallet QR SVG has been deleted.
+This PR is now scoped correctly for a Gnosis-only launch: liquidity tick enumeration lives in the backend adapter, Explore pools are V3-only, token logos prefer the NOCA Gnosis token list, legacy fallback token lists point at the NOCA list, active sitemap generation is Gnosis-only, CSP no longer grants obvious non-Gnosis product/network hosts, unsupported V2/V4/Solana route entries have been removed, and the unused wallet QR SVG has been deleted.
 
-The highest-value next cuts are not package-wide refactors. Remove unreachable non-Gnosis routes and product surfaces first; leave broad shared-package deletion for a separate cleanup with Nx graph evidence.
+The highest-value next cuts are not package-wide refactors. Remove unreachable Buy/Limit/off-ramp and Solana wallet surfaces first; leave broad shared-package deletion for a separate cleanup with Nx graph evidence.
 
 ## Stakes Map
 
@@ -79,13 +79,13 @@ The script no longer calls Uniswap Explore gateway, Uniswap GraphQL, or all-netw
 
 The ship-lean move: ship it; add backend pool sitemap data later only if SEO needs it. [LOW]
 
-### 7. SPECULATIVE: Non-Gnosis Routes Still Exist Behind Redirects And Tests
+### 7. FINE: Unsupported V2/V4/Solana Routes Were Removed
 
-`apps/web/src/pages/RouteDefinitions.tsx:127` keeps a Solana WSOL redirect, `apps/web/src/pages/RouteDefinitions.tsx:208` and `apps/web/src/pages/RouteDefinitions.tsx:221` keep V2/V4 position routes, and `apps/web/src/pages/RouteDefinitions.tsx:269` / `apps/web/src/pages/RouteDefinitions.tsx:288` keep legacy V2 add/remove routes. `apps/web/src/pages/paths.ts` mirrors those paths, and route snapshots/E2E tests still cover them.
+`apps/web/src/pages/RouteDefinitions.tsx` no longer mounts the Solana WSOL redirect, V2/V4 position routes, V2 pool finder, V2 add-liquidity, or V2 remove-liquidity routes. `apps/web/src/pages/paths.ts` and the route snapshot were updated to match the supported route surface.
 
-These are not worth deleting inside the liquidity/logo PR because the blast radius is route snapshots, metadata helpers, and Playwright deep links. They are still the right next UI cleanup if production has no historical URLs to preserve.
+The generic V3 legacy redirects remain for compatibility (`/pool`, `/pool/:tokenId`, `/pools`, `/pools/:tokenId`, `/add`, `/remove/:tokenId`). Old V2-looking URLs fail closed instead of being misread as V3 token IDs.
 
-The ship-lean move: remove routes in a route-only PR, or keep explicit redirects only for known historical URLs. ~0.5-1d with tests. [LOW]
+The ship-lean move: ship it; remove deeper shared V2/V4 helpers only with Nx graph evidence. [LOW]
 
 ### 8. SPECULATIVE: Buy/Limit And Solana Wallet Surfaces Remain In Source
 
@@ -115,7 +115,6 @@ The ship-lean move: do not stage it. [HIGH if tracked]
 
 Recommended:
 
-- Remove unsupported V2/V4/Solana route definitions after deciding whether any production redirects must survive.
 - Delete Buy/Limit/off-ramp and Solana wallet surfaces once route cleanup proves they are unreachable.
 - Remove the Explore pools protocol column only after route/data cleanup proves there is no non-V3 table consumer.
 
@@ -134,9 +133,11 @@ Current working-tree validation:
 - `bun g:format` passed.
 - `bun g:lint:fix` passed with existing warnings only.
 - `bun g:typecheck` passed.
+- `bunx nx run web:test -- src/pages/routes.test.ts src/pages/paths.test.ts src/pages/Positions/hooks/usePositionFilters.test.ts src/features/Liquidity/PositionsListSection.test.tsx src/features/Liquidity/PositionsHeader.test.tsx src/utils/urlRoutes.test.ts --run --reporter=basic` passed: 6 files, 57 tests.
 - Focused web tests passed: `src/utils/validateTokenList.test.ts` and `src/state/migrations/9.test.ts`.
 - Focused web tests passed: token-list migration, Explore stats, token logo cell, and liquidity chart utilities.
 - Focused `uniswap:test` passed: currency-info logo preference and token selector hooks.
 - `bunx nx run gnosis-analytics-adapter:typecheck` passed.
 - `bunx nx run-many -t test --exclude=web --exclude=uniswap` passed.
-- `bunx nx run web:test -- --run --reporter=basic` and `bunx nx test:set1 web -- --reporter=basic` were attempted; both reached the visible end of test output without assertion failures, then stopped emitting output and were interrupted. Treat broad web/all aggregate completion as the remaining verification gap.
+- `bun g:test` was attempted after the route cleanup; many package suites reached visible pass output, then the aggregate process stopped emitting output for roughly 90 seconds and was interrupted. Earlier broad `web:test` and `web test:set1` attempts showed the same no-output hang after visible test output. Treat broad web/all aggregate completion as the remaining verification gap.
+- `git diff --check` passed.

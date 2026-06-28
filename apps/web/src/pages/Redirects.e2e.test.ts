@@ -38,13 +38,11 @@ test.describe(
       await expect(page).toHaveURL(/\/positions\/v3\/ethereum\/123/)
     })
 
-    test('should redirect add v2 liquidity to positions create page', async ({ page }) => {
+    test('should redirect add v2 liquidity to not found', async ({ page }) => {
       await page.goto(
         '/add/v2/1-0x318400242bFdE3B20F49237a9490b8eBB6bdB761/1-0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       )
-      await expect(page).toHaveURL(
-        /\/positions\/create\/v2\?currencyA=1-0x318400242bFdE3B20F49237a9490b8eBB6bdB761&currencyB=1-0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/,
-      )
+      await expect(page).toHaveURL(/\/not-found/)
     })
 
     test('should redirect add v3 liquidity to positions create page', async ({ page }) => {

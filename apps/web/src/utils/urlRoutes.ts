@@ -29,9 +29,7 @@ export function getCurrentPageFromLocation(locationPathname: string): InterfaceP
       return InterfacePageName.ExplorePage
     case locationPathname.startsWith('/vote'):
       return InterfacePageName.VotePage
-    case locationPathname.startsWith('/positions/v2'):
     case locationPathname.startsWith('/positions/v3'):
-    case locationPathname.startsWith('/positions/v4'):
       return InterfacePageName.PoolDetailsPage
     case locationPathname.startsWith('/positions'):
     case locationPathname.startsWith('/pools'):
