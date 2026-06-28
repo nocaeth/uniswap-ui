@@ -924,15 +924,15 @@ function propagateUSD(
 
 async function fetchLogos(): Promise<Map<string, string>> {
   // Merge multiple Gnosis token lists by address (best-effort). CoinGecko's xdai
-  // list is the broadest; the CoW Swap list is curated for the major Gnosis
-  // tokens and is overlaid last so its (higher-quality) icons win on overlap.
+  // list is the broadest; NOCA's canonical list is overlaid last so its curated
+  // icons win on overlap.
   const sources: { url: string; pick: (json: unknown) => { address?: string; logoURI?: string }[] }[] = [
     {
       url: 'https://tokens.coingecko.com/xdai/all.json',
       pick: (j) => (j as { tokens?: { address?: string; logoURI?: string }[] }).tokens ?? [],
     },
     {
-      url: 'https://files.cow.fi/tokens/CowSwap.json',
+      url: 'https://raw.githubusercontent.com/nocaeth/gc-tokenlist/main/token-list.json',
       pick: (j) =>
         ((j as { tokens?: { chainId?: number; address?: string; logoURI?: string }[] }).tokens ?? []).filter(
           (t) => t.chainId === 100,

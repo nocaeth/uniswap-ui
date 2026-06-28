@@ -320,9 +320,7 @@ describe('list reducer', () => {
       })
 
       it('clears the current lists', () => {
-        expect(
-          store.getState().byUrl['https://tokens.example.org/default.tokenlist.json'],
-        ).toBeUndefined()
+        expect(store.getState().byUrl['https://tokens.example.org/default.tokenlist.json']).toBeUndefined()
         expect(store.getState().byUrl['https://tokens.example.org/default']).toBeUndefined()
       })
 
@@ -361,9 +359,7 @@ describe('list reducer', () => {
       })
 
       it('does not remove lists not in last initialized list of lists', () => {
-        expect(
-          store.getState().byUrl['https://tokens.example.org/default.tokenlist.json'],
-        ).toEqual({
+        expect(store.getState().byUrl['https://tokens.example.org/default.tokenlist.json']).toEqual({
           error: null,
           current: STUB_TOKEN_LIST,
           loadingRequestId: null,
@@ -378,9 +374,7 @@ describe('list reducer', () => {
         const byUrl = store.getState().byUrl
         Object.entries(byUrl)
           // We don't expect the Uniswap default list to be prepopulated
-          .filter(
-            ([url]) => url !== 'https://tokens.example.org/default.tokenlist.json',
-          )
+          .filter(([url]) => url !== 'https://tokens.example.org/default.tokenlist.json')
           .forEach(([, state]) => {
             expect(state).toEqual({
               error: null,

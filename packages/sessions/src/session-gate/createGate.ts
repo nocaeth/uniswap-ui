@@ -61,7 +61,9 @@ export async function gated<T>({
       return result
     }
   } catch (err) {
-    if (!isUnauthError?.(err)) {throw err}
+    if (!isUnauthError?.(err)) {
+      throw err
+    }
     firstFailure = err
   }
 

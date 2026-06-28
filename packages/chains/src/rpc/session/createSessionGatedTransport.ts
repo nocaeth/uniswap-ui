@@ -47,7 +47,9 @@ export function createSessionGatedTransport({
 
     const request: EIP1193RequestFn = (async (args: Parameters<EIP1193RequestFn>[0]) => {
       const session = getSession()
-      if (!session) {return baseTransport.request(args)}
+      if (!session) {
+        return baseTransport.request(args)
+      }
 
       return gated({
         session,

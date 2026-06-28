@@ -1,7 +1,7 @@
 import { CurrencyAmount, Price, Token } from '@uniswap/sdk-core'
+import type { UTCTimestamp } from 'lightweight-charts'
 import { DAI, USDC_MAINNET } from 'uniswap/src/constants/tokens'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import type { UTCTimestamp } from 'lightweight-charts'
 import type { PriceChartData } from '~/components/Charts/PriceChart'
 import {
   getCrosshairProps,

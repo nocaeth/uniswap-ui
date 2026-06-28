@@ -1,8 +1,11 @@
 import { NativeCurrency, Token } from '@uniswap/sdk-core'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { buildCurrency } from 'uniswap/src/features/dataApi/utils/buildCurrency'
+import { buildCurrency, buildCurrencyInfo } from 'uniswap/src/features/dataApi/utils/buildCurrency'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
+import { currencyId } from 'uniswap/src/utils/currencyId'
 
 const TEST_TOKEN_ADDRESS = '0xabcdef0123456789abcdef0123456789abcdef01'
+const GNOSIS_WSTETH_ADDRESS = '0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6'
 
 describe(buildCurrency, () => {
   it('should return a new Token instance when all parameters are provided', () => {
@@ -62,5 +65,35 @@ describe(buildCurrency, () => {
         decimals: null,
       }),
     ).toBeUndefined()
+  })
+})
+
+describe(buildCurrencyInfo, () => {
+  it('uses the NOCA token-list logo when a Gnosis token has no backend logo', () => {
+    const currency = new Token(UniverseChainId.Gnosis, GNOSIS_WSTETH_ADDRESS, 18, 'wstETH', 'Bridged Wrapped stETH')
+
+    const result = buildCurrencyInfo({
+      currency,
+      currencyId: currencyId(currency),
+      logoUrl: '',
+      isSpam: false,
+    })
+
+    expect(result.logoUrl).toBe(
+      getGnosisTokenListLogoURI({ chainId: UniverseChainId.Gnosis, address: GNOSIS_WSTETH_ADDRESS }),
+    )
+  })
+
+  it('keeps an explicit backend logo over the NOCA token-list logo', () => {
+    const currency = new Token(UniverseChainId.Gnosis, GNOSIS_WSTETH_ADDRESS, 18, 'wstETH', 'Bridged Wrapped stETH')
+
+    const result = buildCurrencyInfo({
+      currency,
+      currencyId: currencyId(currency),
+      logoUrl: 'https://example.com/wsteth.png',
+      isSpam: false,
+    })
+
+    expect(result.logoUrl).toBe('https://example.com/wsteth.png')
   })
 })

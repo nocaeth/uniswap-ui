@@ -33,11 +33,7 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
     totalVolume30dChangePercent,
     isLoading: isVolumeLoading,
   } = use24hProtocolVolume()
-  const {
-    protocolTVL,
-    protocolChangePercent,
-    isLoading: isTVLLoading,
-  } = useDailyTVLWithChange()
+  const { protocolTVL, protocolChangePercent, isLoading: isTVLLoading } = useDailyTVLWithChange()
 
   const isStatDataLoading = isVolumeLoading || isTVLLoading
 

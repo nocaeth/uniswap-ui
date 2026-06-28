@@ -28,7 +28,9 @@ export function requireSessionFetch({
   return (inner: FetchLike): FetchLike =>
     async (input, init): Promise<Response> => {
       const session = getSession()
-      if (!session) {return inner(input, init)}
+      if (!session) {
+        return inner(input, init)
+      }
       return gated({
         session,
         call: () => inner(input, init),

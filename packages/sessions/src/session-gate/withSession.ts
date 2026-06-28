@@ -22,7 +22,9 @@ export function withSession({
 }: WithSessionOptions): <T>(fn: () => Promise<T>) => Promise<T> {
   return <T>(fn: () => Promise<T>): Promise<T> => {
     const session = getSession()
-    if (!session) {return fn()}
+    if (!session) {
+      return fn()
+    }
     return gated({ session, call: fn, isUnauthError: isSessionUnauthorized, source, getLogger })
   }
 }

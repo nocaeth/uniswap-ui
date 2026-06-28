@@ -26,8 +26,12 @@ export function isConnectUnauthorized(err: unknown): boolean {
  * message for transports that only encode status in the error string.
  */
 export function isFetchUnauthorized(err: unknown): boolean {
-  if (!(err instanceof Error)) {return false}
+  if (!(err instanceof Error)) {
+    return false
+  }
   const status = (err as Error & { status?: unknown }).status
-  if (typeof status === 'number') {return isSessionAuthFailureStatus(status)}
+  if (typeof status === 'number') {
+    return isSessionAuthFailureStatus(status)
+  }
   return /\b(401|403)\b/.test(err.message)
 }

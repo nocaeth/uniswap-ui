@@ -52,11 +52,7 @@ function PrivacyPolicy() {
       },
       {
         name: 'TRM Labs',
-        description: (
-          <>
-            {t('privacy.trm')}
-          </>
-        ),
+        description: <>{t('privacy.trm')}</>,
       },
       {
         name: 'Google Analytics & Amplitude',

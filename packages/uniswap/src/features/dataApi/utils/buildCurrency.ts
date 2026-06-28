@@ -5,6 +5,7 @@ import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
 import { WRAPPED_SOL_ADDRESS_SOLANA } from 'uniswap/src/features/chains/svm/defaults'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import { SolanaToken } from 'uniswap/src/features/tokens/SolanaToken'
 import { areAddressesEqual } from 'uniswap/src/utils/addresses'
 import { isNativeCurrencyAddress } from 'uniswap/src/utils/currencyId'
@@ -107,8 +108,22 @@ export function buildCurrency(args: BuildCurrencyParams): Token | NativeCurrency
 
 const CURRENCY_INFO_CACHE = new Map<string, CurrencyInfo>()
 
+function withGnosisTokenListLogoFallback(args: CurrencyInfo): CurrencyInfo {
+  if (args.logoUrl) {
+    return args
+  }
+
+  const logoUrl = getGnosisTokenListLogoURI({
+    address: args.currency.isToken ? args.currency.address : undefined,
+    chainId: args.currency.chainId,
+  })
+
+  return logoUrl ? { ...args, logoUrl } : args
+}
+
 export function buildCurrencyInfo(args: CurrencyInfo): CurrencyInfo {
-  const cacheKey = JSON.stringify(sortKeysRecursively(args))
+  const currencyInfo = withGnosisTokenListLogoFallback(args)
+  const cacheKey = JSON.stringify(sortKeysRecursively(currencyInfo))
 
   const cachedCurrencyInfo = CURRENCY_INFO_CACHE.get(cacheKey)
 
@@ -117,6 +132,6 @@ export function buildCurrencyInfo(args: CurrencyInfo): CurrencyInfo {
     return cachedCurrencyInfo
   }
 
-  CURRENCY_INFO_CACHE.set(cacheKey, args)
-  return args
+  CURRENCY_INFO_CACHE.set(cacheKey, currencyInfo)
+  return currencyInfo
 }

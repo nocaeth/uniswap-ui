@@ -53,6 +53,10 @@ const mockLimitContextValue = {
   },
 }
 
+function getLimitPriceCurrencyButton(symbol: string): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(symbol) })
+}
+
 describe('LimitPriceInputPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -104,7 +108,7 @@ describe('LimitPriceInputPanel', () => {
         </SwapAndLimitContext.Provider>
       </MultichainContext.Provider>,
     )
-    expect(screen.getByText('DAI')).toBeVisible()
+    expect(getLimitPriceCurrencyButton('DAI')).toBeVisible()
     expect(screen.getByPlaceholderText('0')).toBeVisible()
   })
 
@@ -127,7 +131,7 @@ describe('LimitPriceInputPanel', () => {
         </SwapAndLimitContext.Provider>
       </MultichainContext.Provider>,
     )
-    expect(screen.getByText('DAI')).toBeVisible()
+    expect(getLimitPriceCurrencyButton('DAI')).toBeVisible()
     expect(container.querySelector('.token-symbol-container')).toHaveTextContent('USDC')
     expect(screen.getByPlaceholderText('0')).toBeVisible()
   })

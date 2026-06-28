@@ -63,7 +63,9 @@ export function getVisiblePriceBounds({
   positionPriceLower?: Maybe<Price<Currency, Currency>> | number
   positionPriceUpper?: Maybe<Price<Currency, Currency>> | number
 }): { minVisiblePrice?: number; maxVisiblePrice?: number } {
-  const dataPrices = data.flatMap((entry) => [entry.value, entry.open, entry.high, entry.low, entry.close]).filter(finitePrice)
+  const dataPrices = data
+    .flatMap((entry) => [entry.value, entry.open, entry.high, entry.low, entry.close])
+    .filter(finitePrice)
   const lower = rangeBoundToNumber(positionPriceLower, Number.NaN)
   const upper = rangeBoundToNumber(positionPriceUpper, Number.NaN)
   const prices = [...dataPrices, lower, upper].filter(finitePrice)

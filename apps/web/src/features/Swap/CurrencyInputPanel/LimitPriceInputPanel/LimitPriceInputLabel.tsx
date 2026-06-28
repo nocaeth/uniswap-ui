@@ -34,7 +34,7 @@ export function LimitPriceInputLabel({
         i18nKey="limits.price.input.label"
         components={{
           tokenSymbol: (
-            <Flex my="$none" mx="$spacing4">
+            <Flex key="tokenSymbol" my="$none" mx="$spacing4">
               <TouchableArea row alignItems="center" gap="$spacing8" height="100%" onPress={openCurrencySearchModal}>
                 <CurrencyLogo currency={currency} size={16} />
                 <Text variant="body2" display="inline" color="$neutral1">

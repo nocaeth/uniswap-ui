@@ -1,17 +1,17 @@
 # Ship-Lean Review: Gnosis-Only NOCA UI
 
-Generated: 2026-06-28T12:34:37Z
-Revision scanned: `3eb74a38f`
+Generated: 2026-06-28T13:41:01Z
+Revision scanned: `fd4561ebf`
 
 Method notes:
 
 - Ran `ship-lean/scripts/scan.sh /Users/dave/projects/uniswap-ui`.
-- The scan included local noise from untracked `universal-router/` and `.nx/cache`; findings below ignore those paths.
+- The scan included local noise from untracked `universal-router/` and `.nx/cache`; findings below ignore `.nx/cache` but call out `universal-router/` because it affects Nx project discovery.
 - Workflow fan-out was not launched because the available sub-agent tool policy requires an explicit user request for delegation. This report is based on the deterministic scan plus direct code verification.
 
 ## Bottom Line
 
-The app is now much closer to the target: web-only, Gnosis-only at runtime, with swap, Explore, and LP flows as the product surface. The highest-value next cut is to remove the remaining non-Gnosis public/runtime surface: CSP/RPC allowlists, sitemap generation, Solana redirect glue, and unreachable Buy/Limit swap directories.
+The app is now much closer to the target: web-only, Gnosis-only at runtime, with swap, Explore, and LP flows as the product surface. The highest-value next cut is to move the untracked `universal-router/` checkout out of the workspace, then remove the remaining non-Gnosis public/runtime surface: CSP/RPC allowlists, sitemap generation, Solana redirect glue, and unreachable Buy/Limit swap directories.
 
 Do not simplify the Gnosis swap or LP calldata paths for leanness. They are funds-moving code; keep them conservative and add tests when touching them.
 
@@ -26,7 +26,15 @@ Do not simplify the Gnosis swap or LP calldata paths for leanness. They are fund
 
 ## Findings
 
-### 1. OVER-BUILT · `apps/web/public/csp.json:31`
+### 1. OVER-BUILT · `universal-router/foundry.toml:1`
+
+There is an untracked full Universal Router checkout inside the workspace. It brings non-Gnosis RPC config at `universal-router/foundry.toml:30` through `universal-router/foundry.toml:35` and, more importantly, pollutes Nx project discovery during per-project commands because it contains nested package/config roots.
+
+**Move:** move this checkout outside `/Users/dave/projects/uniswap-ui` or add a local ignore if it is only scratch space. Do not track it in this app repo.
+**Effort:** ~10m, fully reversible.
+**Stakes:** LOW workspace hygiene; high-stakes contracts should stay out of this frontend workspace unless they become an intentional package.
+
+### 2. OVER-BUILT · `apps/web/public/csp.json:31`
 
 The CSP still allows many non-Gnosis RPCs and product hosts even though the app is intended to be Gnosis-only. Examples include Arbitrum/Base/Optimism/BSC/Avalanche/Polygon/Scroll/Linea/Zora/Unichain RPCs and broad `*.uniswap.org` / `wss *.uniswap.org` access at `apps/web/public/csp.json:35` through `apps/web/public/csp.json:123`.
 
@@ -34,7 +42,7 @@ The CSP still allows many non-Gnosis RPCs and product hosts even though the app 
 **Effort:** ~1-2h, fully reversible.
 **Stakes:** LOW.
 
-### 2. OVER-BUILT · `packages/uniswap/src/features/chains/chainInfo.ts:1`
+### 3. OVER-BUILT · `packages/uniswap/src/features/chains/chainInfo.ts:1`
 
 Runtime chain selection is Gnosis-only: `getEnabledChains` hard-filters to `UniverseChainId.Gnosis` at `packages/uniswap/src/features/chains/utils.ts:260`. But the shared registry still imports and exports every EVM chain plus Solana at `packages/uniswap/src/features/chains/chainInfo.ts:1` through `packages/uniswap/src/features/chains/chainInfo.ts:58`, and web Wagmi still configures `ORDERED_EVM_CHAINS` at `apps/web/src/connection/wagmiConfig.ts:125` through `apps/web/src/connection/wagmiConfig.ts:130`.
 
@@ -42,7 +50,7 @@ Runtime chain selection is Gnosis-only: `getEnabledChains` hard-filters to `Univ
 **Effort:** ~0.5 day for the web config, 1-2 days if deleting shared chain files.
 **Stakes:** LOW for web config; treat shared registry deletion as ship-later because the compatibility blast radius is larger than the immediate benefit.
 
-### 3. DELETE · `apps/web/scripts/generate-sitemap.js:24`
+### 4. DELETE · `apps/web/scripts/generate-sitemap.js:24`
 
 Sitemap generation is still all-network. It queries `topV2Pairs` on Ethereum at `apps/web/scripts/generate-sitemap.js:30`, requests token rankings for `ALL_NETWORKS` at `apps/web/scripts/generate-sitemap.js:67`, and loops through fourteen non-Gnosis chains at `apps/web/scripts/generate-sitemap.js:36` through `apps/web/scripts/generate-sitemap.js:51`.
 
@@ -50,7 +58,7 @@ Sitemap generation is still all-network. It queries `topV2Pairs` on Ethereum at 
 **Effort:** ~1h, fully reversible.
 **Stakes:** LOW.
 
-### 4. DELETE · `apps/web/src/pages/Swap/index.tsx:181`
+### 5. DELETE · `apps/web/src/pages/Swap/index.tsx:181`
 
 The active swap UI exposes only `SwapTab.Swap` at `apps/web/src/pages/Swap/index.tsx:181` through `apps/web/src/pages/Swap/index.tsx:190`, but the repo still carries 77 files under `apps/web/src/pages/Swap/Buy` and `apps/web/src/pages/Swap/Limit`. Those flows are not part of a Gnosis-only swap/LP/analytics app.
 
@@ -58,7 +66,7 @@ The active swap UI exposes only `SwapTab.Swap` at `apps/web/src/pages/Swap/index
 **Effort:** ~0.5-1 day because tests and a few shared helpers need cleanup.
 **Stakes:** LOW.
 
-### 5. DELETE · `apps/web/src/pages/RouteDefinitions.tsx:127`
+### 6. DELETE · `apps/web/src/pages/RouteDefinitions.tsx:127`
 
 There is still Solana-specific routing in the main router: the WSOL redirect imports `WRAPPED_SOL_ADDRESS_SOLANA` at `apps/web/src/pages/RouteDefinitions.tsx:4` and adds a `/explore/tokens/solana/...` route at `apps/web/src/pages/RouteDefinitions.tsx:127` through `apps/web/src/pages/RouteDefinitions.tsx:133`. `getDefaultChainId` also still has an SVM branch at `packages/uniswap/src/features/chains/utils.ts:301` through `packages/uniswap/src/features/chains/utils.ts:303`.
 
@@ -66,7 +74,15 @@ There is still Solana-specific routing in the main router: the WSOL redirect imp
 **Effort:** ~30m, fully reversible.
 **Stakes:** LOW.
 
-### 6. SHIP LATER · `packages/uniswap/src/constants/urls.ts:22`
+### 7. DELETE · `apps/web/src/components/WalletOneLinkQR.tsx:1`
+
+`WalletOneLinkQR` is a 3k-line inline SVG component and has no references outside its own export. For a Gnosis-only web app with Uniswap/mobile links disabled, this is dead payload and a distraction during scans.
+
+**Move:** delete the component.
+**Effort:** ~5m, fully reversible.
+**Stakes:** LOW.
+
+### 8. SHIP LATER · `packages/uniswap/src/constants/urls.ts:22`
 
 Public Uniswap links are disabled, which satisfies the current product requirement. But the constants file still carries a large upstream shape of help articles, mobile download URLs, governance/social links, wallet feedback links, and app routes at `packages/uniswap/src/constants/urls.ts:22` through `packages/uniswap/src/constants/urls.ts:153`.
 
