@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, SegmentedControl, useMedia } from 'ui/src'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
-import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
+import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { useCurrentLocale } from 'uniswap/src/features/language/hooks'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { useUSDCValue } from 'uniswap/src/features/transactions/hooks/useUSDCPrice'
@@ -35,6 +35,7 @@ import {
   D3LiquidityPoolChartZoomActions,
 } from '~/pages/PoolDetails/components/ChartSection/D3LiquidityPoolChart'
 import { DepthChart } from '~/pages/PoolDetails/components/ChartSection/DepthChart'
+import { getChartDataChainId } from '~/pages/PoolDetails/components/ChartSection/getChartDataChainId'
 import { usePDPVolumeChartData } from '~/pages/PoolDetails/components/ChartSection/hooks'
 import { formatPriceWithSubscript } from '~/pages/PoolDetails/components/formatPriceWithSubscript'
 import { unwrappedToken } from '~/utils/unwrappedToken'
@@ -67,6 +68,7 @@ interface ChartSectionProps {
   loading: boolean
   isReversed: boolean
   chain?: GraphQLApi.Chain
+  chainId?: UniverseChainId
   tokenAColor: string
   tokenBColor: string
 }
@@ -184,7 +186,11 @@ export function ChartSection(props: ChartSectionProps) {
       tokenB: currencyB,
       tokenAColor: props.tokenAColor,
       tokenBColor: props.tokenBColor,
-      chainId: fromGraphQLChain(props.chain) ?? defaultChainId,
+      chainId: getChartDataChainId({
+        chainId: props.chainId,
+        backendChain: props.chain,
+        defaultChainId,
+      }),
       poolId: props.poolData.idOrAddress,
       hooks: props.poolData.hookAddress,
       version: parseRestProtocolVersion(props.poolData.protocolVersion) ?? RestProtocolVersion.V3,
