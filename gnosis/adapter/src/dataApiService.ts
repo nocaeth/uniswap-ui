@@ -1,5 +1,7 @@
 import { DataApiService } from '@uniswap/client-data-api/dist/data/v1/api_connect.js'
 import {
+  GetPortfolioRequest,
+  GetPortfolioResponse,
   GetPositionRequest,
   GetPositionResponse,
   GetTokenPricesRequest,
@@ -8,6 +10,7 @@ import {
   ListPoolsResponse,
   ListPositionsRequest,
   ListPositionsResponse,
+  Platform,
   TokenPrice,
 } from '@uniswap/client-data-api/dist/data/v1/api_pb.js'
 import {
@@ -18,9 +21,20 @@ import {
   ProtocolVersion,
   Token as RestToken,
 } from '@uniswap/client-data-api/dist/data/v1/poolTypes_pb.js'
+import {
+  Amount,
+  Balance as PortfolioBalance,
+  ChainBalance,
+  MultichainBalance,
+  Portfolio,
+  Token as PortfolioToken,
+  TokenMetadata,
+  TokenType,
+} from '@uniswap/client-data-api/dist/data/v1/types_pb.js'
 import { Token } from '@uniswap/sdk-core'
 import { FeeAmount, Pool, Position as V3Position, TICK_SPACINGS } from '@uniswap/v3-sdk'
-import { getTokenRow } from './envio.js'
+import { fetchExploreStats, getTokenRow } from './envio.js'
+import type { EnvioToken } from './envio.js'
 import type { ServiceType } from '@bufbuild/protobuf'
 import type { ConnectRouter, ServiceImpl } from '@connectrpc/connect'
 import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem'
@@ -36,6 +50,10 @@ const NPM_ADDRESS = getAddress('0xAE8fbE656a77519a7490054274910129c9244FA3')
 const FACTORY_ADDRESS = getAddress('0xe32F7dD7e3f098D518ff19A22d5f028e076489B1')
 const WXDAI_ADDRESS = getAddress('0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d')
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+// Sentinel the web app uses for native xDAI (DEFAULT_NATIVE_ADDRESS_LEGACY in
+// uniswap/src/features/chains/evm). buildCurrency only maps a balance to the native
+// currency when its address equals this; ZERO_ADDRESS would build a broken ERC20 at 0x0.
+const NATIVE_XDAI_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
 
 // Read from the same node the wallet transacts against. In dev that's the anvil
 // fork (POSITIONS_RPC_URL); in a hosted deployment set RPC_GNOSIS (see the adapter
@@ -636,6 +654,211 @@ async function listPools(req: ListPoolsRequest): Promise<ListPoolsResponse> {
   return new ListPoolsResponse({ pools })
 }
 
+// Minimal ERC20 ABI for wallet balance reads.
+const ERC20_BALANCE_ABI = [
+  {
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const
+
+function getPortfolioOwner(req: GetPortfolioRequest): Address | undefined {
+  const evm = req.walletAccount?.platformAddresses.find((p) => p.platform === Platform.EVM)
+  if (!evm?.address) {
+    return undefined
+  }
+  try {
+    return getAddress(evm.address)
+  } catch {
+    return undefined
+  }
+}
+
+function emptyPortfolio(): GetPortfolioResponse {
+  return new GetPortfolioResponse({
+    portfolio: new Portfolio({
+      balances: [],
+      totalValueUsd: 0,
+      totalValueAbsoluteChange1d: 0,
+      totalValuePercentChange1d: 0,
+      multichainBalances: [],
+    }),
+  })
+}
+
+// Mirror of the client's balanceToMultichainBalance: each legacy balance is one
+// token on one chain, so it becomes one MultichainBalance with one ChainBalance.
+function toMultichainBalance(b: PortfolioBalance): MultichainBalance {
+  const token = b.token
+  return new MultichainBalance({
+    name: token?.name ?? '',
+    symbol: token?.symbol ?? '',
+    type: token?.type ?? TokenType.ERC20,
+    projectName: token?.metadata?.projectName ?? '',
+    logoUrl: token?.metadata?.logoUrl ?? '',
+    totalAmount: b.amount,
+    priceUsd: b.priceUsd,
+    pricePercentChange1d: b.pricePercentChange1d,
+    totalValueUsd: b.valueUsd,
+    isHidden: b.isHidden,
+    chainBalances: [
+      new ChainBalance({
+        chainId: token?.chainId ?? GNOSIS_CHAIN_ID,
+        address: token?.address ?? '',
+        decimals: token?.decimals ?? 18,
+        amount: b.amount,
+        valueUsd: b.valueUsd,
+        isHidden: b.isHidden,
+      }),
+    ],
+  })
+}
+
+// Wallet token balances for the swap UI. Uniswap's hosted portfolio backend has no
+// Gnosis coverage, so read balanceOf on-chain (one Multicall3 batch) for every token
+// in the indexer snapshot, plus native xDAI, and value them at the snapshot priceUSD.
+// Returns the aggregate-free per-token list the web app maps to swap-input balances.
+async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioResponse> {
+  try {
+    const owner = getPortfolioOwner(req)
+    if (!owner || (req.chainIds.length > 0 && !req.chainIds.includes(GNOSIS_CHAIN_ID))) {
+      return emptyPortfolio()
+    }
+
+    const entries = fetchExploreStats()
+      .tokens.map((token) => {
+        try {
+          return { token, address: getAddress(token.id) }
+        } catch {
+          return undefined
+        }
+      })
+      .filter((entry): entry is { token: EnvioToken; address: Address } => entry !== undefined)
+
+    const [results, nativeBalance] = await Promise.all([
+      entries.length
+        ? client.multicall({
+            allowFailure: true,
+            contracts: entries.map((entry) => ({
+              address: entry.address,
+              abi: ERC20_BALANCE_ABI,
+              functionName: 'balanceOf' as const,
+              args: [owner] as const,
+            })),
+          })
+        : Promise.resolve([] as { status: 'success' | 'failure'; result?: unknown }[]),
+      client.getBalance({ address: owner }).catch(() => 0n),
+    ])
+
+    const balances: PortfolioBalance[] = []
+    let totalValueUsd = 0
+    // Collapse share-state token pairs (e.g. EURe v1 0xcb44 / v2 0x420c, which report
+    // byte-identical balanceOf for any holder) so a position isn't listed twice and the
+    // total isn't inflated. Keyed on symbol+raw so genuinely-distinct same-symbol tokens
+    // (wsXMR ×34, s-gCRC ×3) with differing balances are kept. entries are tvlUSD-DESC, so
+    // the first occurrence is the canonical (higher-liquidity) token.
+    const seenShareState = new Set<string>()
+
+    const addBalance = (args: {
+      address: string
+      symbol: string
+      name: string
+      decimals: number
+      raw: bigint
+      priceUsd: number
+      priceChange1d: number
+      logoUrl: string
+      type: TokenType
+    }): void => {
+      const dedupKey = `${args.symbol}:${args.raw.toString()}`
+      if (seenShareState.has(dedupKey)) {
+        return
+      }
+      seenShareState.add(dedupKey)
+      const amount = Number(args.raw) / 10 ** args.decimals
+      const valueUsd = amount * args.priceUsd
+      totalValueUsd += valueUsd
+      balances.push(
+        new PortfolioBalance({
+          token: new PortfolioToken({
+            chainId: GNOSIS_CHAIN_ID,
+            address: args.address,
+            symbol: args.symbol,
+            name: args.name,
+            decimals: args.decimals,
+            type: args.type,
+            metadata: new TokenMetadata({ logoUrl: args.logoUrl, projectName: args.name }),
+          }),
+          amount: new Amount({ raw: args.raw.toString(), amount }),
+          priceUsd: args.priceUsd,
+          pricePercentChange1d: args.priceChange1d,
+          valueUsd,
+          isHidden: false,
+        }),
+      )
+    }
+
+    entries.forEach((entry, i) => {
+      // multicall returns one result per contract, aligned with entries by index.
+      const result = results[i]
+      if (result.status !== 'success') {
+        return
+      }
+      const raw = result.result as bigint
+      if (!raw || raw <= 0n) {
+        return
+      }
+      addBalance({
+        address: entry.token.id,
+        symbol: entry.token.symbol,
+        name: entry.token.name,
+        decimals: entry.token.decimals,
+        raw,
+        priceUsd: entry.token.priceUSD,
+        priceChange1d: entry.token.priceChange1d,
+        logoUrl: entry.token.logo,
+        type: TokenType.ERC20,
+      })
+    })
+
+    if (nativeBalance > 0n) {
+      const wxdai = getTokenRow(WXDAI_ADDRESS)
+      addBalance({
+        address: NATIVE_XDAI_ADDRESS,
+        symbol: 'xDAI',
+        name: 'xDAI',
+        decimals: 18,
+        raw: nativeBalance,
+        priceUsd: wxdai?.priceUSD ?? 0,
+        priceChange1d: wxdai?.priceChange1d ?? 0,
+        logoUrl: wxdai?.logo ?? '',
+        type: TokenType.NATIVE,
+      })
+    }
+
+    balances.sort((a, b) => b.valueUsd - a.valueUsd)
+    // The web app reads per-token balances via two hooks: usePortfolioBalances
+    // (legacy portfolio.balances) and usePortfolioBalancesMultichain, which
+    // TokenBalanceListContext calls with requestMultichainFromBackend:true — that
+    // path uses ONLY portfolio.multichainBalances and won't transform legacy. So
+    // populate both (one ChainBalance per token, mirroring transformPortfolioToMultichain).
+    return new GetPortfolioResponse({
+      portfolio: new Portfolio({
+        balances,
+        totalValueUsd,
+        totalValueAbsoluteChange1d: 0,
+        totalValuePercentChange1d: 0,
+        multichainBalances: balances.map(toMultichainBalance),
+      }),
+    })
+  } catch {
+    return emptyPortfolio()
+  }
+}
+
 // @uniswap/client-data-api ships CJS-compiled type decls; under NodeNext the
 // DataApiService value carries @bufbuild/protobuf types resolved in CJS mode,
 // which TS treats as distinct from connect's ESM-mode view. Cast through
@@ -649,6 +872,7 @@ export function registerDataApiRoutes(router: ConnectRouter): void {
     listPositions,
     getPosition,
     getTokenPrices,
+    getPortfolio,
     listPools,
   } as unknown as ServiceImpl<ServiceType>)
 }
