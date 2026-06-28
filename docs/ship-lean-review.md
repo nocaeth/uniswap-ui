@@ -1,6 +1,6 @@
 # Ship-Lean Review: Gnosis-Only Scope
 
-Generated: 2026-06-28 14:49:45 UTC  
+Generated: 2026-06-28 15:06:04 UTC
 Base commit: `cb309adb8`
 
 Scope: this review assumes the product should remain a Gnosis-only web app. Anything not serving that goal is a candidate for removal, unless removing it is riskier or more expensive than carrying it.
@@ -14,9 +14,9 @@ Method notes:
 
 ## Bottom Line
 
-This PR is now scoped correctly for a Gnosis-only launch: liquidity tick enumeration lives in the backend adapter, Explore pools are V3-only, token logos prefer the NOCA Gnosis token list, legacy fallback token lists point at the NOCA list, and the unused wallet QR SVG has been deleted.
+This PR is now scoped correctly for a Gnosis-only launch: liquidity tick enumeration lives in the backend adapter, Explore pools are V3-only, token logos prefer the NOCA Gnosis token list, legacy fallback token lists point at the NOCA list, active sitemap generation is Gnosis-only, CSP no longer grants obvious non-Gnosis product/network hosts, and the unused wallet QR SVG has been deleted.
 
-The highest-value next cuts are not package-wide refactors. Prune the web CSP/sitemap and unreachable non-Gnosis routes first; leave broad shared-package deletion for a separate cleanup with Nx graph evidence.
+The highest-value next cuts are not package-wide refactors. Remove unreachable non-Gnosis routes and product surfaces first; leave broad shared-package deletion for a separate cleanup with Nx graph evidence.
 
 ## Stakes Map
 
@@ -63,21 +63,21 @@ The ship-lean move: ship it. [MEDIUM]
 
 The ship-lean move: ship it. [MEDIUM]
 
-### 5. OVER-BUILT: Runtime CSP Is Still Multi-Network
+### 5. FINE: Runtime CSP Is Now Narrower For Gnosis
 
-`apps/web/public/csp.json:30` still allows broad RPC and product hosts, including Arbitrum, Base, Optimism, BNB, Polygon, Blast, Zora, Unichain, and `*.uniswap.org` / `wss://*.uniswap.org` at `apps/web/public/csp.json:50` and `apps/web/public/csp.json:117`.
+`apps/web/public/csp.json:31` no longer allows obvious non-Gnosis chain/product hosts such as Arbitrum, Base, Optimism, BNB, Polygon, Blast, Zora, Unichain, MoonPay, OpenSea, or legacy Uniswap websocket/API domains.
 
-For a Gnosis-only app this is too permissive and makes the deployment look broader than it is. The cure is cheap: restrict `connectSrc` to self, the actual Gnosis RPCs, required wallet providers, NOCA/backend hosts, the NOCA token-list asset host, and intentionally retained observability services.
+The file still carries shared wallet, analytics, token-list, and generic RPC providers because removing those safely requires runtime verification. That is acceptable for this PR: the broadest non-Gnosis deployment signals are gone without touching funds-moving code.
 
-The ship-lean move: prune in a focused config PR. ~1h, fully reversible. [LOW]
+The ship-lean move: ship it; revisit only after route/product cleanup proves more hosts are unreachable. [LOW]
 
-### 6. OVER-BUILT: Sitemap Generation Still Calls Uniswap And All Networks
+### 6. FINE: Sitemap Generation Is Gnosis-Only
 
-`apps/web/scripts/generate-sitemap.js:24` still queries V2 Ethereum pairs, `apps/web/scripts/generate-sitemap.js:36` lists many non-Gnosis chains, `apps/web/scripts/generate-sitemap.js:67` calls the Uniswap Explore gateway with `ALL_NETWORKS`, and `apps/web/scripts/generate-sitemap.js:131` calls the Uniswap GraphQL API for every chain.
+`apps/web/scripts/generate-sitemap.js:24` defines Gnosis-only sitemap constants, `apps/web/scripts/generate-sitemap.js:88` fetches the NOCA token list, and `apps/web/scripts/generate-sitemap.js:115` writes token URLs only under `/explore/tokens/gnosis/`.
 
-For `swap.gno.now`, either delete this script if sitemap generation is unused or rewrite it to use the Gnosis adapter and Gnosis-only token/pool URLs.
+The script no longer calls Uniswap Explore gateway, Uniswap GraphQL, or all-network token rankings. Pool sitemap generation preserves existing Gnosis pool URLs rather than inventing external pool discovery in the frontend.
 
-The ship-lean move: delete or constrain to Gnosis. ~1-2h, fully reversible. [LOW]
+The ship-lean move: ship it; add backend pool sitemap data later only if SEO needs it. [LOW]
 
 ### 7. SPECULATIVE: Non-Gnosis Routes Still Exist Behind Redirects And Tests
 
@@ -95,9 +95,9 @@ The ship-lean move: delete whole unsupported surfaces, not scattered help links.
 
 ### 9. FINE: User-Facing Uniswap Links Are Disabled
 
-`packages/uniswap/src/constants/urls.ts:24` centralizes public help links behind `DISABLED_PUBLIC_LINK`, and `packages/uniswap/src/constants/urls.ts:94` points web interface URLs at `https://swap.gno.now`. A source scan still finds `uniswap.org` in backend service hosts, CSP, generated schemas, comments, and tests; those are not active user-facing links.
+`packages/uniswap/src/constants/urls.ts:24` centralizes public help links behind `DISABLED_PUBLIC_LINK`, and `packages/uniswap/src/constants/urls.ts:94` points web interface URLs at `https://swap.gno.now`. A source scan still finds legacy Uniswap domains in backend service hosts, generated schemas, comments, and tests; those are not active user-facing links.
 
-The ship-lean move: leave blank help URLs until NOCA-owned docs exist. Separately prune CSP and sitemap because those are still active configuration/scripts. [LOW]
+The ship-lean move: leave blank help URLs until NOCA-owned docs exist. [LOW]
 
 ### 10. FINE: Dead QR Asset Was Deleted
 
@@ -115,8 +115,6 @@ The ship-lean move: do not stage it. [HIGH if tracked]
 
 Recommended:
 
-- Prune `apps/web/public/csp.json` to the actual Gnosis deployment.
-- Delete or rewrite `apps/web/scripts/generate-sitemap.js` for the Gnosis adapter.
 - Remove unsupported V2/V4/Solana route definitions after deciding whether any production redirects must survive.
 - Delete Buy/Limit/off-ramp and Solana wallet surfaces once route cleanup proves they are unreachable.
 - Remove the Explore pools protocol column only after route/data cleanup proves there is no non-V3 table consumer.
@@ -131,11 +129,14 @@ Avoid for now:
 
 Current working-tree validation:
 
+- `bunx nx sitemap:generate web` passed and generated Gnosis-only sitemap outputs.
+- Direct XML validation passed for `sitemap.xml`, `tokens-sitemap.xml`, and `pools-sitemap.xml`; the generated sitemaps parse, have trailing newlines, contain no Uniswap domains, and the token sitemap contains 24 Gnosis token URLs.
 - `bun g:format` passed.
+- `bun g:lint:fix` passed with existing warnings only.
+- `bun g:typecheck` passed.
+- Focused web tests passed: `src/utils/validateTokenList.test.ts` and `src/state/migrations/9.test.ts`.
 - Focused web tests passed: token-list migration, Explore stats, token logo cell, and liquidity chart utilities.
 - Focused `uniswap:test` passed: currency-info logo preference and token selector hooks.
 - `bunx nx run gnosis-analytics-adapter:typecheck` passed.
-- `bun g:lint:fix` passed with existing warnings only.
-- `bun g:typecheck` passed.
 - `bunx nx run-many -t test --exclude=web --exclude=uniswap` passed.
-- `bun g:test` was attempted, but the aggregate run stopped emitting output for several minutes and was interrupted. Treat full aggregate completion as the remaining verification gap.
+- `bunx nx run web:test -- --run --reporter=basic` and `bunx nx test:set1 web -- --reporter=basic` were attempted; both reached the visible end of test output without assertion failures, then stopped emitting output and were interrupted. Treat broad web/all aggregate completion as the remaining verification gap.

@@ -1,176 +1,167 @@
 const fs = require('fs')
 const { parseStringPromise, Builder } = require('xml2js')
 
-// Inline version of normalizeTokenAddressForCache to avoid PNG import issues
-// Copied from uniswap/src/data/cache.ts
 function normalizeTokenAddressForCache(address) {
   if (address === 'NATIVE' || address === 'native') {
     return 'native'
   }
 
-  // Simple EVM address validation and normalization
   if (address && typeof address === 'string' && address.startsWith('0x') && address.length === 42) {
     return address.toLowerCase()
   }
 
-  // For non-EVM addresses (like Solana), return as-is
   return address
 }
 
 const weekMs = 7 * 24 * 60 * 60 * 1000
 const nowISO = new Date().toISOString()
 const SITE_ORIGIN = 'https://swap.gno.now'
+const GNOSIS_CHAIN_ID = 100
+const GNOSIS_CHAIN_NAME = 'gnosis'
+const GNOSIS_TOKEN_LIST_URL =
+  process.env.GNOSIS_TOKEN_LIST_URL ?? 'https://raw.githubusercontent.com/nocaeth/gc-tokenlist/main/token-list.json'
+const SITEMAP_SCHEMA = 'http://www.sitemaps.org/schemas/sitemap/0.9'
+const SITEMAP_XSI = 'http://www.w3.org/2001/XMLSchema-instance'
+const SITEMAP_SCHEMA_LOCATION =
+  'http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd'
 
-const getTopPoolsQuery = (v3Chain) => `
-  query {
-    topV3Pools(first: 50, chain: ${v3Chain}) {
-      id
-      address
-    }
-    topV2Pairs(first: 50, chain: ETHEREUM) {
-      address
-    }
-  }
-`
-
-const chains = [
-  'ETHEREUM',
-  'ARBITRUM',
-  'OPTIMISM',
-  'POLYGON',
-  'BASE',
-  'BNB',
-  'CELO',
-  'UNICHAIN',
-  'AVALANCHE',
-  'BLAST',
-  'SONEIUM',
-  'WORLDCHAIN',
-  'ZKSYNC',
-  'ZORA',
-]
-
-fs.readFile('./public/tokens-sitemap.xml', 'utf8', async (_err, data) => {
-  const tokenURLs = {}
-  try {
-    const sitemap = await parseStringPromise(data)
-    if (sitemap.urlset.url) {
-      sitemap.urlset.url.forEach((url) => {
-        const lastMod = new Date(url.lastmod).getTime()
-        if (lastMod < Date.now() - weekMs) {
-          url.lastmod = nowISO
-        }
-        tokenURLs[url.loc] = true
-      })
-    }
-
-    const tokensResponse = await fetch(
-      'https://interface.gateway.uniswap.org/v2/uniswap.explore.v1.ExploreStatsService/TokenRankings?connect=v1&encoding=json&message=' +
-        encodeURIComponent(JSON.stringify({ chainId: 'ALL_NETWORKS' })),
-      {
-        method: 'GET',
-        headers: {
-          accept: '*/*',
-          origin: SITE_ORIGIN,
-          'content-type': 'application/json',
-        },
+function createEmptyUrlSet() {
+  return {
+    urlset: {
+      $: {
+        xmlns: SITEMAP_SCHEMA,
+        'xmlns:xsi': SITEMAP_XSI,
+        'xsi:schemaLocation': SITEMAP_SCHEMA_LOCATION,
       },
+      url: [],
+    },
+  }
+}
+
+async function readUrlSet(path) {
+  if (!fs.existsSync(path)) {
+    return createEmptyUrlSet()
+  }
+
+  const sitemap = await parseStringPromise(fs.readFileSync(path, 'utf8'))
+  sitemap.urlset ??= createEmptyUrlSet().urlset
+  sitemap.urlset.url ??= []
+  return sitemap
+}
+
+function getLoc(url) {
+  return Array.isArray(url.loc) ? url.loc[0] : url.loc
+}
+
+function refreshExistingUrls(sitemap, filterUrl) {
+  sitemap.urlset.url = sitemap.urlset.url.filter((url) => {
+    const loc = getLoc(url)
+    return loc && filterUrl(loc)
+  })
+
+  sitemap.urlset.url.forEach((url) => {
+    const lastMod = new Date(Array.isArray(url.lastmod) ? url.lastmod[0] : url.lastmod).getTime()
+    if (!lastMod || lastMod < Date.now() - weekMs) {
+      url.lastmod = [nowISO]
+    }
+  })
+
+  return new Set(sitemap.urlset.url.map(getLoc).filter(Boolean))
+}
+
+function addUrl(sitemap, existingUrls, loc, priority) {
+  if (existingUrls.has(loc)) {
+    return
+  }
+
+  sitemap.urlset.url.push({
+    loc: [loc],
+    lastmod: [nowISO],
+    priority: [priority],
+  })
+  existingUrls.add(loc)
+}
+
+function writeXml(path, data) {
+  const builder = new Builder()
+  fs.writeFileSync(path, `${builder.buildObject(data)}\n`)
+
+  const fileSizeMegabytes = fs.statSync(path).size / (1024 * 1024)
+  if (fileSizeMegabytes > 50) {
+    throw new Error(`Generated ${path} file size exceeds 50MB`)
+  }
+}
+
+async function fetchGnosisTokens() {
+  const response = await fetch(GNOSIS_TOKEN_LIST_URL, {
+    headers: {
+      accept: 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Gnosis token list: ${response.status} ${response.statusText}`)
+  }
+
+  const tokenList = await response.json()
+  if (!Array.isArray(tokenList.tokens)) {
+    throw new Error('Gnosis token list did not contain a tokens array')
+  }
+
+  return tokenList.tokens.filter((token) => token.chainId === GNOSIS_CHAIN_ID && token.address)
+}
+
+async function updateTokensSitemap() {
+  const path = './public/tokens-sitemap.xml'
+  const sitemap = await readUrlSet(path)
+  const existingUrls = refreshExistingUrls(sitemap, (loc) => loc.includes(`/explore/tokens/${GNOSIS_CHAIN_NAME}/`))
+
+  addUrl(sitemap, existingUrls, `${SITE_ORIGIN}/explore/tokens/${GNOSIS_CHAIN_NAME}/native`, 0.8)
+
+  const tokens = await fetchGnosisTokens()
+  tokens.forEach((token) => {
+    addUrl(
+      sitemap,
+      existingUrls,
+      `${SITE_ORIGIN}/explore/tokens/${GNOSIS_CHAIN_NAME}/${normalizeTokenAddressForCache(token.address)}`,
+      0.8,
     )
+  })
 
-    const tokensJSON = await tokensResponse.json()
-    const tokenAddresses = tokensJSON.tokenRankings.TRENDING.tokens.map((token) => {
-      return { chainName: token.chain.toLowerCase(), address: token.address ? token.address : 'NATIVE' }
-    })
+  writeXml(path, sitemap)
+  console.log(`Tokens sitemap updated with ${existingUrls.size} Gnosis token URLs`)
+}
 
-    tokenAddresses.forEach(({ chainName, address }) => {
-      const tokenURL = `${SITE_ORIGIN}/explore/tokens/${chainName}/${normalizeTokenAddressForCache(address)}`
-      if (!(tokenURL in tokenURLs)) {
-        sitemap.urlset.url.push({
-          loc: [tokenURL],
-          lastmod: [nowISO],
-          priority: [0.8],
-        })
-      }
-    })
+async function updatePoolsSitemap() {
+  const path = './public/pools-sitemap.xml'
+  const sitemap = await readUrlSet(path)
+  const existingUrls = refreshExistingUrls(sitemap, (loc) => loc.includes(`/explore/pools/${GNOSIS_CHAIN_NAME}/`))
 
-    const builder = new Builder()
-    const xml = builder.buildObject(sitemap)
-    const path = './public/tokens-sitemap.xml'
-    fs.writeFile(path, xml, (error) => {
-      if (error) {
-        throw error
-      }
-      const stats = fs.statSync(path)
-      const fileSizeBytes = stats.size
-      const fileSizeMegabytes = fileSizeBytes / (1024 * 1024)
+  writeXml(path, sitemap)
+  console.log(`Pools sitemap updated with ${existingUrls.size} preserved Gnosis pool URLs`)
+}
 
-      if (fileSizeMegabytes > 50) {
-        throw new Error('Generated tokens-sitemap.xml file size exceeds 50MB')
-      }
-      console.log('Tokens sitemap updated')
-    })
-  } catch (e) {
-    console.error(e)
-  }
-})
+function updateSitemapIndex() {
+  writeXml('./public/sitemap.xml', {
+    sitemapindex: {
+      $: { xmlns: SITEMAP_SCHEMA },
+      sitemap: [
+        { loc: [`${SITE_ORIGIN}/app-sitemap.xml`] },
+        { loc: [`${SITE_ORIGIN}/tokens-sitemap.xml`] },
+        { loc: [`${SITE_ORIGIN}/pools-sitemap.xml`] },
+      ],
+    },
+  })
+  console.log('Sitemap index updated')
+}
 
-fs.readFile('./public/pools-sitemap.xml', 'utf8', async (_err, data) => {
-  const poolURLs = {}
-  try {
-    const sitemap = await parseStringPromise(data)
-    if (sitemap.urlset.url) {
-      sitemap.urlset.url.forEach((url) => {
-        const lastMod = new Date(url.lastmod).getTime()
-        if (lastMod < Date.now() - weekMs) {
-          url.lastmod = nowISO
-        }
-        poolURLs[url.loc] = true
-      })
-    }
+async function main() {
+  await updateTokensSitemap()
+  await updatePoolsSitemap()
+  updateSitemapIndex()
+}
 
-    for (const chainName of chains) {
-      const poolsResponse = await fetch('https://api.uniswap.org/v1/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Origin: SITE_ORIGIN,
-        },
-        body: JSON.stringify({ query: getTopPoolsQuery(chainName) }),
-      })
-      const poolsJSON = await poolsResponse.json()
-      const v3PoolAddresses = poolsJSON.data.topV3Pools?.map((pool) => pool.address) ?? []
-      const v2PoolAddresses = poolsJSON.data.topV2Pairs?.map((pool) => pool.address) ?? []
-      const poolAddresses = v3PoolAddresses.concat(v2PoolAddresses)
-
-      poolAddresses.forEach((address) => {
-        const poolUrl = `${SITE_ORIGIN}/explore/pools/${chainName.toLowerCase()}/${normalizeTokenAddressForCache(address)}`
-        if (!(poolUrl in poolURLs)) {
-          sitemap.urlset.url.push({
-            loc: [poolUrl],
-            lastmod: [nowISO],
-            priority: [0.8],
-          })
-        }
-      })
-    }
-
-    const builder = new Builder()
-    const xml = builder.buildObject(sitemap)
-    const path = './public/pools-sitemap.xml'
-    fs.writeFile(path, xml, (error) => {
-      if (error) {
-        throw error
-      }
-      const stats = fs.statSync(path)
-      const fileSizeBytes = stats.size
-      const fileSizeMegabytes = fileSizeBytes / (1024 * 1024)
-
-      if (fileSizeMegabytes > 50) {
-        throw new Error('Generated pools-sitemap.xml file size exceeds 50MB')
-      }
-      console.log('Pools sitemap updated')
-    })
-  } catch (e) {
-    console.error(e)
-  }
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
 })
