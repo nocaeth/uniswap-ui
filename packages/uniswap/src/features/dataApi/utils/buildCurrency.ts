@@ -108,11 +108,7 @@ export function buildCurrency(args: BuildCurrencyParams): Token | NativeCurrency
 
 const CURRENCY_INFO_CACHE = new Map<string, CurrencyInfo>()
 
-function withGnosisTokenListLogoFallback(args: CurrencyInfo): CurrencyInfo {
-  if (args.logoUrl) {
-    return args
-  }
-
+function withGnosisTokenListLogo(args: CurrencyInfo): CurrencyInfo {
   const logoUrl = getGnosisTokenListLogoURI({
     address: args.currency.isToken ? args.currency.address : undefined,
     chainId: args.currency.chainId,
@@ -122,7 +118,7 @@ function withGnosisTokenListLogoFallback(args: CurrencyInfo): CurrencyInfo {
 }
 
 export function buildCurrencyInfo(args: CurrencyInfo): CurrencyInfo {
-  const currencyInfo = withGnosisTokenListLogoFallback(args)
+  const currencyInfo = withGnosisTokenListLogo(args)
   const cacheKey = JSON.stringify(sortKeysRecursively(currencyInfo))
 
   const cachedCurrencyInfo = CURRENCY_INFO_CACHE.get(cacheKey)

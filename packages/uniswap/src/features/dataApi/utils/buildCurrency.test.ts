@@ -84,7 +84,7 @@ describe(buildCurrencyInfo, () => {
     )
   })
 
-  it('keeps an explicit backend logo over the NOCA token-list logo', () => {
+  it('prefers the NOCA token-list logo over a backend logo for Gnosis tokens', () => {
     const currency = new Token(UniverseChainId.Gnosis, GNOSIS_WSTETH_ADDRESS, 18, 'wstETH', 'Bridged Wrapped stETH')
 
     const result = buildCurrencyInfo({
@@ -94,6 +94,21 @@ describe(buildCurrencyInfo, () => {
       isSpam: false,
     })
 
-    expect(result.logoUrl).toBe('https://example.com/wsteth.png')
+    expect(result.logoUrl).toBe(
+      getGnosisTokenListLogoURI({ chainId: UniverseChainId.Gnosis, address: GNOSIS_WSTETH_ADDRESS }),
+    )
+  })
+
+  it('keeps backend logos for non-Gnosis tokens', () => {
+    const currency = new Token(UniverseChainId.Mainnet, TEST_TOKEN_ADDRESS, 18, 'TEST', 'Test Token')
+
+    const result = buildCurrencyInfo({
+      currency,
+      currencyId: currencyId(currency),
+      logoUrl: 'https://example.com/test.png',
+      isSpam: false,
+    })
+
+    expect(result.logoUrl).toBe('https://example.com/test.png')
   })
 })

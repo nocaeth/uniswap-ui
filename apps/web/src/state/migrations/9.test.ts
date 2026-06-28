@@ -1,4 +1,5 @@
 import { createMigrate } from 'redux-persist'
+import { GNOSIS_TOKEN_LIST_SOURCE_URI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import { migration1 } from '~/state/migrations/1'
 import { migration2 } from '~/state/migrations/2'
 import { migration3 } from '~/state/migrations/3'
@@ -9,14 +10,12 @@ import { migration7 } from '~/state/migrations/7'
 import { migration8 } from '~/state/migrations/8'
 import { migration9, PersistAppStateV9 } from '~/state/migrations/9'
 
-const COINGECKO_AVAX_LIST = 'https://tokens.coingecko.com/avalanche/all.json'
-
 const previousState: PersistAppStateV9 = {
   lists: {
     byUrl: {
-      [COINGECKO_AVAX_LIST]: {
+      [GNOSIS_TOKEN_LIST_SOURCE_URI]: {
         current: {
-          name: COINGECKO_AVAX_LIST,
+          name: GNOSIS_TOKEN_LIST_SOURCE_URI,
           timestamp: '123456789',
           tokens: [],
           version: {
@@ -69,7 +68,7 @@ describe('migration to v9', () => {
       { debug: false },
     )
     const result: any = await migrator(previousState, 9)
-    expect(result?.lists?.byUrl?.[COINGECKO_AVAX_LIST]).toBeDefined()
+    expect(result?.lists?.byUrl?.[GNOSIS_TOKEN_LIST_SOURCE_URI]).toBeDefined()
     expect(result?.lists.randomURL).toBeUndefined()
     expect(result?._persist.version).toEqual(9)
   })
