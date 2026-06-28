@@ -24,4 +24,28 @@ describe('TokenLinkCell', () => {
     expect(networkLogo.querySelector('img')).toHaveAttribute('src', expect.stringContaining('polygon-logo.png'))
     expect(asFragment()).toMatchSnapshot()
   })
+
+  it('uses the NOCA token-list logo for Gnosis tokens', () => {
+    const token = {
+      ...validBEPoolToken0,
+      address: '0x6C76971f98945AE98dD7d4DFcA8711ebea946eA6',
+      chain: 'GNOSIS',
+      symbol: 'wstETH',
+      name: 'Bridged Wrapped stETH',
+      project: {
+        ...validBEPoolToken0.project,
+        logo: {
+          ...validBEPoolToken0.project?.logo,
+          url: 'https://example.com/backend-wsteth.png',
+        },
+      },
+    } as unknown as GraphQLApi.Token
+
+    render(<TokenLinkCell token={token} />)
+
+    expect(screen.getByTestId('img-token-image').querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining('githubusercontent.com/nocaeth/gc-tokenlist'),
+    )
+  })
 })

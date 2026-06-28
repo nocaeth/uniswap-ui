@@ -5,6 +5,7 @@ import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { currencyIdToContractInput } from 'uniswap/src/features/dataApi/utils/currencyIdToContractInput'
 import { gqlTokenToCurrencyInfo } from 'uniswap/src/features/dataApi/utils/gqlTokenToCurrencyInfo'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import {
   buildNativeCurrencyId,
   buildWrappedNativeCurrencyId,
@@ -39,9 +40,12 @@ function useCurrencyInfoQuery(
       if (commonBase) {
         // Creating new object to avoid error "Cannot assign to read only property"
         const copyCommonBase = { ...commonBase }
-        // Related to TODO(WEB-5111)
-        // Some common base images are broken so this'll ensure we read from uniswap images
-        if (queryResult.data?.token?.project?.logoUrl) {
+        const gnosisTokenListLogoUrl = getGnosisTokenListLogoURI({ address, chainId })
+        // Related to TODO(WEB-5111): prefer the local Gnosis token-list asset when
+        // present, otherwise fall back to remote project metadata for common bases.
+        if (gnosisTokenListLogoUrl) {
+          copyCommonBase.logoUrl = gnosisTokenListLogoUrl
+        } else if (queryResult.data?.token?.project?.logoUrl) {
           copyCommonBase.logoUrl = queryResult.data.token.project.logoUrl
         }
         copyCommonBase.currencyId = _currencyId

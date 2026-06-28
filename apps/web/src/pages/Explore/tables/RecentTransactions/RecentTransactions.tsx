@@ -8,8 +8,10 @@ import { useTranslation } from 'react-i18next'
 import { Flex, styled, Text, useMedia } from 'ui/src'
 import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useAppFiatCurrency } from 'uniswap/src/features/fiatCurrency/hooks'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import { ExplorerDataType, getExplorerLink } from 'uniswap/src/utils/linking'
 import { shortenAddress } from 'utilities/src/addresses'
 import { NumberType } from 'utilities/src/format/types'
@@ -39,6 +41,18 @@ const TableRow = styled(Flex, {
 })
 
 type RecentTransactionType = GraphQLApi.PoolTransaction & { usdValueFormatted: string }
+
+function getTransactionTokenLogoUrl({
+  token,
+  fallbackChainId,
+}: {
+  token?: GraphQLApi.Token
+  fallbackChainId: UniverseChainId
+}): string | undefined {
+  const chainId = fromGraphQLChain(token?.chain) ?? fallbackChainId
+
+  return getGnosisTokenListLogoURI({ address: token?.address, chainId }) ?? token?.project?.logo?.url
+}
 
 export const RecentTransactionsTable = memo(function RecentTransactions() {
   const activeLocalCurrency = useAppFiatCurrency()
@@ -139,8 +153,14 @@ export const RecentTransactionsTable = memo(function RecentTransactions() {
                 <PortfolioLogo
                   chainId={chainInfo.id}
                   images={[
-                    transaction.getValue?.().token0.project?.logo?.url,
-                    transaction.getValue?.().token1.project?.logo?.url,
+                    getTransactionTokenLogoUrl({
+                      token: transaction.getValue?.().token0,
+                      fallbackChainId: chainInfo.id,
+                    }),
+                    getTransactionTokenLogoUrl({
+                      token: transaction.getValue?.().token1,
+                      fallbackChainId: chainInfo.id,
+                    }),
                   ]}
                   fallbackSymbols={[transaction.getValue?.().token0.symbol, transaction.getValue?.().token1.symbol]}
                   size={22}

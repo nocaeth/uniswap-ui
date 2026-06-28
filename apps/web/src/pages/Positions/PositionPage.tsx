@@ -443,6 +443,7 @@ function PositionPage({ chainId }: { chainId: EVMUniverseChainId | undefined }) 
                   duration={selectedHistoryDuration}
                   width={chartWidth}
                   height={440}
+                  interactive
                   showXAxis
                   showYAxis
                   showLiquidityBars

@@ -90,6 +90,7 @@ interface LPPriceChartModelParams extends ChartModelParams<PriceChartData> {
   minVisiblePrice?: number
   maxVisiblePrice?: number
   disableExtendedTimeScale?: boolean
+  interactive?: boolean
 }
 
 class LPPriceChartModel extends ChartModel<PriceChartData> {
@@ -162,8 +163,8 @@ class LPPriceChartModel extends ChartModel<PriceChartData> {
         borderVisible: false,
         tickMarkFormatter: formatTickMarks,
       },
-      handleScroll: false,
-      handleScale: false,
+      handleScroll: Boolean(params.interactive),
+      handleScale: Boolean(params.interactive),
       localization: {
         priceFormatter: (priceValue: number) => {
           const currentLocale = window.navigator.languages[0]
@@ -616,7 +617,12 @@ function LiquidityPositionRangeChart({
               borderColor="$surface3"
             />
           )}
-          <Chart Model={LPPriceChartModel} params={chartParams} height={height} disableChartTouchPanning={true} />
+          <Chart
+            Model={LPPriceChartModel}
+            params={chartParams}
+            height={height}
+            disableChartTouchPanning={!interactive}
+          />
         </Flex>
       )}
       <style>{pulseKeyframe}</style>

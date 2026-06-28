@@ -1,7 +1,6 @@
 import { Fragment, memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnimatePresence, Flex, isTouchable, Popover, Text, useMedia, useShadowPropsMedium } from 'ui/src'
-import { zIndexes } from 'ui/src/theme'
+import { AnimatePresence, Flex, Text, useMedia } from 'ui/src'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { NumberType } from 'utilities/src/format/types'
 import { DeltaArrow } from '~/components/DeltaArrow/DeltaArrow'
@@ -12,10 +11,6 @@ interface ExploreStatSectionData {
   label: string
   value: string
   change: number
-  protocolPopoverFormattedData?: {
-    label: string
-    value?: number
-  }[]
 }
 
 export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideStats?: boolean }) => {
@@ -24,7 +19,6 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
   const { convertFiatAmountFormatted } = useLocalizationContext()
 
   const {
-    protocolVolumes,
     totalVolume,
     totalVolume7d,
     totalVolume30d,
@@ -45,11 +39,6 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
         label: t('stats.volume.1d.long'),
         value: formatPrice(totalVolume),
         change: volume24hChangePercent,
-        protocolPopoverFormattedData: [
-          { label: t('common.protocol.v4'), value: protocolVolumes.v4 },
-          { label: t('common.protocol.v3'), value: protocolVolumes.v3 },
-          { label: t('common.protocol.v2'), value: protocolVolumes.v2 },
-        ],
       },
       {
         label: t('stats.volume.7d.long'),
@@ -71,9 +60,6 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
     convertFiatAmountFormatted,
     totalVolume,
     volume24hChangePercent,
-    protocolVolumes.v4,
-    protocolVolumes.v3,
-    protocolVolumes.v2,
     totalVolume7d,
     totalVolume30d,
     totalVolume7dChangePercent,
@@ -103,14 +89,10 @@ export const ExploreStatsSection = ({ shouldHideStats = false }: { shouldHideSta
               borderColor="$surface3"
               pl={index === 0 ? 0 : '$spacing24'}
               flex={1}
-              cursor={data.protocolPopoverFormattedData ? 'pointer' : 'default'}
+              cursor="default"
               transition="opacity 0.3s ease, transform 0.3s ease"
             >
-              {isTouchable || !data.protocolPopoverFormattedData ? (
-                <StatDisplay data={data} isLoading={isStatDataLoading} />
-              ) : (
-                <StatDisplayWithPopover data={data} isLoading={isStatDataLoading} />
-              )}
+              <StatDisplay data={data} isLoading={isStatDataLoading} />
             </Flex>
           ))}
         </Flex>
@@ -158,41 +140,3 @@ const StatDisplay = memo(({ data, isLoading, isHoverable }: StatDisplayProps) =>
 })
 
 StatDisplay.displayName = 'StatDisplay'
-
-const StatDisplayWithPopover = memo(({ data, isLoading }: StatDisplayProps) => {
-  const shadowProps = useShadowPropsMedium()
-  const { convertFiatAmountFormatted } = useLocalizationContext()
-
-  return (
-    <Popover hoverable={{ delay: { open: 200 }, restMs: 100 }} placement="bottom-start" offset={{ mainAxis: 10 }}>
-      <Popover.Trigger>
-        <StatDisplay data={data} isLoading={isLoading} isHoverable />
-      </Popover.Trigger>
-      <Popover.Content
-        zIndex={zIndexes.popover}
-        borderColor="$surface2"
-        borderRadius="$rounded16"
-        borderWidth="$spacing1"
-        enterStyle={{ y: -10, opacity: 0 }}
-        exitStyle={{ y: -10, opacity: 0 }}
-        animation="simple"
-        {...shadowProps}
-      >
-        <Flex gap="$spacing8" px="$spacing4" py="$spacing6" width={180}>
-          {data.protocolPopoverFormattedData?.map((item) => {
-            return (
-              <Flex key={item.label} row justifyContent="space-between">
-                <Text variant="body4" color="neutral2">
-                  {item.label}
-                </Text>
-                <Text variant="body4">{convertFiatAmountFormatted(item.value ?? 0, NumberType.FiatTokenPrice)}</Text>
-              </Flex>
-            )
-          })}
-        </Flex>
-      </Popover.Content>
-    </Popover>
-  )
-})
-
-StatDisplayWithPopover.displayName = 'StatDisplayWithPopover'

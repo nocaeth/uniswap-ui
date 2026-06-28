@@ -5,6 +5,7 @@ import { Flex, styled } from 'ui/src/index'
 import { TokenLogo } from 'uniswap/src/components/CurrencyLogo/TokenLogo'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import { useCurrencyInfo } from 'uniswap/src/features/tokens/useCurrencyInfo'
 import { currencyId as toCurrencyId } from 'uniswap/src/utils/currencyId'
 import { getTokenDetailsURL, gqlToCurrency, unwrapToken } from '~/appGraphql/data/util'
@@ -32,6 +33,7 @@ export const TokenLinkCell = ({ token, hideLogo }: { token: GraphQLApi.Token; hi
   const unwrappedToken = unwrapToken(chainId, token)
   const currency = gqlToCurrency(unwrappedToken)
   const currencyInfo = useCurrencyInfo(currency ? toCurrencyId(currency) : undefined)
+  const tokenListLogoUrl = getGnosisTokenListLogoURI({ address: unwrappedToken.address, chainId })
 
   return (
     <TokenHoverCard token={token}>
@@ -47,7 +49,7 @@ export const TokenLinkCell = ({ token, hideLogo }: { token: GraphQLApi.Token; hi
             <TokenLogo
               chainId={chainId}
               size={22}
-              url={currencyInfo?.logoUrl ?? token.project?.logo?.url}
+              url={tokenListLogoUrl ?? currencyInfo?.logoUrl ?? token.project?.logo?.url}
               symbol={currencyInfo?.currency.symbol ?? token.symbol}
               name={currencyInfo?.currency.name}
             />
