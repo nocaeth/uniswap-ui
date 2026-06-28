@@ -21,6 +21,8 @@ ARG GRAPHQL_URL_OVERRIDE=""
 ARG REACT_APP_WALLET_CONNECT_PROJECT_ID=""
 ARG REACT_APP_GNOSIS_RPC_URL=""
 ARG REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS=""
+ARG REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS=""
+ARG REACT_APP_GNOSIS_SPLIT_ENABLED=""
 
 # The CSP meta-tag plugin reads these from process.env to allow the adapter origin
 # in connect-src (see apps/web/vite/vite.plugins.ts).
@@ -49,6 +51,8 @@ RUN f=apps/web/.env.production; \
       "REACT_APP_WALLET_CONNECT_PROJECT_ID=$REACT_APP_WALLET_CONNECT_PROJECT_ID" \
       "REACT_APP_GNOSIS_RPC_URL=$REACT_APP_GNOSIS_RPC_URL" \
       "REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS=$REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS" \
+      "REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS=$REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS" \
+      "REACT_APP_GNOSIS_SPLIT_ENABLED=$REACT_APP_GNOSIS_SPLIT_ENABLED" \
     ; do case "$kv" in *=) ;; *) printf '%s\n' "$kv" >> "$f";; esac; done
 
 # Plain static build: with DEPLOY_TARGET unset the Cloudflare plugin is skipped and

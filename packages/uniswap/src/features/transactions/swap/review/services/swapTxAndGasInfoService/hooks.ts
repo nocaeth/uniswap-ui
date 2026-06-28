@@ -40,6 +40,7 @@ import {
 import type { DerivedSwapInfo } from 'uniswap/src/features/transactions/swap/types/derivedSwapInfo'
 import type { SwapTxAndGasInfo } from 'uniswap/src/features/transactions/swap/types/swapTxAndGasInfo'
 import type { Trade } from 'uniswap/src/features/transactions/swap/types/trade'
+import { isClassic } from 'uniswap/src/features/transactions/swap/utils/routing'
 import { CurrencyField } from 'uniswap/src/types/currency'
 import { useEvent, usePrevious } from 'utilities/src/react/hooks'
 import { ReactQueryCacheKey } from 'utilities/src/reactQuery/cache'
@@ -284,6 +285,7 @@ export function useSwapParams(): {
     exactCurrencyField === CurrencyField.INPUT ? TradingApi.TradeType.EXACT_INPUT : TradingApi.TradeType.EXACT_OUTPUT
   const currencyInApprovalAmount =
     tradeType === TradingApi.TradeType.EXACT_OUTPUT ? trade?.maxAmountIn : currencyAmounts[CurrencyField.INPUT]
+  const quoteId = trade && isClassic(trade) ? trade.quote.quote.quoteId : undefined
 
   const approvalTxInfo = useTokenApprovalInfo({
     address,
@@ -294,6 +296,7 @@ export function useSwapParams(): {
     currencyOutAmount: currencyAmounts[CurrencyField.OUTPUT],
     routing: trade?.routing,
     tradeType,
+    quoteId,
   })
 
   return {
