@@ -84,6 +84,12 @@ describe('walletCapabilities', () => {
 
       expect(isAtomicBatchingSupportedByChainId(mockCapabilities, 2)).toBe(false)
     })
+
+    it('recognizes the legacy atomicBatch capability shape (e.g. Safe over WalletConnect)', () => {
+      expect(isAtomicBatchingSupportedByChainId({ '0x1': { atomicBatch: { supported: true } } }, 1)).toBe(true)
+      expect(isAtomicBatchingSupportedByChainId({ '0x1': { atomicBatch: { status: 'ready' } } }, 1)).toBe(true)
+      expect(isAtomicBatchingSupportedByChainId({ '0x1': { atomicBatch: { supported: false } } }, 1)).toBe(false)
+    })
   })
 
   describe('isAlternateGasFeesSupportedByChainId', () => {

@@ -50,11 +50,23 @@ enum AtomicBatchingStatus {
   Unsupported = 'unsupported',
 }
 
-export function isAtomicBatchingSupported(chainCapabilities: ChainCapabilities): boolean {
+function isAtomicCapabilityActive(capability: ChainCapabilities[string]): boolean {
+  if (!capability) {
+    return false
+  }
+  // Modern EIP-5792 reports `{ status: 'supported' | 'ready' }`; the legacy shape used a
+  // boolean `{ supported: true }`. Accept either so both spec versions are recognized.
   return (
-    chainCapabilities.atomic?.status === AtomicBatchingStatus.Supported ||
-    chainCapabilities.atomic?.status === AtomicBatchingStatus.Ready
+    capability.status === AtomicBatchingStatus.Supported ||
+    capability.status === AtomicBatchingStatus.Ready ||
+    capability.supported === true
   )
+}
+
+export function isAtomicBatchingSupported(chainCapabilities: ChainCapabilities): boolean {
+  // The modern key is `atomic`; some wallets (e.g. a Safe over WalletConnect) still advertise
+  // the legacy `atomicBatch` key. Treat either as atomic-batching support.
+  return isAtomicCapabilityActive(chainCapabilities.atomic) || isAtomicCapabilityActive(chainCapabilities.atomicBatch)
 }
 
 export function isAtomicBatchingSupportedByChainId(
