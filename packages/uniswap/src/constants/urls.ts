@@ -94,7 +94,7 @@ export const UniswapHelpUrls = {
 export const UniswapStaticUrls = {
   downloadWalletUrl: DISABLED_PUBLIC_LINK,
   tradingApiDocsUrl: DISABLED_PUBLIC_LINK,
-  unichainUrl: 'https://www.unichain.org/',
+  unichainUrl: DISABLED_PUBLIC_LINK,
   uniswapXUrl: DISABLED_PUBLIC_LINK,
   blogUrl: DISABLED_PUBLIC_LINK,
   docsUrl: DISABLED_PUBLIC_LINK,
@@ -133,7 +133,7 @@ export const UniswapStaticUrls = {
   evervaultStagingUrl: 'https://embedded-wallet-staging.app-907329d19a06.enclave.evervault.com',
   evervaultProductionUrl: 'https://embedded-wallet.app-907329d19a06.enclave.evervault.com',
 
-  wormholeUrl: 'https://portalbridge.com/',
+  wormholeUrl: DISABLED_PUBLIC_LINK,
 
   // App and Redirect URL's
   appBaseUrl: UNISWAP_WEB_URL,

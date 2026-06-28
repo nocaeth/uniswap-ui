@@ -1,6 +1,6 @@
 # Deep Link Support
 
-This guide explains how to create URLs that link directly to specific pages and features on the NOCA web application (`swap.gno.now`). These URLs work seamlessly with the mobile app through universal links.
+This guide explains how to create URLs that link directly to supported pages on the NOCA web application (`swap.gno.now`).
 
 ## Trading Interfaces
 
@@ -11,102 +11,25 @@ Opens the swap interface with pre-filled token pairs, amounts, and chain selecti
 **Format:**
 
 ```url
-https://swap.gno.now/swap?inputCurrency={address}&outputCurrency={address}&chain={network}&outputChain={network}&value={amount}&field={INPUT|OUTPUT}
+https://swap.gno.now/swap?inputCurrency={address}&outputCurrency={address}&chain=gnosis&value={amount}&field={INPUT|OUTPUT}
 ```
 
 **Parameters:**
 
-- `inputCurrency` - Input token address, `ETH`, or `NATIVE`
-- `outputCurrency` - Output token address, `ETH`, or `NATIVE`
-- `chain` - Network name for input token
-- `outputChain` - (Optional) Different output network for cross-chain swaps
+- `inputCurrency` - Input token address or `NATIVE`
+- `outputCurrency` - Output token address or `NATIVE`
+- `chain` - Network name for input token. Use `gnosis` for this deployment.
 - `value` - (Optional) Amount to swap
 - `field` - (Optional) Whether the amount refers to `INPUT` or `OUTPUT` token
 
 **Examples:**
 
 ```url
-https://swap.gno.now/swap?inputCurrency=ETH&outputCurrency=0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984&chain=ethereum
-https://swap.gno.now/swap?inputCurrency=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48&outputCurrency=NATIVE&chain=ethereum&value=100&field=INPUT
-https://swap.gno.now/swap?inputCurrency=NATIVE&outputCurrency=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359&chain=polygon&outputChain=base
+https://swap.gno.now/swap?inputCurrency=NATIVE&outputCurrency=0xaf204776c7245bF4147c2612BF6e5972Ee483701&chain=gnosis
+https://swap.gno.now/swap?inputCurrency=0xaf204776c7245bF4147c2612BF6e5972Ee483701&outputCurrency=NATIVE&chain=gnosis&value=100&field=INPUT
 ```
 
-### Buy (Fiat On-Ramp)
-
-Opens the fiat on-ramp interface for purchasing crypto with fiat currency.
-
-**Format:**
-
-```url
-https://swap.gno.now/buy?value={amount}&currencyCode={code}&isTokenInputMode={boolean}&providers={providers}
-```
-
-**Parameters:**
-
-- `value` - (Optional) Pre-filled purchase amount
-- `currencyCode` - (Optional) Target crypto currency code
-  - Format: `{TOKEN_SYMBOL}_{CHAIN_NAME}` (e.g., `UNI_UNICHAIN`, `USDC_BASE`)
-  - Or just `{TOKEN_SYMBOL}` for mainnet (e.g., `ETH`, `UNI`)
-- `isTokenInputMode` - (Optional) `true` for token input mode, `false` for fiat input mode
-- `providers` - (Optional) Comma-separated list of preferred providers (e.g., `moonpay,coinbasepay`)
-
-**Examples:**
-
-```url
-https://swap.gno.now/buy
-https://swap.gno.now/buy?value=100&currencyCode=ETH
-https://swap.gno.now/buy?value=0.5&currencyCode=UNI_UNICHAIN&providers=moonpay,coinbasepay
-https://swap.gno.now/buy?value=1000&currencyCode=USDC_BASE&isTokenInputMode=false
-```
-
-### Sell (Fiat Off-Ramp)
-
-Opens the fiat off-ramp interface for selling crypto for fiat currency.
-
-**Format:**
-
-```url
-https://swap.gno.now/sell
-```
-
-**Note:** Parameters are typically added by the provider when users return from completing a transaction.
-
-### Limit Orders (Web Only)
-
-Opens the limit orders trading interface with optional pre-filled token pairs.
-
-**Format:**
-
-```url
-https://swap.gno.now/limit?inputCurrency={address}&outputCurrency={address}&chain={network}
-```
-
-**Parameters:**
-
-- `inputCurrency` - Input token address, `ETH`, or `NATIVE`
-- `outputCurrency` - Output token address, `ETH`, or `NATIVE`
-- `chain` - Network name
-
-**Note:** Limit orders are currently supported on select chains only.
-
-**Examples:**
-
-```url
-https://swap.gno.now/limit
-https://swap.gno.now/limit?inputCurrency=NATIVE&outputCurrency=0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984&chain=ethereum
-```
-
-### Send (Web Only)
-
-Opens the send tokens interface for transferring tokens to another address.
-
-**Format:**
-
-```url
-https://swap.gno.now/send
-```
-
-**Note:** Currently doesn't support pre-filled parameters via URL.
+Buy, sell, limit, and send web routes are intentionally not mounted in this Gnosis-only deployment.
 
 ## Explore & Browse
 
@@ -142,15 +65,14 @@ https://swap.gno.now/explore/tokens/{chainName}/{tokenAddress}
 
 **Parameters:**
 
-- `chainName` - Network name: `ethereum`, `polygon`, `arbitrum`, `optimism`, `base`, `bnb`, `avalanche`, `celo`, `blast`, `zora`, `zksync`, `worldchain`, or `unichain`
-- `tokenAddress` - Token contract address, or `NATIVE` for the chain's native currency (ETH, MATIC, etc.)
+- `chainName` - Network name: `gnosis`
+- `tokenAddress` - Token contract address, or `NATIVE` for xDAI
 
 **Examples:**
 
 ```url
-https://swap.gno.now/explore/tokens/ethereum/0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984
-https://swap.gno.now/explore/tokens/unichain/NATIVE
-https://swap.gno.now/explore/tokens/base/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+https://swap.gno.now/explore/tokens/gnosis/NATIVE
+https://swap.gno.now/explore/tokens/gnosis/0xaf204776c7245bF4147c2612BF6e5972Ee483701
 ```
 
 **Legacy Format (also supported):**
@@ -169,13 +91,12 @@ Opens the token explorer page filtered to a specific network.
 https://swap.gno.now/explore/tokens/{chainName}
 ```
 
-**Note:** If no chain name is provided, defaults to all chains.
+**Note:** If no chain name is provided, the page defaults to the supported Gnosis view.
 
 **Examples:**
 
 ```url
-https://swap.gno.now/explore/tokens/ethereum
-https://swap.gno.now/explore/tokens/unichain
+https://swap.gno.now/explore/tokens/gnosis
 https://swap.gno.now/explore/tokens
 ```
 
@@ -193,57 +114,33 @@ https://swap.gno.now/explore/pools/{chainName}/{poolAddress}
 
 **Parameters:**
 
-- `chainName` - Network name
+- `chainName` - Network name: `gnosis`
 - `poolAddress` - Pool contract address
 
 **Example:**
 
 ```url
-https://swap.gno.now/explore/pools/ethereum/0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
+https://swap.gno.now/explore/pools/gnosis/0x34D1b42B64eD98F1327aF9cA0BB2A87dFB94d305
 ```
 
 ## Tips for Creating Deep Links
 
-### Supported Networks
+### Supported Network
 
-- `ethereum` (Ethereum Mainnet)
-- `polygon` (Polygon)
-- `arbitrum` (Arbitrum One)
-- `optimism` (Optimism)
-- `base` (Base)
-- `bnb` (BNB Chain)
-- `avalanche` (Avalanche C-Chain)
-- `celo` (Celo)
-- `blast` (Blast)
-- `zora` (Zora)
-- `zksync` (zkSync Era)
-- `worldchain` (World Chain)
-- `unichain` (Unichain)
+- `gnosis` (Gnosis Chain)
 
 ### Native Currency Formats
 
-You can specify native currencies (ETH, MATIC, etc.) in several ways:
+You can specify xDAI in several ways:
 
-- `NATIVE` - Works on any chain
-- `ETH` - Works on Ethereum and Ethereum Layer 2s
+- `NATIVE`
 - Actual native token address
 
 ### Case Sensitivity
 
-- Network names are **case-insensitive** (`Ethereum` = `ethereum`)
+- Network names are **case-insensitive** (`Gnosis` = `gnosis`)
 - Token addresses are **case-insensitive**
 - Parameter names are **case-sensitive** (`inputCurrency` ≠ `InputCurrency`)
-
-### URL Domains
-
-Both domains work identically:
-
-- `https://swap.gno.now/...`
-- `https://swap.gno.now/...`
-
-### Mobile Compatibility
-
-All these URLs work seamlessly with the Uniswap mobile app via universal links. When users click these links on mobile devices with the app installed, they'll open directly in the app.
 
 ### Bookmarking & Sharing
 
@@ -281,34 +178,16 @@ This section provides technical details for developers integrating these URLs in
    - `getParsedChainId()` - Extracts and validates chain ID from query string (`utils/params/chainParams.ts`)
    - `useInitialCurrencyState()` - Hook in `pages/Swap/Swap/state/hooks.tsx` that uses the parsers above
 
-2. **Buy/Sell Parameters** (`pages/Swap/Buy/hooks.ts`):
-   - `useSearchParams()` - React Router hook for accessing query parameters
-   - `useOffRampTransferDetailsRequest()` - Parses off-ramp return parameters
-   - `BuyFormInner` component processes URL parameters on mount
-
-3. **Limit Orders** (`pages/Swap/Limit/LimitForm.tsx`):
-   - Shares currency state with swap interface via `SwapAndLimitContext`
-   - `LimitContext` manages limit-specific state (price, expiry)
-   - Only available on chains in `LIMIT_SUPPORTED_CHAINS` array
-
 **Tab-based Navigation:**
 
-Trading interfaces (`/swap`, `/buy`, `/sell`, `/limit`, `/send`) all render the same `<Swap />` component:
+The Gnosis web app currently supports `/swap` only:
 
-- Tab state is determined by the pathname
-- Mapping defined in `PATHNAME_TO_TAB` constant
-- URL changes automatically update the active tab
-
-**Cross-Platform Compatibility:**
-
-- Mobile app opens web URLs via universal links (configured in `apple-app-site-association`)
-- Web URLs use same parameter names as mobile deep links where possible
-- Mobile app converts web URLs to native navigation
+- `PATHNAME_TO_TAB` maps unsupported paths back to the swap tab.
+- Buy, sell, limit, and send web routes are intentionally not mounted.
 
 **Error Handling:**
 
-- Invalid chain names default to mainnet
-- Unsupported chains redirect to supported alternatives
+- Invalid or unsupported chain names are normalized to the Gnosis-only app state where possible
 - Invalid token addresses show "not found" error
 - Missing required parameters fall back to empty states
 - Users can still interact with interface even with invalid URL parameters

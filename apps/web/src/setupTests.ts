@@ -431,11 +431,7 @@ failOnConsole({
       // Allow React key warnings from Trans component (react-i18next v14 issue)
       if (
         message.includes('Each child in a list should have a unique') &&
-        (message.includes('Trans') ||
-          message.includes('UniswapXDescription') ||
-          message.includes('SwapPreview') ||
-          message.includes('LimitOrderPreview') ||
-          message.includes('LimitPriceInputLabel'))
+        (message.includes('Trans') || message.includes('UniswapXDescription') || message.includes('SwapPreview'))
       ) {
         return true
       }

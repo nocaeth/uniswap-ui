@@ -183,7 +183,7 @@ InputInner.displayName = 'Input'
 const MemoizedInput = React.memo(InputInner)
 export { MemoizedInput as Input }
 
-/** Swap/limit amount field (`amountLayout="swapCurrency"`). Buy/Send/Earn use `StyledNumericalInput` in `~/components/NumericalInput/LargeAmountInput`, which sets typography via explicit props instead of this variant. */
+/** Swap amount field (`amountLayout="swapCurrency"`). Other large amount inputs set typography through explicit props. */
 export const SwapCurrencyInput = forwardRef<NumericalInputRef, InputProps>((props, ref) => (
   <MemoizedInput {...props} ref={ref} amountLayout="swapCurrency" />
 ))
