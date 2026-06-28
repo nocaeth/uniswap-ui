@@ -55,6 +55,31 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 // currency when its address equals this; ZERO_ADDRESS would build a broken ERC20 at 0x0.
 const NATIVE_XDAI_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
 
+// Known share-state token aliases (checksummed alias -> checksummed canonical). These specific
+// contracts mirror the same on-chain balance ledger (verified: balanceOf is byte-identical on
+// both for every holder), so listing both double-counts the position and inflates the total.
+// Only these exact pairs are collapsed — never a symbol/amount heuristic, which would wrongly
+// merge genuinely-distinct same-symbol tokens (e.g. the snapshot has 2 USDC.e, 34 wsXMR).
+const SHARED_STATE_ALIAS_OF = new Map<string, Address>([
+  // Monerium EURe v1 (legacy) -> v2 (canonical, current high-liquidity token).
+  [getAddress('0xcb444e90d8198415266c6a2724b7900fb12fc56e'), getAddress('0x420ca0f9b9b604ce0fd9c18ef134c705e5fa3430')],
+])
+
+// Default hide-small-balances threshold (USD) when a request modifier asks to hide small
+// balances but leaves balanceLimit unset (the web app sends includeSmallBalances=false with
+// balanceLimit=0, expecting the backend's default — $1, matching Uniswap's convention).
+const DEFAULT_SMALL_BALANCE_USD = 1
+
+// Checksum an address for case-insensitive comparison without .toLowerCase() (returns the
+// input unchanged if it isn't a valid address, e.g. an empty override entry).
+function normalizeAddress(addr: string): string {
+  try {
+    return getAddress(addr)
+  } catch {
+    return addr
+  }
+}
+
 // Read from the same node the wallet transacts against. In dev that's the anvil
 // fork (POSITIONS_RPC_URL); in a hosted deployment set RPC_GNOSIS (see the adapter
 // service in docker-compose.yml). The localhost fallback only applies if none is set.
@@ -728,7 +753,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
       return emptyPortfolio()
     }
 
-    const entries = fetchExploreStats()
+    const allEntries = fetchExploreStats()
       .tokens.map((token) => {
         try {
           return { token, address: getAddress(token.id) }
@@ -737,6 +762,15 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
         }
       })
       .filter((entry): entry is { token: EnvioToken; address: Address } => entry !== undefined)
+
+    // Drop a share-state alias only when its canonical counterpart is also in the snapshot, so
+    // the position is still reported (via the canonical) and never silently lost. e.address is
+    // already checksummed by getAddress above, matching the map's checksummed keys.
+    const presentAddrs = new Set(allEntries.map((e) => e.address))
+    const entries = allEntries.filter((e) => {
+      const canonical = SHARED_STATE_ALIAS_OF.get(e.address)
+      return canonical === undefined || !presentAddrs.has(canonical)
+    })
 
     const [results, nativeBalance] = await Promise.all([
       entries.length
@@ -755,12 +789,16 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
 
     const balances: PortfolioBalance[] = []
     let totalValueUsd = 0
-    // Collapse share-state token pairs (e.g. EURe v1 0xcb44 / v2 0x420c, which report
-    // byte-identical balanceOf for any holder) so a position isn't listed twice and the
-    // total isn't inflated. Keyed on symbol+raw so genuinely-distinct same-symbol tokens
-    // (wsXMR ×34, s-gCRC ×3) with differing balances are kept. entries are tvlUSD-DESC, so
-    // the first occurrence is the canonical (higher-liquidity) token.
-    const seenShareState = new Set<string>()
+
+    // Apply the request's portfolio visibility/filter modifier (hide-small-balances and
+    // per-token visibility overrides) so balances are marked isHidden and excluded from the
+    // total per the Data API contract. Spam filtering (includeSpamTokens) is a no-op here: the
+    // snapshot carries no spam classification, so every token is treated as non-spam.
+    const modifier = req.modifier
+    const excludeSet = new Set((modifier?.excludeOverrides ?? []).map((c) => normalizeAddress(c.address)))
+    const includeSet = new Set((modifier?.includeOverrides ?? []).map((c) => normalizeAddress(c.address)))
+    const hideSmallBalances = modifier ? !modifier.includeSmallBalances : false
+    const smallBalanceThreshold = modifier && modifier.balanceLimit > 0 ? modifier.balanceLimit : DEFAULT_SMALL_BALANCE_USD
 
     const addBalance = (args: {
       address: string
@@ -773,14 +811,18 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
       logoUrl: string
       type: TokenType
     }): void => {
-      const dedupKey = `${args.symbol}:${args.raw.toString()}`
-      if (seenShareState.has(dedupKey)) {
-        return
-      }
-      seenShareState.add(dedupKey)
       const amount = Number(args.raw) / 10 ** args.decimals
       const valueUsd = amount * args.priceUsd
-      totalValueUsd += valueUsd
+      // Visibility overrides win over the small-balance rule; otherwise hide sub-threshold dust.
+      const addr = normalizeAddress(args.address)
+      const isHidden = excludeSet.has(addr)
+        ? true
+        : includeSet.has(addr)
+          ? false
+          : hideSmallBalances && valueUsd < smallBalanceThreshold
+      if (!isHidden) {
+        totalValueUsd += valueUsd
+      }
       balances.push(
         new PortfolioBalance({
           token: new PortfolioToken({
@@ -796,7 +838,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
           priceUsd: args.priceUsd,
           pricePercentChange1d: args.priceChange1d,
           valueUsd,
-          isHidden: false,
+          isHidden,
         }),
       )
     }
