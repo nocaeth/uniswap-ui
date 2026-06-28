@@ -10,7 +10,6 @@ import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { getStablecoinsForChain, isUniverseChainId } from 'uniswap/src/features/chains/utils'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { useUSDCValue } from 'uniswap/src/features/transactions/hooks/useUSDCPrice'
-import { areEvmAddressesEqual } from 'uniswap/src/utils/addresses'
 import { NumberType } from 'utilities/src/format/types'
 import { ChartHeader } from '~/components/Charts/ChartHeader'
 import { Chart } from '~/components/Charts/ChartModel'
@@ -40,6 +39,7 @@ import {
   DepthTooltipBody,
   TooltipShell,
 } from '~/pages/PoolDetails/components/ChartSection/DepthChartTooltip'
+import { selectPoolById } from '~/pages/PoolDetails/components/ChartSection/selectPoolById'
 import { unwrappedToken } from '~/utils/unwrappedToken'
 
 export type { DepthChartZoomActions } from '~/pages/PoolDetails/components/ChartSection/DepthChartModel'
@@ -99,10 +99,7 @@ export function DepthChart({
     true,
   )
 
-  const pool = useMemo(
-    () => poolData?.pools.find((p) => areEvmAddressesEqual(p.poolId, poolId)) ?? poolData?.pools[0],
-    [poolData?.pools, poolId],
-  )
+  const pool = useMemo(() => selectPoolById(poolData?.pools, poolId), [poolData?.pools, poolId])
 
   const sdkCurrencies = useMemo(() => ({ TOKEN0: tokenA, TOKEN1: tokenB }), [tokenA, tokenB])
 

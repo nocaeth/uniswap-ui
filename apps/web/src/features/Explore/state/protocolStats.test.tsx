@@ -25,6 +25,15 @@ const createVolumeWindowData = (currentValue: number, previousValue: number) => 
   ...Array.from({ length: 30 }, (_, index) => createTimestampedAmount(30 - index, previousValue)),
 ]
 
+const createThirtyDayMonthData = (multiplier: number) =>
+  Array.from({ length: 30 }, (_, index) => {
+    const day = index + 1
+    return createTimestampedAmount(day, day * multiplier)
+  })
+
+const stringifyResult = (result: unknown) =>
+  JSON.stringify(result, (_key, value: unknown) => (typeof value === 'number' && Number.isNaN(value) ? 'NaN' : value))
+
 const mockHistoricalProtocolVolume = {
   Month: {
     v2: [createTimestampedAmount(1, 100)],
@@ -60,12 +69,12 @@ const defaultMockQueryResult = {
 
 const TestComponent24hProtocolVolume = () => {
   const result = use24hProtocolVolume()
-  return <div data-testid="result-24h">{JSON.stringify(result)}</div>
+  return <div data-testid="result-24h">{stringifyResult(result)}</div>
 }
 
 const TestComponent24HrTVL = () => {
   const result = useDailyTVLWithChange()
-  return <div data-testid="result-tvl">{JSON.stringify(result)}</div>
+  return <div data-testid="result-tvl">{stringifyResult(result)}</div>
 }
 
 function renderWithProvider(ui: React.ReactElement) {
@@ -112,6 +121,32 @@ describe('use24hProtocolVolume', () => {
     expect(result.totalVolume30d).toBe(1800)
     expect(result.totalVolume7dChangePercent).toBe(0)
     expect(result.totalVolume30dChangePercent).toBe(100)
+  })
+
+  it('calculates 30d volume from a 30-point Month series without a 30d delta', () => {
+    mockUseProtocolStatsQuery.mockReturnValue({
+      ...defaultMockQueryResult,
+      data: {
+        historicalProtocolVolume: {
+          Month: {
+            v2: createThirtyDayMonthData(1),
+            v3: createThirtyDayMonthData(2),
+            v4: createThirtyDayMonthData(3),
+          },
+        },
+      } as unknown as ProtocolStatsResponse,
+    })
+
+    renderWithProvider(<TestComponent24hProtocolVolume />)
+    const resultDiv = screen.getByTestId('result-24h')
+    const result = JSON.parse(resultDiv.textContent || '{}')
+
+    expect(result.totalVolume).toBe(180)
+    expect(result.totalVolume7d).toBe(1134)
+    expect(result.totalVolume30d).toBe(2790)
+    expect(result.totalChangePercent).toBeCloseTo(3.45, 2)
+    expect(result.totalVolume7dChangePercent).toBe(35)
+    expect(result.totalVolume30dChangePercent).toBe('NaN')
   })
 
   it('uses latest available data per protocol when timestamps differ', () => {

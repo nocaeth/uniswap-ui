@@ -1,7 +1,10 @@
 import { GqlResult, GraphQLApi } from '@universe/api'
 import { useMemo } from 'react'
+import { getNativeAddress } from 'uniswap/src/constants/addresses'
 import { getCommonBase } from 'uniswap/src/constants/routing'
+import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
 import { currencyIdToContractInput } from 'uniswap/src/features/dataApi/utils/currencyIdToContractInput'
 import { gqlTokenToCurrencyInfo } from 'uniswap/src/features/dataApi/utils/gqlTokenToCurrencyInfo'
@@ -13,7 +16,77 @@ import {
   currencyIdToChain,
 } from 'uniswap/src/utils/currencyId'
 
-type GqlToken = NonNullable<ReturnType<typeof GraphQLApi.useTokenQuery>['data']>['token']
+type GqlToken = NonNullable<NonNullable<ReturnType<typeof GraphQLApi.useTokenQuery>['data']>['token']>
+type GqlTokens = NonNullable<ReturnType<typeof GraphQLApi.useTokensQuery>['data']>['tokens']
+type GqlTokenWithCurrencyId = GqlToken & { currencyId?: string | null }
+
+function getCurrencyInfoLookupKey(currencyId?: string | null): string | undefined {
+  if (!currencyId) {
+    return undefined
+  }
+
+  const chainId = currencyIdToChain(currencyId)
+  if (!chainId) {
+    return undefined
+  }
+
+  try {
+    return `${chainId}-${normalizeTokenAddressForCache(currencyIdToAddress(currencyId))}`
+  } catch (_error) {
+    return undefined
+  }
+}
+
+function getGqlTokenLookupKeys(gqlToken?: GqlToken): string[] {
+  if (!gqlToken) {
+    return []
+  }
+
+  const lookupKeys: string[] = []
+  const currencyIdLookupKey = getCurrencyInfoLookupKey((gqlToken as GqlTokenWithCurrencyId).currencyId)
+  if (currencyIdLookupKey) {
+    lookupKeys.push(currencyIdLookupKey)
+  }
+
+  const chainId = fromGraphQLChain(gqlToken.chain)
+  if (!chainId || gqlToken.address === undefined) {
+    return lookupKeys
+  }
+
+  const address = gqlToken.address ?? getNativeAddress(chainId)
+  const chainAddressLookupKey = `${chainId}-${normalizeTokenAddressForCache(address)}`
+  if (!lookupKeys.includes(chainAddressLookupKey)) {
+    lookupKeys.push(chainAddressLookupKey)
+  }
+
+  return lookupKeys
+}
+
+function buildGqlTokenLookup(gqlTokens?: GqlTokens): Map<string, GqlToken> {
+  const gqlTokenLookup = new Map<string, GqlToken>()
+
+  gqlTokens?.forEach((gqlToken) => {
+    if (!gqlToken) {
+      return
+    }
+
+    getGqlTokenLookupKeys(gqlToken).forEach((lookupKey) => {
+      if (!gqlTokenLookup.has(lookupKey)) {
+        gqlTokenLookup.set(lookupKey, gqlToken)
+      }
+    })
+  })
+
+  return gqlTokenLookup
+}
+
+function getCurrencyInfoFromTokenLookup(
+  currencyId: string,
+  gqlTokenLookup: Map<string, GqlToken>,
+): Maybe<CurrencyInfo> {
+  const lookupKey = getCurrencyInfoLookupKey(currencyId)
+  return getCurrencyInfoWithLocalFallback(currencyId, lookupKey ? gqlTokenLookup.get(lookupKey) : undefined)
+}
 
 function getCurrencyInfoWithLocalFallback(currencyId?: string, gqlToken?: GqlToken): Maybe<CurrencyInfo> {
   if (!currencyId) {
@@ -107,7 +180,8 @@ export function useCurrencyInfos(
   })
 
   return useMemo(() => {
-    return _currencyIds.map((currencyId, index) => getCurrencyInfoWithLocalFallback(currencyId, data?.tokens?.[index]))
+    const gqlTokenLookup = buildGqlTokenLookup(data?.tokens)
+    return _currencyIds.map((currencyId) => getCurrencyInfoFromTokenLookup(currencyId, gqlTokenLookup))
   }, [_currencyIds, data?.tokens])
 }
 
@@ -124,9 +198,10 @@ export function useCurrencyInfosWithLoading(
   })
 
   return useMemo(() => {
+    const gqlTokenLookup = buildGqlTokenLookup(queryResult.data?.tokens)
     return {
       data: _currencyIds
-        .map((currencyId, index) => getCurrencyInfoWithLocalFallback(currencyId, queryResult.data?.tokens?.[index]))
+        .map((currencyId) => getCurrencyInfoFromTokenLookup(currencyId, gqlTokenLookup))
         .filter((currencyInfo): currencyInfo is CurrencyInfo => Boolean(currencyInfo)),
       loading: queryResult.loading,
       error: queryResult.error,

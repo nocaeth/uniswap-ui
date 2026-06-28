@@ -80,6 +80,19 @@ describe('ExploreStatsSection', () => {
     expect(loadingBubbles.length).toBe(0)
   })
 
+  it('renders unavailable stat changes as a placeholder', () => {
+    mockUse24hProtocolVolume.mockReturnValue({
+      ...mockVolumeData,
+      totalVolume30dChangePercent: Number.NaN,
+    })
+
+    render(<ExploreStatsSection />)
+
+    expect(screen.queryByText(/NaN/i)).not.toBeInTheDocument()
+    expect(screen.getByText('-')).toBeInTheDocument()
+    expect(screen.getAllByText(/today/i)).toHaveLength(3)
+  })
+
   it('transitions from loading to loaded state properly', () => {
     // Start with loading state
     mockUse24hProtocolVolume.mockReturnValue({

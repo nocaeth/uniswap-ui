@@ -110,6 +110,7 @@ interface StatDisplayProps {
 const StatDisplay = memo(({ data, isLoading, isHoverable }: StatDisplayProps) => {
   const { formatPercent } = useLocalizationContext()
   const { t } = useTranslation()
+  const hasChange = Number.isFinite(data.change)
 
   return (
     <Flex transition="all 0.1s ease-in-out" group gap="$spacing4" minHeight="$spacing60">
@@ -128,9 +129,11 @@ const StatDisplay = memo(({ data, isLoading, isHoverable }: StatDisplayProps) =>
           <LoadingBubble height="12px" width="60px" />
         ) : (
           <Fragment>
-            <DeltaArrow delta={data.change} formattedDelta={formatPercent(Math.abs(data.change))} size={12} />
+            {hasChange && (
+              <DeltaArrow delta={data.change} formattedDelta={formatPercent(Math.abs(data.change))} size={12} />
+            )}
             <Text variant="body4" color="$neutral1">
-              {formatPercent(Math.abs(data.change))} {t('common.today').toLocaleLowerCase()}
+              {hasChange ? `${formatPercent(Math.abs(data.change))} ${t('common.today').toLocaleLowerCase()}` : '-'}
             </Text>
           </Fragment>
         )}

@@ -52,9 +52,15 @@ function getWindowedValues({
 }): {
   latest: { value: number; timestamp: number }
   previous: { value: number; timestamp: number }
+  hasCurrentWindow: boolean
+  hasPreviousWindow: boolean
 } {
   if (windowSize === 1) {
-    return getLatestAndPreviousValues(data, options)
+    return {
+      ...getLatestAndPreviousValues(data, options),
+      hasCurrentWindow: !!data?.length,
+      hasPreviousWindow: true,
+    }
   }
 
   if (!data || data.length === 0) {
@@ -64,18 +70,23 @@ function getWindowedValues({
     return {
       latest: { value: 0, timestamp: 0 },
       previous: { value: 0, timestamp: 0 },
+      hasCurrentWindow: false,
+      hasPreviousWindow: false,
     }
   }
 
   const sorted = [...data].sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
   const currentWindow = sorted.slice(0, windowSize)
   const previousWindow = sorted.slice(windowSize, windowSize * 2)
+  const hasPreviousWindow = previousWindow.length === windowSize
   const sumWindow = (window: TimestampedAmount[]): number =>
     window.reduce((total, point) => total + Number(point.value), 0)
 
   return {
     latest: { value: sumWindow(currentWindow), timestamp: Number(currentWindow[0]?.timestamp ?? 0) },
     previous: { value: sumWindow(previousWindow), timestamp: Number(previousWindow[0]?.timestamp ?? 0) },
+    hasCurrentWindow: currentWindow.length > 0,
+    hasPreviousWindow,
   }
 }
 
@@ -111,10 +122,15 @@ function getProtocolVolumeWindow({
 
   const totalLatest = v2.latest.value + v3.latest.value + v4.latest.value
   const totalPrevious = v2.previous.value + v3.previous.value + v4.previous.value
+  const windows = [v2, v3, v4]
+  const hasAnyCurrentWindow = windows.some((window) => window.hasCurrentWindow)
+  const isMissingPreviousWindow =
+    windowSize > 1 && windows.some((window) => window.hasCurrentWindow && !window.hasPreviousWindow)
 
   return {
     totalVolume: totalLatest,
-    totalChangePercent: computeChangePercent(totalLatest, totalPrevious),
+    totalChangePercent:
+      hasAnyCurrentWindow && isMissingPreviousWindow ? Number.NaN : computeChangePercent(totalLatest, totalPrevious),
     protocolVolumes: {
       v2: v2.latest.value,
       v3: v3.latest.value,

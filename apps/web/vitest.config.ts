@@ -29,7 +29,7 @@ export default defineConfig({
     deps: {
       inline: [/packages\/ui/, /packages\/utilities/, /packages\/uniswap/],
     },
-    reporters: ['verbose'],
+    reporters: ['default'],
     coverage: {
       include: ['src/**/*.ts*'],
       exclude: [

@@ -1,11 +1,10 @@
-import userEvent from '@testing-library/user-event'
 import { nativeOnChain } from 'uniswap/src/constants/tokens'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { TestID } from 'uniswap/src/test/fixtures/testIDs'
 import { CurrentPageBreadcrumb } from '~/components/BreadcrumbNav'
 import { NATIVE_CHAIN_ID } from '~/constants/tokens'
 import { TokenFromList } from '~/state/lists/tokenFromList'
-import { render, screen } from '~/test-utils/render'
+import { fireEvent, render, screen } from '~/test-utils/render'
 
 describe('BreadcrumbNav', () => {
   it('renders hover components correctly', async () => {
@@ -21,9 +20,9 @@ describe('BreadcrumbNav', () => {
     )
     expect(asFragment()).toMatchSnapshot()
 
-    await userEvent.hover(screen.getByTestId('current-breadcrumb'))
+    fireEvent.mouseEnter(screen.getByTestId('current-breadcrumb'))
     expect(screen.getByTestId(TestID.BreadcrumbHoverCopy)).toBeInTheDocument()
-    await userEvent.unhover(screen.getByTestId('current-breadcrumb'))
+    fireEvent.mouseLeave(screen.getByTestId('current-breadcrumb'))
     expect(screen.queryByTestId(TestID.BreadcrumbHoverCopy)).not.toBeInTheDocument()
   })
 
@@ -32,7 +31,7 @@ describe('BreadcrumbNav', () => {
     const { asFragment } = render(<CurrentPageBreadcrumb address={NATIVE_CHAIN_ID} currency={ETH} />)
     expect(asFragment()).toMatchSnapshot()
 
-    await userEvent.hover(screen.getByTestId('current-breadcrumb'))
+    fireEvent.mouseEnter(screen.getByTestId('current-breadcrumb'))
     expect(screen.queryByTestId(TestID.BreadcrumbHoverCopy)).not.toBeInTheDocument()
   })
 })

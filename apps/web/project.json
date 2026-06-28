@@ -264,10 +264,20 @@
       "cache": false
     },
     "test": {
-      "command": "NODE_OPTIONS='--no-deprecation' vitest run",
+      "executor": "nx:run-commands",
       "options": {
-        "cwd": "{projectRoot}"
-      }
+        "cwd": "{projectRoot}",
+        "parallel": false,
+        "commands": [
+          "NODE_OPTIONS='--no-deprecation' vitest run src/components",
+          "NODE_OPTIONS='--no-deprecation' vitest run src/pages src/app/ src/appGraphql src/state src/features/Swap/state",
+          "NODE_OPTIONS='--no-deprecation' vitest run src/hooks src/nft src/utils",
+          "NODE_OPTIONS='--no-deprecation' vitest run src --exclude 'src/components/**' --exclude 'src/pages/**' --exclude 'src/app/**' --exclude 'src/appGraphql/**' --exclude 'src/state/**' --exclude 'src/features/Swap/state/**' --exclude 'src/hooks/**' --exclude 'src/nft/**' --exclude 'src/utils/**'"
+        ]
+      },
+      "dependsOn": ["^prepare", "prepare"],
+      "inputs": ["sourceFiles", "^production", "{projectRoot}/**/*.test.*", "{projectRoot}/**/*.spec.*"],
+      "cache": true
     },
     "test:bundle": {
       "command": "bun run -r esbuild-register ./src/test-utils/bundle-size-test.ts",
@@ -292,7 +302,7 @@
       "cache": true
     },
     "test:set2": {
-      "command": "NODE_OPTIONS='--no-deprecation' vitest run src/pages src/app src/state src/features/Swap/state",
+      "command": "NODE_OPTIONS='--no-deprecation' vitest run src/pages src/app/ src/appGraphql src/state src/features/Swap/state",
       "options": {
         "cwd": "{projectRoot}"
       },
@@ -310,7 +320,7 @@
       "cache": true
     },
     "test:set4": {
-      "command": "NODE_OPTIONS='--no-deprecation' vitest run src --exclude 'src/components/**' --exclude 'src/pages/**' --exclude 'src/app/**' --exclude 'src/state/**' --exclude 'src/features/Swap/state/**' --exclude 'src/hooks/**' --exclude 'src/nft/**' --exclude 'src/utils/**'",
+      "command": "NODE_OPTIONS='--no-deprecation' vitest run src --exclude 'src/components/**' --exclude 'src/pages/**' --exclude 'src/app/**' --exclude 'src/appGraphql/**' --exclude 'src/state/**' --exclude 'src/features/Swap/state/**' --exclude 'src/hooks/**' --exclude 'src/nft/**' --exclude 'src/utils/**'",
       "options": {
         "cwd": "{projectRoot}"
       },

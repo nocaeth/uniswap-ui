@@ -18,6 +18,7 @@ import {
   priceFromTick,
   toDisplayPrice,
 } from '~/pages/PoolDetails/components/ChartSection/DepthChart.utils'
+import { selectPoolById } from '~/pages/PoolDetails/components/ChartSection/selectPoolById'
 
 type BookSide = 'ask' | 'bid'
 
@@ -210,6 +211,8 @@ export function OrderBook({
     true,
   )
 
+  const pool = useMemo(() => selectPoolById(poolData?.pools, poolId), [poolData?.pools, poolId])
+
   const sdkCurrencies = useMemo(() => ({ TOKEN0: tokenA, TOKEN1: tokenB }), [tokenA, tokenB])
 
   const { tickData, activeTick, loading } = useLiquidityBarData({
@@ -220,7 +223,7 @@ export function OrderBook({
     version,
     hooks,
     poolId,
-    tickSpacing: poolData?.pools[0]?.tickSpacing,
+    tickSpacing: pool?.tickSpacing,
   })
 
   const { asks, bids } = useMemo(() => {

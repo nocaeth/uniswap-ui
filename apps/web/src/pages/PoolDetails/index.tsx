@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router'
 import { Flex, Separator, styled, Text, useIsDarkMode, useSporeColors } from 'ui/src'
 import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
-import { InterfacePageName, ModalName } from 'uniswap/src/features/telemetry/constants'
+import { InterfacePageName } from 'uniswap/src/features/telemetry/constants'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { shouldReverseForWaterfall } from 'uniswap/src/features/tokens/waterfallPriority'
 import { AddressStringFormat, normalizeAddress } from 'uniswap/src/utils/addresses'
@@ -30,9 +30,9 @@ import { PoolDetailsLink } from '~/pages/PoolDetails/components/PoolDetailsLink'
 import { PoolDetailsStats } from '~/pages/PoolDetails/components/PoolDetailsStats'
 import { PoolDetailsStatsButtons } from '~/pages/PoolDetails/components/PoolDetailsStatsButtons'
 import { PoolDetailsTableTab } from '~/pages/PoolDetails/components/PoolDetailsTable'
+import { getPoolDetailsNotFoundRedirectPath } from '~/pages/PoolDetails/redirect'
 import { getPoolDetailPageTitle } from '~/pages/PoolDetails/utils'
 import { ThemeProvider } from '~/theme'
-import { ExploreTab } from '~/types/explore'
 import { useChainIdFromUrlParam } from '~/utils/params/chainParams'
 
 const PageWrapper = styled(Flex, {
@@ -177,9 +177,14 @@ export function PoolDetailsPage() {
     darkMode: isDarkMode,
   })
 
-  const isInvalidPool = !poolAddress || !chainInfo
   const loading = poolLoading || orderBookLoading
-  const poolNotFound = (!poolLoading && !poolData) || isInvalidPool
+  const poolNotFoundRedirectPath = getPoolDetailsNotFoundRedirectPath({
+    poolAddress,
+    hasChainInfo: Boolean(chainInfo),
+    poolLoading,
+    hasPoolData: Boolean(poolData),
+  })
+  const poolNotFound = Boolean(poolNotFoundRedirectPath)
 
   const metatagProperties = useMemo(() => {
     const token0Symbol = poolData?.token0.symbol
@@ -206,12 +211,12 @@ export function PoolDetailsPage() {
   const isCompact = useScrollCompact({ thresholdCompact: 100, thresholdExpanded: 60 })
 
   useEffect(() => {
-    if (poolNotFound) {
-      navigate(`/explore/pools?type=${ExploreTab.Pools}&result=${ModalName.NotFound}`)
+    if (poolNotFoundRedirectPath) {
+      navigate(poolNotFoundRedirectPath)
     }
-  }, [poolNotFound, navigate])
+  }, [poolNotFoundRedirectPath, navigate])
 
-  if (poolNotFound) {
+  if (poolNotFound || !chainInfo || !poolAddress) {
     return null
   }
 

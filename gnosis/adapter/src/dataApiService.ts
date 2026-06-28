@@ -1,3 +1,5 @@
+import type { ServiceType } from '@bufbuild/protobuf'
+import type { ConnectRouter, ServiceImpl } from '@connectrpc/connect'
 import { DataApiService } from '@uniswap/client-data-api/dist/data/v1/api_connect.js'
 import {
   GetPortfolioRequest,
@@ -33,13 +35,11 @@ import {
 } from '@uniswap/client-data-api/dist/data/v1/types_pb.js'
 import { Token } from '@uniswap/sdk-core'
 import { FeeAmount, Pool, Position as V3Position, TICK_SPACINGS } from '@uniswap/v3-sdk'
+import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem'
+import { gnosis } from 'viem/chains'
 import { fetchExploreStats, getTokenRow } from './envio.js'
 import type { EnvioToken } from './envio.js'
 import { deriveOsgnoPriceUsd, fetchOsgnoRate, GNO_ADDRESS, isOsgnoAddress, OSGNO_ADDRESS } from './osgnoOracle.js'
-import type { ServiceType } from '@bufbuild/protobuf'
-import type { ConnectRouter, ServiceImpl } from '@connectrpc/connect'
-import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem'
-import { gnosis } from 'viem/chains'
 
 // Gnosis-only deployment. Uniswap's DataApiService (positions backend) does not
 // cover Gnosis, so we serve ListPositions/GetPosition for V3 by reading the
@@ -85,15 +85,12 @@ function normalizeAddress(addr: string): string {
 // fork (POSITIONS_RPC_URL); in a hosted deployment set RPC_GNOSIS (see the adapter
 // service in docker-compose.yml). The localhost fallback only applies if none is set.
 const RPC_URL =
-  process.env.POSITIONS_RPC_URL ??
-  process.env.GNOSIS_RPC_URL ??
-  process.env.RPC_GNOSIS ??
-  'http://localhost:8545'
+  process.env.POSITIONS_RPC_URL ?? process.env.GNOSIS_RPC_URL ?? process.env.RPC_GNOSIS ?? 'http://localhost:8545'
 
 const client: PublicClient = createPublicClient({ chain: gnosis, transport: http(RPC_URL) })
 const OSGNO_RATE_CACHE_MS = 60_000
 
-let cachedOsgnoRate: { value: number | undefined; expiresAt: number } | undefined
+let cachedOsgnoRate: { value: number; expiresAt: number } | undefined
 
 async function getCachedOsgnoRate(): Promise<number | undefined> {
   const now = Date.now()
@@ -104,7 +101,9 @@ async function getCachedOsgnoRate(): Promise<number | undefined> {
     console.warn('osGNO oracle price unavailable; falling back to indexed osGNO price', error)
     return undefined
   })
-  cachedOsgnoRate = { value, expiresAt: now + OSGNO_RATE_CACHE_MS }
+  if (value !== undefined) {
+    cachedOsgnoRate = { value, expiresAt: now + OSGNO_RATE_CACHE_MS }
+  }
   return value
 }
 
@@ -125,7 +124,13 @@ const Q128 = 1n << 128n
 const MAX_UINT256 = (1n << 256n) - 1n
 
 const NPM_ABI = [
-  { type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] },
+  {
+    type: 'function',
+    name: 'balanceOf',
+    stateMutability: 'view',
+    inputs: [{ type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
   {
     type: 'function',
     name: 'tokenOfOwnerByIndex',
@@ -133,7 +138,13 @@ const NPM_ABI = [
     inputs: [{ type: 'address' }, { type: 'uint256' }],
     outputs: [{ type: 'uint256' }],
   },
-  { type: 'function', name: 'ownerOf', stateMutability: 'view', inputs: [{ type: 'uint256' }], outputs: [{ type: 'address' }] },
+  {
+    type: 'function',
+    name: 'ownerOf',
+    stateMutability: 'view',
+    inputs: [{ type: 'uint256' }],
+    outputs: [{ type: 'address' }],
+  },
   {
     type: 'function',
     name: 'positions',
@@ -183,8 +194,20 @@ const POOL_ABI = [
     ],
   },
   { type: 'function', name: 'liquidity', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint128' }] },
-  { type: 'function', name: 'feeGrowthGlobal0X128', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-  { type: 'function', name: 'feeGrowthGlobal1X128', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  {
+    type: 'function',
+    name: 'feeGrowthGlobal0X128',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'feeGrowthGlobal1X128',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
   {
     type: 'function',
     name: 'ticks',
@@ -257,9 +280,13 @@ function uncollectedFee(args: {
 }): bigint {
   const { tickCurrent, tickLower, tickUpper, feeGrowthGlobalX128 } = args
   const feeGrowthBelow =
-    tickCurrent >= tickLower ? args.feeGrowthOutsideLowerX128 : sub256(feeGrowthGlobalX128, args.feeGrowthOutsideLowerX128)
+    tickCurrent >= tickLower
+      ? args.feeGrowthOutsideLowerX128
+      : sub256(feeGrowthGlobalX128, args.feeGrowthOutsideLowerX128)
   const feeGrowthAbove =
-    tickCurrent < tickUpper ? args.feeGrowthOutsideUpperX128 : sub256(feeGrowthGlobalX128, args.feeGrowthOutsideUpperX128)
+    tickCurrent < tickUpper
+      ? args.feeGrowthOutsideUpperX128
+      : sub256(feeGrowthGlobalX128, args.feeGrowthOutsideUpperX128)
   const feeGrowthInside = sub256(sub256(feeGrowthGlobalX128, feeGrowthBelow), feeGrowthAbove)
   const delta = sub256(feeGrowthInside, args.feeGrowthInsideLastX128)
   return args.tokensOwed + (delta * args.liquidity) / Q128
@@ -315,7 +342,20 @@ async function fetchRawPositions(tokenIds: bigint[]): Promise<Map<string, RawPos
     if (res.status !== 'success' || !res.result) {
       return
     }
-    const r = res.result as readonly [bigint, Address, Address, Address, number, number, number, bigint, bigint, bigint, bigint, bigint]
+    const r = res.result as readonly [
+      bigint,
+      Address,
+      Address,
+      Address,
+      number,
+      number,
+      number,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+      bigint,
+    ]
     map.set(tokenIds[i]!.toString(), {
       token0: getAddress(r[2]),
       token1: getAddress(r[3]),
@@ -358,7 +398,9 @@ async function fetchTokenMeta(addresses: Address[]): Promise<Map<string, TokenMe
   return map
 }
 
-async function fetchPoolStates(pools: { token0: Address; token1: Address; fee: number }[]): Promise<Map<string, PoolState>> {
+async function fetchPoolStates(
+  pools: { token0: Address; token1: Address; fee: number }[],
+): Promise<Map<string, PoolState>> {
   // Resolve pool addresses for the (token0,token1,fee) tuples.
   const keys = pools.map((p) => `${p.token0}-${p.token1}-${p.fee}`)
   const addrRes = (await client.multicall({
@@ -627,7 +669,12 @@ async function getPosition(req: GetPositionRequest): Promise<GetPositionResponse
     owner = req.owner
       ? getAddress(req.owner)
       : getAddress(
-          (await client.readContract({ address: NPM_ADDRESS, abi: NPM_ABI, functionName: 'ownerOf', args: [tokenId] })) as Address,
+          (await client.readContract({
+            address: NPM_ADDRESS,
+            abi: NPM_ABI,
+            functionName: 'ownerOf',
+            args: [tokenId],
+          })) as Address,
         )
   } catch {
     return new GetPositionResponse({})
@@ -833,7 +880,8 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
     const excludeSet = new Set((modifier?.excludeOverrides ?? []).map((c) => normalizeAddress(c.address)))
     const includeSet = new Set((modifier?.includeOverrides ?? []).map((c) => normalizeAddress(c.address)))
     const hideSmallBalances = modifier ? !modifier.includeSmallBalances : false
-    const smallBalanceThreshold = modifier && modifier.balanceLimit > 0 ? modifier.balanceLimit : DEFAULT_SMALL_BALANCE_USD
+    const smallBalanceThreshold =
+      modifier && modifier.balanceLimit > 0 ? modifier.balanceLimit : DEFAULT_SMALL_BALANCE_USD
 
     const addBalance = (args: {
       address: string

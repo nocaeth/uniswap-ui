@@ -7,7 +7,6 @@ import { Flex, Shine, Text } from 'ui/src'
 import { ZERO_ADDRESS } from 'uniswap/src/constants/misc'
 import { useGetPoolsByTokens } from 'uniswap/src/data/rest/getPools'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { areEvmAddressesEqual } from 'uniswap/src/utils/addresses'
 import { ChartHeader } from '~/components/Charts/ChartHeader'
 import { ChartSkeleton } from '~/components/Charts/LoadingState'
 import { ChartType } from '~/components/Charts/utils'
@@ -20,6 +19,7 @@ import { ChartEntry } from '~/features/Liquidity/charts/LiquidityRangeInput/type
 import { useAllPoolTicks } from '~/features/Liquidity/hooks/usePoolTickData'
 import { getTokenOrZeroAddress } from '~/features/Liquidity/utils/currency'
 import { useColor } from '~/hooks/useColor'
+import { selectPoolById } from '~/pages/PoolDetails/components/ChartSection/selectPoolById'
 import { unwrappedToken } from '~/utils/unwrappedToken'
 
 const PDP_CHART_HEIGHT_PX = 356
@@ -245,10 +245,7 @@ function useD3LiquidityPoolChartData({
     true,
   )
 
-  const pool = useMemo(
-    () => poolData?.pools.find((p) => areEvmAddressesEqual(p.poolId, poolId)) ?? poolData?.pools[0],
-    [poolData?.pools, poolId],
-  )
+  const pool = useMemo(() => selectPoolById(poolData?.pools, poolId), [poolData?.pools, poolId])
 
   const tickSpacing = pool?.tickSpacing ?? TICK_SPACINGS[feeTier]
   const currentTick = pool?.tick
