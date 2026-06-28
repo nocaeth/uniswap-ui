@@ -128,7 +128,7 @@ export function useGnosisApprovalInfo(params: {
           to: tokenAddress,
           from: address,
           chainId,
-          data: buildErc20ApproveData(approvalSpender),
+          data: buildErc20ApproveData(approvalSpender, BigNumber.from(requiredAmount)),
         },
         cancelTxRequest: null,
       },

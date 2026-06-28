@@ -1,15 +1,18 @@
 import { Interface } from '@ethersproject/abi'
+import { BigNumber } from '@ethersproject/bignumber'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { SDAI_ERC4626_PREVIEW_ABI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
+import { PERMIT2_ABI, SDAI_ERC4626_PREVIEW_ABI } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
 import {
   GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
   GNOSIS_SDAI,
+  GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
   GNOSIS_WXDAI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import {
   buildCandidateRouteSets,
+  buildPermitTransactionIfNeeded,
   fetchGnosisQuote,
   isGnosisQuotePriceImpactViable,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
@@ -26,6 +29,7 @@ const TOKEN_B = '0x2000000000000000000000000000000000000002'
 const SWAPPER = '0x1111111111111111111111111111111111111111'
 const NATIVE_XDAI_SENTINEL = '0x0000000000000000000000000000000000000000'
 const previewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
+const permit2Interface = new Interface(PERMIT2_ABI)
 
 // Mirrors GNOSIS_MIN_CANDIDATE_POOL_TVL_USD (1_000) so edges straddle the real floor.
 const ABOVE_FLOOR = 5_000
@@ -152,6 +156,7 @@ describe('fetchGnosisQuote sDAI adapter path', () => {
     expect(response.quote.output?.amount).toBe('950')
     expect(response.quote.route).toEqual([])
     expect(response.quote.gasFee).toBe('1800000')
+    expect(response.quote.slippage).toBe(0.5)
   })
 
   it('quotes sDAI -> WXDAI exact output directly from ERC4626 previewWithdraw', async () => {
@@ -166,6 +171,7 @@ describe('fetchGnosisQuote sDAI adapter path', () => {
         tokenIn: GNOSIS_SDAI,
         tokenOut: GNOSIS_WXDAI,
         swapper: SWAPPER,
+        slippageTolerance: 0.75,
       },
       { indicative: true },
     )
@@ -182,6 +188,46 @@ describe('fetchGnosisQuote sDAI adapter path', () => {
     expect(response.quote.input?.amount).toBe('1050')
     expect(response.quote.output?.amount).toBe('1000')
     expect(response.quote.gasFee).toBeUndefined()
+    expect(response.quote.slippage).toBe(0.75)
+  })
+})
+
+describe('buildPermitTransactionIfNeeded', () => {
+  it('encodes Permit2 approval for the exact required input amount', () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
+    try {
+      const permitTransaction = buildPermitTransactionIfNeeded({
+        permitRelevant: true,
+        permit2Allowance: { amount: BigNumber.from(0), expiration: BigNumber.from(0) },
+        swapper: SWAPPER,
+        token: TOKEN_A,
+        requiredAmount: BigNumber.from('12345'),
+      })
+
+      expect(permitTransaction?.to).toBe('0x000000000022D473030F116dDEE9F6B43aC78BA3')
+      const decoded = permit2Interface.decodeFunctionData('approve', permitTransaction?.data ?? '')
+      expect(decoded[0]).toBe(TOKEN_A)
+      expect(decoded[1]).toBe(GNOSIS_UNIVERSAL_ROUTER_ADDRESS)
+      expect(decoded[2].toString()).toBe('12345')
+      expect(decoded[3].toString()).toBe('1700001800')
+    } finally {
+      dateNowSpy.mockRestore()
+    }
+  })
+
+  it('skips Permit2 approval when the allowance already covers the exact input amount', () => {
+    const permitTransaction = buildPermitTransactionIfNeeded({
+      permitRelevant: true,
+      permit2Allowance: {
+        amount: BigNumber.from('12345'),
+        expiration: BigNumber.from(Math.floor(Date.now() / 1000) + 60),
+      },
+      swapper: SWAPPER,
+      token: TOKEN_A,
+      requiredAmount: BigNumber.from('12345'),
+    })
+
+    expect(permitTransaction).toBeUndefined()
   })
 })
 

@@ -1,0 +1,68 @@
+import { CurrencyAmount, Token } from '@uniswap/sdk-core'
+import { TradingApi } from '@universe/api'
+import { renderHook } from '@testing-library/react'
+import { useQuery } from '@tanstack/react-query'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { ApprovalAction } from 'uniswap/src/features/transactions/swap/types/trade'
+import { WrapType } from 'uniswap/src/features/transactions/types/wrap'
+import {
+  PERMIT2_ADDRESS,
+  erc20Interface,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/approvals'
+import { useGnosisApprovalInfo } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/useGnosisApprovalInfo'
+import type { Mock } from 'vitest'
+
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(),
+}))
+
+vi.mock('uniswap/src/features/gas/hooks', () => ({
+  convertGasFeeToDisplayValue: vi.fn(({ gasFee }: { gasFee: string }) => gasFee),
+  useActiveGasStrategy: vi.fn(() => ({})),
+}))
+
+describe('useGnosisApprovalInfo', () => {
+  const owner = '0x1111111111111111111111111111111111111111'
+  const tokenIn = new Token(
+    UniverseChainId.Gnosis,
+    '0x1000000000000000000000000000000000000001',
+    18,
+    'TST',
+  )
+  const tokenOut = new Token(
+    UniverseChainId.Gnosis,
+    '0x2000000000000000000000000000000000000002',
+    18,
+    'OUT',
+  )
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('builds the ERC20 approval for the exact input amount', () => {
+    ;(useQuery as Mock).mockReturnValue({
+      data: { allowance: '0', gasPrice: '10' },
+      isLoading: false,
+      error: null,
+    })
+
+    const { result } = renderHook(() =>
+      useGnosisApprovalInfo({
+        address: owner,
+        chainId: UniverseChainId.Gnosis,
+        wrapType: WrapType.NotApplicable,
+        currencyInAmount: CurrencyAmount.fromRawAmount(tokenIn, '12345'),
+        currencyOutAmount: CurrencyAmount.fromRawAmount(tokenOut, '1'),
+        tradeType: TradingApi.TradeType.EXACT_INPUT,
+      }),
+    )
+
+    const txRequest = result.current.tokenApprovalInfo.txRequest
+    expect(result.current.tokenApprovalInfo.action).toBe(ApprovalAction.Permit2Approve)
+    expect(txRequest?.to).toBe(tokenIn.address)
+    const decoded = erc20Interface.decodeFunctionData('approve', txRequest?.data ?? '')
+    expect(decoded[0]).toBe(PERMIT2_ADDRESS)
+    expect(decoded[1].toString()).toBe('12345')
+  })
+})

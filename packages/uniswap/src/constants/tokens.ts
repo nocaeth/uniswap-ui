@@ -299,6 +299,13 @@ export const WRAPPED_NATIVE_CURRENCY: { [chainId: number]: Token | undefined } =
     'CELO',
     'Celo',
   ),
+  [UniverseChainId.Gnosis]: new Token(
+    UniverseChainId.Gnosis,
+    '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d',
+    18,
+    'WXDAI',
+    'Wrapped XDAI',
+  ),
   [UniverseChainId.Monad]: new Token(
     UniverseChainId.Monad,
     '0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A',

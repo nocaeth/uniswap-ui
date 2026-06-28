@@ -79,8 +79,10 @@ import {
 
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
 
+const DEFAULT_GNOSIS_SLIPPAGE_PERCENT = 0.5
 // Static gas allowance (in gas units) for the standalone Permit2.approve permit tx.
 const PERMIT2_APPROVE_GAS = 55_000
+const PERMIT2_APPROVE_EXPIRATION_SECONDS = 30 * 60
 // The TradingAPI placeholder swapper used for unconnected quotes — skip permit lookups for it.
 const UNCONNECTED_SWAPPER = '0xAAAA44272dc658575Ba38f43C438447dDED45358'
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -98,6 +100,10 @@ const poolInterface = new Interface(V3_POOL_STATE_ABI)
 const erc20MetaInterface = new Interface(ERC20_METADATA_ABI)
 const permit2Interface = new Interface(PERMIT2_ABI)
 const sdaiPreviewInterface = new Interface(SDAI_ERC4626_PREVIEW_ABI)
+
+function getGnosisSlippageTolerance(params: Pick<TradingApi.QuoteRequest, 'slippageTolerance'>): number {
+  return params.slippageTolerance ?? DEFAULT_GNOSIS_SLIPPAGE_PERCENT
+}
 
 interface TokenMeta {
   address: string
@@ -796,7 +802,7 @@ async function fetchGnosisSdaiAdapterQuote(args: {
     input: { token: params.tokenIn, amount: amountIn.toString() },
     output: { token: params.tokenOut, amount: amountOut.toString(), recipient },
     tradeType,
-    slippage: params.slippageTolerance,
+    slippage: getGnosisSlippageTolerance(params),
     route: [],
     routeString: 'sDAI adapter',
     quoteId: GNOSIS_SDAI_ADAPTER_QUOTE_ID,
@@ -870,7 +876,7 @@ function buildGnosisZapQuoteResponse(args: {
     input: { token: inputToken, amount: inputAmount.toString() },
     output: { token: outputToken, amount: outputAmount.toString(), recipient: params.swapper },
     tradeType: params.type,
-    slippage: params.slippageTolerance,
+    slippage: getGnosisSlippageTolerance(params),
     route: indicative ? [] : (subQuote.route ?? []),
     routeString: subQuote.routeString ? `sDAI-zap: ${subQuote.routeString}` : 'sDAI zap',
     quoteId: GNOSIS_SDAI_ZAP_QUOTE_ID,
@@ -1032,7 +1038,7 @@ async function fetchGnosisQuoteInner(
       input: { token: inputToken, amount: best.amountIn.toString() },
       output: { token: outputToken, amount: best.amountOut.toString(), recipient: params.swapper },
       tradeType,
-      slippage: params.slippageTolerance,
+      slippage: getGnosisSlippageTolerance(params),
       route: [],
       routeString: '',
       quoteId: 'gnosis-local',
@@ -1118,7 +1124,7 @@ async function fetchGnosisQuoteInner(
     input: { token: inputToken, amount: totalAmountIn.toString() },
     output: { token: outputToken, amount: totalAmountOut.toString(), recipient: params.swapper },
     tradeType,
-    slippage: params.slippageTolerance,
+    slippage: getGnosisSlippageTolerance(params),
     route,
     routeString,
     quoteId: 'gnosis-local',
@@ -1234,7 +1240,7 @@ function computeAggregatePriceImpact(args: {
   return Number((weighted / BIPS_BASE).toFixed(3))
 }
 
-function buildPermitTransactionIfNeeded(args: {
+export function buildPermitTransactionIfNeeded(args: {
   permitRelevant: boolean
   permit2Allowance?: { amount: BigNumber; expiration: BigNumber }
   swapper: string
@@ -1251,5 +1257,13 @@ function buildPermitTransactionIfNeeded(args: {
   if (sufficient) {
     return undefined
   }
-  return { to: PERMIT2_ADDRESS, data: buildPermit2ApproveData({ token, spender: GNOSIS_UNIVERSAL_ROUTER_ADDRESS }) }
+  return {
+    to: PERMIT2_ADDRESS,
+    data: buildPermit2ApproveData({
+      token,
+      spender: GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
+      amount: requiredAmount,
+      expiration: BigNumber.from(nowSec + PERMIT2_APPROVE_EXPIRATION_SECONDS),
+    }),
+  }
 }
