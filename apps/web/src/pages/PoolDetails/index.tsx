@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 import { Flex, Separator, styled, Text, useIsDarkMode, useSporeColors } from 'ui/src'
 import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
-import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { InterfacePageName } from 'uniswap/src/features/telemetry/constants'
 import Trace from 'uniswap/src/features/telemetry/Trace'
 import { shouldReverseForWaterfall } from 'uniswap/src/features/tokens/waterfallPriority'
@@ -270,6 +269,7 @@ export function PoolDetailsPage() {
                 loading={loading}
                 isReversed={isReversed}
                 chain={chainInfo.backendChain.chain}
+                chainId={chainInfo.id}
                 tokenAColor={isReversed ? color1 : color0}
                 tokenBColor={isReversed ? color0 : color1}
               />
@@ -312,7 +312,7 @@ export function PoolDetailsPage() {
                     tokenB={orderBookCurrencyB}
                     feeTier={Number(poolData.feeTier.feeAmount)}
                     isReversed={isReversed}
-                    chainId={fromGraphQLChain(chainInfo.backendChain.chain) ?? chainInfo.id}
+                    chainId={chainInfo.id}
                     version={parseRestProtocolVersion(poolData.protocolVersion) ?? RestProtocolVersion.V3}
                     hooks={poolData.hookAddress}
                     poolId={poolData.idOrAddress}
