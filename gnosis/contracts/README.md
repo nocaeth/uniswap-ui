@@ -57,39 +57,66 @@ Gnosis — deploy that proxy first (Arachnid's deterministic-deployment-proxy).
 UniversalRouter has **no canonical address**, so its address is chain-specific and
 must be wired back into the app (step 3).
 
-> **Version, the right way.** The app pins `UniversalRouterVersion._2_0`
-> (`supportedURVersions` in `gnosis.ts`), which is an `@uniswap/universal-router-sdk`
-> command-set version — **not** a contract git tag. The repo's `v1.x` tags are the
-> old NFT-aggregator UR (the SDK's `"1.2"` line) — wrong contract. The V4-capable UR
-> the SDK `"2.0"/"2.1"` targets lives on **`main`**. Pin the exact commit verified
-> here: **`cb222d358a2ea780feedee6990ff8a3c185301bf`** ("UR 2.1.1"). A UR built from
-> this commit + the Gnosis params executed a real WXDAI→USDC.e swap on a Gnosis fork,
-> so it's command-compatible with the app's `_2_0` pin.
+> **Version — match the SDK, not the newest UR.** The app encodes swaps with
+> `@uniswap/universal-router-sdk@4.33.0`, which depends on **`@uniswap/universal-router@2.1.0`**.
+> The deployed contract MUST be that exact version or the command/input ABI won't match.
+> 2.1.0 is **not tagged** (the 2.x line lives on `main`), so pin the release commit
+> **`67553d8b067249dd7841d9d1b0eb2997b19d4bf9`** (its `package.json` is `version: 2.1.0`;
+> its `RouterParameters.sol` / `V3SwapRouter.sol` / `UniversalRouter.sol` / `Dispatcher.sol`
+> are byte-identical to `node_modules/@uniswap/universal-router@2.1.0`, verified).
+>
+> **Why a redeploy (the bug this fixes).** The previous deploy used commit
+> `cb222d3` ("UR 2.1.1"), which added a 6th field `uint256[] minHopPriceX36` to
+> `V3_SWAP_EXACT_IN`. The SDK still encodes only **5** fields, so that router read word 5
+> (the path length) as an array offset and reverted **`SliceOutOfBounds()` (`0x3b99b53d`)
+> on every swap** — single- and multi-hop, batched or not. 2.1.0 is the 5-field version the
+> SDK targets, so its decode matches. (cb222d3 also had an 11th param
+> `permissionsAdapterFactory`; 2.1.0's struct is the **10 fields** in `DeployGnosis.s.sol`.)
 
 ```bash
 git clone https://github.com/Uniswap/universal-router && cd universal-router
-git checkout cb222d358a2ea780feedee6990ff8a3c185301bf
+git checkout 67553d8b067249dd7841d9d1b0eb2997b19d4bf9   # == @uniswap/universal-router@2.1.0
 forge install                  # lib/ submodules (forge-std, v4-periphery, …)
 yarn install --ignore-engines  # REQUIRED: node_modules/@uniswap/{v2-core,v3-core}
                                # Needs Node >= 18 (a Hardhat dev-dep, @nomicfoundation/edr,
                                # demands it). --ignore-engines skips that check on Node 16
                                # (edr is unused by forge build); or `fnm use 20` first.
                                # The v2/v3-core imports resolve from node_modules, not lib/.
+
+# SAFETY CHECK — prove the checkout matches the SDK's contract before building:
+test -z "$(grep -rl minHopPrice contracts/)" && echo "OK: 5-field (matches SDK)" || echo "STOP: 6-field, wrong commit"
+diff contracts/types/RouterParameters.sol \
+  /path/to/this-repo/node_modules/@uniswap/universal-router/contracts/types/RouterParameters.sol \
+  && echo "OK: RouterParameters identical to node_modules 2.1.0"
+
 cp /path/to/this-repo/gnosis/contracts/DeployGnosis.s.sol script/deployParameters/
-# forge build compiles ALL of script/, and some sibling chain configs are stale vs
-# the 11-field struct (e.g. DeployTempo has 10 -> compile error). Remove them; only
-# DeployGnosis is needed (no test imports the others; the base script is one dir up).
-find script/deployParameters -name 'Deploy*.s.sol' ! -name 'DeployGnosis.s.sol' -delete
+# forge build compiles ALL of script/; at 2.1.0 every sibling uses the same 10-field
+# struct so they compile. If any sibling errors anyway, delete them (only DeployGnosis is needed):
+#   find script/deployParameters -name 'Deploy*.s.sol' ! -name 'DeployGnosis.s.sol' -delete
 forge build
 forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
   --rpc-url "$RPC_GNOSIS" --private-key "$DEPLOYER_PRIVATE_KEY" --broadcast \
-  --verify --verifier etherscan --verifier-url https://api.gnosisscan.io/api \
-  --etherscan-api-key "$GNOSISSCAN_API_KEY"
+  --verify --verifier etherscan --chain 100 --etherscan-api-key "$ETHERSCAN_API_KEY"
 ```
 
+> **Verification uses Etherscan V2.** Pass `--verifier etherscan --chain 100` and let
+> Foundry use its default endpoint (`https://api.etherscan.io/v2/api`) — do **NOT** pass
+> `--verifier-url https://api.gnosisscan.io/api`; the per-chain gnosisscan.io V1 API is
+> deprecated. `ETHERSCAN_API_KEY` is a single **unified** Etherscan key (one key, all
+> chains), not a gnosisscan-only key. (Mirrors `gnosis/contracts/sdai-zap/README.md`.)
+
 [`DeployGnosis.s.sol`](./DeployGnosis.s.sol) carries the verified params (matches the
-11-field struct at that commit). Deploy cost on Gnosis is a few cents. Record the
+10-field 2.1.0 `RouterParameters` struct). Deploy cost on Gnosis is a few cents. Record the
 `Universal Router Deployed:` address from the output.
+
+> **Current deployment (chain 100, 2026-06-28).** UniversalRouter
+> `0xF4f2b4C183a3d412F5de04236c318940ac8e415e` (2.1.0 / commit `67553d8b`), with its
+> own `UnsupportedProtocol` stub `0x7260976D61CAaD773600B81Dd3dec0d237417065`. This is
+> wired into `apps/web/.env` + `apps/web/.env.production`. It **replaces** the broken
+> `0xa437dC83CDDa879167a40114706F6EB0558E6d7c` (commit `cb222d3`, 6-field — reverted
+> `SliceOutOfBounds()` on every swap). Verified on-chain: feeding the new router the
+> SDK's 5-field `V3_SWAP_EXACT_IN` input returns `0xd81b2f2e` (AllowanceExpired, i.e. it
+> **decodes**), where the old one returned `0x3b99b53d` (SliceOutOfBounds).
 
 > **Pre-deploy facts (verified on chain 100 this session with `cast`):** V3 Factory,
 > NonfungiblePositionManager, QuoterV2, SwapRouter02 and **Permit2 (canonical)** all
@@ -101,12 +128,27 @@ forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
 > deployed UnsupportedProtocol stub, …) in as **immutables**, which are Gnosis-specific.
 > That's correct. Verify by source on Gnosisscan + a live swap, not by byte-diff.
 
-### Optional dry run (recommended)
+### Dry run + proof the SliceOutOfBounds bug is fixed (do this before mainnet)
 ```bash
 anvil --fork-url "$RPC_GNOSIS" --port 8545 &   # local Gnosis fork
 forge script script/deployParameters/DeployGnosis.s.sol:DeployGnosis \
   --rpc-url http://localhost:8545 --private-key <anvil-acct0-key> --broadcast
-# then run gnosis/.../swap-proof against the deployed address before touching mainnet
+# note the "Universal Router Deployed:" address -> $NEW_UR
+
+# Decode proof: feed the deployed router the SAME 5-field V3_SWAP_EXACT_IN input the app
+# produces (here wstETH->sDAI), with a fresh future deadline so checkDeadline passes.
+DL=$(( $(date +%s) + 3600 ))
+IN5=$(cast abi-encode "f(address,uint256,uint256,bytes,bool)" \
+  0x509ad7278a2f6530bc24590c83e93faf8fd46e99 1 1 \
+  0x6c76971f98945ae98dd7d4dfca8711ebea946ea60001f4af204776c7245bf4147c2612bf6e5972ee483701 true)
+CD=$(cast calldata "execute(bytes,bytes[],uint256)" 0x00 "[$IN5]" $DL)
+cast call $NEW_UR $CD --rpc-url http://localhost:8545 2>&1
+# PASS = the revert is NO LONGER 0x3b99b53d (SliceOutOfBounds). It will instead fail later
+# (e.g. Permit2 AllowanceExpired / transfer) or succeed once allowances+balance exist — i.e.
+# the command DECODES. On the old cb222d3 router this exact call returns 0x3b99b53d.
+
+# Full proof: point the app's REACT_APP_GNOSIS_UNIVERSAL_ROUTER_ADDRESS at $NEW_UR and run a
+# real swap against the fork before touching mainnet.
 ```
 
 ## 3. Wiring addresses back into the app
