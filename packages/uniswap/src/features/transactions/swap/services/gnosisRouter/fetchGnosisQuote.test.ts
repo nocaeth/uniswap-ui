@@ -163,36 +163,24 @@ describe('fetchGnosisQuote sDAI adapter path', () => {
     expect(response.quote.slippage).toBe(0.5)
   })
 
-  it('quotes sDAI -> WXDAI exact output directly from ERC4626 previewWithdraw', async () => {
-    provider.call.mockResolvedValueOnce(previewInterface.encodeFunctionResult('previewWithdraw', ['1050']))
+  it('rejects exact-output direct sDAI adapter quotes', async () => {
+    await expect(
+      fetchGnosisQuote(
+        {
+          type: TradingApi.TradeType.EXACT_OUTPUT,
+          amount: '1000',
+          tokenInChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+          tokenOutChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+          tokenIn: GNOSIS_SDAI,
+          tokenOut: GNOSIS_WXDAI,
+          swapper: SWAPPER,
+          slippageTolerance: 0.75,
+        },
+        { indicative: true },
+      ),
+    ).rejects.toThrow('Exact-output Gnosis sDAI adapter swaps are not supported')
 
-    const response = await fetchGnosisQuote(
-      {
-        type: TradingApi.TradeType.EXACT_OUTPUT,
-        amount: '1000',
-        tokenInChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
-        tokenOutChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
-        tokenIn: GNOSIS_SDAI,
-        tokenOut: GNOSIS_WXDAI,
-        swapper: SWAPPER,
-        slippageTolerance: 0.75,
-      },
-      { indicative: true },
-    )
-
-    expect(provider.call).toHaveBeenCalledWith({
-      to: GNOSIS_SDAI,
-      data: previewInterface.encodeFunctionData('previewWithdraw', ['1000']),
-    })
-    expect(response.routing).toBe(TradingApi.Routing.CLASSIC)
-    if (response.routing !== TradingApi.Routing.CLASSIC) {
-      throw new Error('Expected classic quote')
-    }
-    expect(response.quote.quoteId).toBe(GNOSIS_SDAI_ADAPTER_QUOTE_ID)
-    expect(response.quote.input?.amount).toBe('1050')
-    expect(response.quote.output?.amount).toBe('1000')
-    expect(response.quote.gasFee).toBeUndefined()
-    expect(response.quote.slippage).toBe(0.75)
+    expect(provider.call).not.toHaveBeenCalled()
   })
 })
 

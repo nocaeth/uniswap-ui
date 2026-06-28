@@ -35,6 +35,7 @@ import {
   GNOSIS_QUOTER_ADDRESS,
   GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_SDAI,
+  GNOSIS_SPLIT_ENABLED,
   GNOSIS_SPLIT_GRID_STEPS,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
   GNOSIS_USDCE,
@@ -65,7 +66,6 @@ import {
   GnosisSdaiAdapterDirection,
   GNOSIS_SDAI_ADAPTER_QUOTE_ID,
   getGnosisSdaiAdapterDirection,
-  isGnosisNativeAddress,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
 import {
   GNOSIS_SDAI_ZAP_ADAPTER_GAS,
@@ -540,7 +540,7 @@ async function resolveQuoteLegs(args: {
 }): Promise<QuotedRoute[]> {
   const { provider, ranked, best, bestImpactPct, amount, tradeType, params } = args
   const singleLeg = [best]
-  if (params.isUSDQuote) {
+  if (!GNOSIS_SPLIT_ENABLED || params.isUSDQuote) {
     return singleLeg
   }
   // A split can never recover more output than the best route's price impact, so when that impact is
@@ -800,19 +800,11 @@ async function fetchGnosisSdaiAdapterQuote(args: {
     return undefined
   }
 
-  const exactOutput = tradeType === TradingApi.TradeType.EXACT_OUTPUT
-  if (direction === GnosisSdaiAdapterDirection.AssetToSdai && exactOutput && isGnosisNativeAddress(params.tokenIn)) {
-    return undefined
+  if (tradeType === TradingApi.TradeType.EXACT_OUTPUT) {
+    throw new Error('Exact-output Gnosis sDAI adapter swaps are not supported')
   }
 
-  const previewFunction =
-    direction === GnosisSdaiAdapterDirection.AssetToSdai
-      ? exactOutput
-        ? 'previewMint'
-        : 'previewDeposit'
-      : exactOutput
-        ? 'previewWithdraw'
-        : 'previewRedeem'
+  const previewFunction = direction === GnosisSdaiAdapterDirection.AssetToSdai ? 'previewDeposit' : 'previewRedeem'
   const result = await provider.call({
     to: GNOSIS_SDAI,
     data: sdaiPreviewInterface.encodeFunctionData(previewFunction, [amount]),
@@ -822,8 +814,8 @@ async function fetchGnosisSdaiAdapterQuote(args: {
     throw new Error(`No Gnosis sDAI adapter quote found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
 
-  const amountIn = exactOutput ? quotedAmount : amount
-  const amountOut = exactOutput ? amount : quotedAmount
+  const amountIn = amount
+  const amountOut = quotedAmount
   const recipient = params.recipient ?? params.swapper
   const quote: TradingApi.ClassicQuote = {
     chainId: GNOSIS_CHAIN_ID,
@@ -896,21 +888,28 @@ function buildGnosisZapQuoteResponse(args: {
   subQuote: TradingApi.ClassicQuote
 }): DiscriminatedQuoteResponse {
   const { params, indicative, inputToken, outputToken, inputAmount, outputAmount, subQuote } = args
-  const gasUseEstimate = BigNumber.from(subQuote.gasUseEstimate ?? '0')
-    .add(GNOSIS_SDAI_ZAP_ADAPTER_GAS)
-    .toString()
+  const subGasUseEstimate = BigNumber.from(subQuote.gasUseEstimate ?? '0')
+  const gasUseEstimate = subGasUseEstimate.add(GNOSIS_SDAI_ZAP_ADAPTER_GAS)
+  const gasFee = subQuote.gasFee
+    ? subGasUseEstimate.isZero()
+      ? BigNumber.from(subQuote.gasFee)
+      : BigNumber.from(subQuote.gasFee).add(
+          BigNumber.from(subQuote.gasFee).mul(GNOSIS_SDAI_ZAP_ADAPTER_GAS).div(subGasUseEstimate),
+        )
+    : undefined
+  const recipient = params.recipient ?? params.swapper
   const quote: TradingApi.ClassicQuote = {
     chainId: GNOSIS_CHAIN_ID,
     swapper: params.swapper,
     input: { token: inputToken, amount: inputAmount.toString() },
-    output: { token: outputToken, amount: outputAmount.toString(), recipient: params.swapper },
+    output: { token: outputToken, amount: outputAmount.toString(), recipient },
     tradeType: params.type,
     slippage: getGnosisSlippageTolerance(params),
     route: indicative ? [] : (subQuote.route ?? []),
     routeString: subQuote.routeString ? `sDAI-zap: ${subQuote.routeString}` : 'sDAI zap',
     quoteId: GNOSIS_SDAI_ZAP_QUOTE_ID,
-    gasUseEstimate,
-    ...(subQuote.gasFee ? { gasFee: subQuote.gasFee } : {}),
+    gasUseEstimate: gasUseEstimate.toString(),
+    ...(gasFee ? { gasFee: gasFee.toString() } : {}),
     ...(subQuote.blockNumber ? { blockNumber: subQuote.blockNumber } : {}),
     priceImpact: subQuote.priceImpact ?? 0,
     portionBips: 0,
@@ -1093,7 +1092,7 @@ async function fetchGnosisQuoteInner(
       chainId: GNOSIS_CHAIN_ID,
       swapper: params.swapper,
       input: { token: inputToken, amount: best.amountIn.toString() },
-      output: { token: outputToken, amount: best.amountOut.toString(), recipient: params.swapper },
+      output: { token: outputToken, amount: best.amountOut.toString(), recipient: params.recipient ?? params.swapper },
       tradeType,
       slippage: getGnosisSlippageTolerance(params),
       route: [],
@@ -1190,7 +1189,7 @@ async function fetchGnosisQuoteInner(
       token: outputToken,
       amount: totalAmountOut.toString(),
       minimumAmount: minimumAmountOut.toString(),
-      recipient: params.swapper,
+      recipient: params.recipient ?? params.swapper,
     },
     tradeType,
     slippage,

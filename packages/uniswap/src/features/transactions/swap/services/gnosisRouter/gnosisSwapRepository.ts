@@ -76,33 +76,26 @@ export function buildGnosisSdaiAdapterTransaction(quote: TradingApi.ClassicQuote
     return undefined
   }
 
-  const exactOutput = quote.tradeType === TradingApi.TradeType.EXACT_OUTPUT
+  if (quote.tradeType === TradingApi.TradeType.EXACT_OUTPUT) {
+    throw new Error('Exact-output Gnosis sDAI adapter swaps are not supported')
+  }
+
   const amountIn = BigNumber.from(quote.input.amount)
-  const amountOut = BigNumber.from(quote.output.amount)
   const recipient = quote.output.recipient ?? quote.swapper ?? ZERO_ADDRESS
   const nativeInput = isGnosisNativeAddress(tokenIn)
   const nativeOutput = isGnosisNativeAddress(tokenOut)
-  if (direction === GnosisSdaiAdapterDirection.AssetToSdai && exactOutput && nativeInput) {
-    throw new Error('Exact-output native xDAI -> sDAI adapter swaps are not supported')
-  }
 
   let data: string
   if (direction === GnosisSdaiAdapterDirection.AssetToSdai) {
     if (nativeInput) {
       data = sdaiAdapterInterface.encodeFunctionData('depositXDAI', [recipient])
     } else {
-      data = exactOutput
-        ? sdaiAdapterInterface.encodeFunctionData('mint', [amountOut, recipient])
-        : sdaiAdapterInterface.encodeFunctionData('deposit', [amountIn, recipient])
+      data = sdaiAdapterInterface.encodeFunctionData('deposit', [amountIn, recipient])
     }
   } else if (nativeOutput) {
-    data = exactOutput
-      ? sdaiAdapterInterface.encodeFunctionData('withdrawXDAI', [amountOut, recipient])
-      : sdaiAdapterInterface.encodeFunctionData('redeemXDAI', [amountIn, recipient])
+    data = sdaiAdapterInterface.encodeFunctionData('redeemXDAI', [amountIn, recipient])
   } else {
-    data = exactOutput
-      ? sdaiAdapterInterface.encodeFunctionData('withdraw', [amountOut, recipient])
-      : sdaiAdapterInterface.encodeFunctionData('redeem', [amountIn, recipient])
+    data = sdaiAdapterInterface.encodeFunctionData('redeem', [amountIn, recipient])
   }
 
   return {
@@ -164,7 +157,7 @@ export function createGnosisEVMSwapRepository(): EVMSwapRepository {
 
       const { calldata, value } = SwapRouter.swapCallParameters(routerTrade, {
         slippageTolerance: new Percent(Math.round(slippagePercent * 100), 10_000),
-        recipient: quote.swapper ?? '',
+        recipient: quote.output?.recipient ?? quote.swapper ?? '',
         deadlineOrPreviousBlockhash: deadline,
       })
 

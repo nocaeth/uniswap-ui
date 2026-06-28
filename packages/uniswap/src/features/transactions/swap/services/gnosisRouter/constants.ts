@@ -119,9 +119,10 @@ export const GNOSIS_SDAI_ZAP_ADDRESS: string =
  *
  * Splits a single EXACT_INPUT swap across pool-disjoint v3 routes, executed atomically in one
  * UniversalRouter transaction, to reduce price impact on size. The universal-router-sdk already
- * consumes a multi-sub-route quote natively, so this is a quote-production-only change. Always on:
- * the accept gate below means a split is only used when it actually beats the single best route.
+ * consumes a multi-sub-route quote natively, so this is a quote-production-only change. Enabled by
+ * default on Gnosis because gas is negligible; set REACT_APP_GNOSIS_SPLIT_ENABLED=false to disable.
  */
+export const GNOSIS_SPLIT_ENABLED = process.env['REACT_APP_GNOSIS_SPLIT_ENABLED'] !== 'false'
 // Max routes a split fans across. At 2, the SDK enforces slippage per-leg (no aggregate sweep);
 // raise only if 3 deep disjoint routes prove worthwhile.
 export const GNOSIS_MAX_SPLIT_LEGS = 2
@@ -130,4 +131,4 @@ export const GNOSIS_MAX_SPLIT_LEGS = 2
 export const GNOSIS_SPLIT_GRID_STEPS = 10
 // Minimum output improvement (bps) over the single best route before a split is used. Gnosis gas
 // is negligible, so this token-gain floor is the whole accept gate (no net-of-gas term).
-export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 5
+export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 3

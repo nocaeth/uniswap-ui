@@ -119,19 +119,16 @@ describe('buildGnosisSdaiAdapterTransaction', () => {
     expect(decoded[0]).toBe(RECIPIENT)
   })
 
-  it('encodes WXDAI exact-output mints through the adapter', () => {
-    const tx = buildGnosisSdaiAdapterTransaction(
-      adapterQuote({
-        input: { token: GNOSIS_WXDAI, amount: '1001000000000000000' },
-        output: { token: GNOSIS_SDAI, amount: '1000000000000000000', recipient: RECIPIENT },
-        tradeType: TradingApi.TradeType.EXACT_OUTPUT,
-      }),
-    )
-    const decoded = sdaiAdapterInterface.decodeFunctionData('mint', tx?.data ?? '0x')
-
-    expect(tx?.value).toBe('0x0')
-    expect(decoded[0].toString()).toBe('1000000000000000000')
-    expect(decoded[1]).toBe(RECIPIENT)
+  it('rejects exact-output adapter swaps', () => {
+    expect(() =>
+      buildGnosisSdaiAdapterTransaction(
+        adapterQuote({
+          input: { token: GNOSIS_WXDAI, amount: '1001000000000000000' },
+          output: { token: GNOSIS_SDAI, amount: '1000000000000000000', recipient: RECIPIENT },
+          tradeType: TradingApi.TradeType.EXACT_OUTPUT,
+        }),
+      ),
+    ).toThrow('Exact-output Gnosis sDAI adapter swaps are not supported')
   })
 
   it('encodes sDAI exact-input native withdrawals through the adapter', () => {
@@ -162,6 +159,6 @@ describe('buildGnosisSdaiAdapterTransaction', () => {
           output: { token: GNOSIS_SDAI, amount: '1000000000000000000', recipient: RECIPIENT },
         }),
       ),
-    ).toThrow('Exact-output native xDAI -> sDAI adapter swaps are not supported')
+    ).toThrow('Exact-output Gnosis sDAI adapter swaps are not supported')
   })
 })

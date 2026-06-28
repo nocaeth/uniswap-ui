@@ -12,8 +12,14 @@ import {
   readErc20Allowance,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/approvals'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
-import { getGnosisSdaiAdapterApprovalSpender } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
-import { getGnosisSdaiZapApprovalSpender } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
+import {
+  GNOSIS_SDAI_ADAPTER_QUOTE_ID,
+  getGnosisSdaiAdapterApprovalSpender,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
+import {
+  GNOSIS_SDAI_ZAP_QUOTE_ID,
+  getGnosisSdaiZapApprovalSpender,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
 import { ApprovalAction } from 'uniswap/src/features/transactions/swap/types/trade'
 import { WrapType } from 'uniswap/src/features/transactions/types/wrap'
 import { ONE_MINUTE_MS, ONE_SECOND_MS } from 'utilities/src/time/time'
@@ -36,9 +42,18 @@ export function useGnosisApprovalInfo(params: {
   currencyInApprovalAmount?: Maybe<CurrencyAmount<Currency>>
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
   tradeType?: TradingApi.TradeType
+  quoteId?: string
 }): ApprovalTxInfo {
-  const { address, chainId, wrapType, currencyInAmount, currencyInApprovalAmount, currencyOutAmount, tradeType } =
-    params
+  const {
+    address,
+    chainId,
+    wrapType,
+    currencyInAmount,
+    currencyInApprovalAmount,
+    currencyOutAmount,
+    tradeType,
+    quoteId,
+  } = params
 
   const currencyIn = currencyInApprovalAmount?.currency ?? currencyInAmount?.currency
   const currencyOut = currencyOutAmount?.currency
@@ -49,17 +64,21 @@ export function useGnosisApprovalInfo(params: {
   const tokenOutAddressForRoute = currencyOut?.isNative
     ? '0x0000000000000000000000000000000000000000'
     : currencyOut?.wrapped.address
-  // Resolved the same way the quoter decides to use the zap (shared eligibility), so the approved
-  // spender always matches the route that executes: zap > adapter > Permit2.
-  const zapApprovalSpender = getGnosisSdaiZapApprovalSpender({
-    tokenIn: tokenInAddressForRoute,
-    tokenOut: tokenOutAddressForRoute,
-    tradeType: tradeType ?? TradingApi.TradeType.EXACT_INPUT,
-  })
-  const approvalSpender =
-    zapApprovalSpender ??
-    getGnosisSdaiAdapterApprovalSpender({ tokenIn: tokenInAddressForRoute, tokenOut: tokenOutAddressForRoute }) ??
-    PERMIT2_ADDRESS
+  // Approval spender must match the emitted quote, not just quote eligibility: zap quotes can fall
+  // back to UniversalRouter/Permit2 when the sDAI-rooted sub-route is unusable.
+  const zapApprovalSpender =
+    quoteId === GNOSIS_SDAI_ZAP_QUOTE_ID
+      ? getGnosisSdaiZapApprovalSpender({
+          tokenIn: tokenInAddressForRoute,
+          tokenOut: tokenOutAddressForRoute,
+          tradeType: tradeType ?? TradingApi.TradeType.EXACT_INPUT,
+        })
+      : undefined
+  const adapterApprovalSpender =
+    quoteId === GNOSIS_SDAI_ADAPTER_QUOTE_ID
+      ? getGnosisSdaiAdapterApprovalSpender({ tokenIn: tokenInAddressForRoute, tokenOut: tokenOutAddressForRoute })
+      : undefined
+  const approvalSpender = zapApprovalSpender ?? adapterApprovalSpender ?? PERMIT2_ADDRESS
   const requiredAmount = (currencyInApprovalAmount ?? currencyInAmount)?.quotient.toString()
 
   const gasStrategy = useActiveGasStrategy(chainId, 'general')
