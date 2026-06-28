@@ -44,10 +44,27 @@ const FORCE_DISABLED_FLAGS = new Set<FeatureFlags>([
   FeatureFlags.RWACoinGeckoData,
 ])
 
+// Gnosis-only build: flags pinned ON regardless of Statsig (the deployment has no Statsig
+// config, so these would otherwise default OFF). Atomic batching is the main UX win for the
+// Safe/DAO users this fork targets — it collapses approve + Permit2 + swap (or LP approve +
+// mint) into a single wallet_sendCalls. Pinning ON is safe: the actual batch still only fires
+// when the connected wallet advertises EIP-5792 capability (getCanBatchTransactions), so EOAs
+// without it keep the unchanged sequential flow.
+const FORCE_ENABLED_FLAGS = new Set<FeatureFlags>([
+  FeatureFlags.BatchedSwaps,
+  FeatureFlags.LiquidityBatchedTransactions,
+])
+
 export function useFeatureFlag(flag: FeatureFlags): boolean {
   const name = getFeatureFlagName(flag)
   const value = useGateValue(name)
-  return FORCE_DISABLED_FLAGS.has(flag) ? false : value
+  if (FORCE_DISABLED_FLAGS.has(flag)) {
+    return false
+  }
+  if (FORCE_ENABLED_FLAGS.has(flag)) {
+    return true
+  }
+  return value
 }
 
 export function useFeatureFlagWithLoading(flag: FeatureFlags): { value: boolean; isLoading: boolean } {
