@@ -61,23 +61,30 @@ function searchTokens(req: SearchTokensRequest): SearchTokensResponse {
     return new SearchTokensResponse({ tokens: [], pools: [] })
   }
   const size = req.size > 0 ? req.size : DEFAULT_SIZE
-  const { tokens, pools } = fetchExploreStats()
 
-  if (req.searchType === SearchType.POOL) {
-    const matched = pools
-      .filter((p) =>
-        matches(query, p.id, p.token0.symbol, p.token1.symbol, p.token0.name, p.token1.name, `${p.token0.symbol}/${p.token1.symbol}`),
-      )
+  // Degrade to empty results rather than a 500 if the snapshot DB is cold/missing or a read
+  // throws — the UI shows "no results" instead of "Couldn't load search results".
+  try {
+    const { tokens, pools } = fetchExploreStats()
+
+    if (req.searchType === SearchType.POOL) {
+      const matched = pools
+        .filter((p) =>
+          matches(query, p.id, p.token0.symbol, p.token1.symbol, p.token0.name, p.token1.name, `${p.token0.symbol}/${p.token1.symbol}`),
+        )
+        .sort((a, b) => b.tvlUSD - a.tvlUSD)
+        .slice(0, size)
+      return new SearchTokensResponse({ tokens: [], pools: matched.map(toSearchPool) })
+    }
+
+    const matched = tokens
+      .filter((t) => matches(query, t.id, t.symbol, t.name))
       .sort((a, b) => b.tvlUSD - a.tvlUSD)
       .slice(0, size)
-    return new SearchTokensResponse({ tokens: [], pools: matched.map(toSearchPool) })
+    return new SearchTokensResponse({ tokens: matched.map(toSearchToken), pools: [] })
+  } catch {
+    return new SearchTokensResponse({ tokens: [], pools: [] })
   }
-
-  const matched = tokens
-    .filter((t) => matches(query, t.id, t.symbol, t.name))
-    .sort((a, b) => b.tvlUSD - a.tvlUSD)
-    .slice(0, size)
-  return new SearchTokensResponse({ tokens: matched.map(toSearchToken), pools: [] })
 }
 
 // Cast through ServiceType to bridge the dual CJS/ESM resolution-mode views,
