@@ -39,9 +39,10 @@ export function enumerateAllocations(args: {
   if (legs < 1 || steps < 1) {
     return []
   }
-  const idx = args.deepestLegIndex !== undefined && args.deepestLegIndex >= 0 && args.deepestLegIndex < legs
-    ? args.deepestLegIndex
-    : 0
+  const idx =
+    args.deepestLegIndex !== undefined && args.deepestLegIndex >= 0 && args.deepestLegIndex < legs
+      ? args.deepestLegIndex
+      : 0
 
   const allocations: BigNumber[][] = []
   for (const composition of compositions(steps, legs)) {

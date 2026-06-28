@@ -207,11 +207,7 @@ describe('getTokenProtectionWarning', () => {
   it.each([
     // Basic cases
     [undefined, TokenProtectionWarning.None, 'undefined currencyInfo -> None'],
-    [
-      { ...mockCurrencyInfo, safetyInfo: undefined },
-      TokenProtectionWarning.None,
-      'missing safetyInfo -> None',
-    ],
+    [{ ...mockCurrencyInfo, safetyInfo: undefined }, TokenProtectionWarning.None, 'missing safetyInfo -> None'],
     [mockNativeCurrencyInfo, TokenProtectionWarning.None, 'native currency -> None'],
     [mockCurrencyInfo, TokenProtectionWarning.None, 'default token -> None'],
 

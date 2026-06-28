@@ -1,6 +1,9 @@
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { batchGnosisApprovalIntoSwap } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/classic/classicSwapTxAndGasInfoService'
-import { type ClassicSwapTxAndGasInfo, PermitMethod } from 'uniswap/src/features/transactions/swap/types/swapTxAndGasInfo'
+import {
+  type ClassicSwapTxAndGasInfo,
+  PermitMethod,
+} from 'uniswap/src/features/transactions/swap/types/swapTxAndGasInfo'
 import type { ValidatedTransactionRequest } from 'uniswap/src/features/transactions/types/transactionRequests'
 
 const APPROVE = { to: '0xToken', chainId: 100, data: '0xapprove' } as ValidatedTransactionRequest
@@ -8,7 +11,10 @@ const PERMIT = { to: '0xPermit2', chainId: 100, data: '0xpermit' } as ValidatedT
 const SWAP = { to: '0xRouter', chainId: 100, data: '0xswap' } as ValidatedTransactionRequest
 
 const permitAsTransaction = { method: PermitMethod.Transaction, txRequest: PERMIT } as const
-const permitAsTypedData = { method: PermitMethod.TypedData, typedData: {} } as unknown as ClassicSwapTxAndGasInfo['permit']
+const permitAsTypedData = {
+  method: PermitMethod.TypedData,
+  typedData: {},
+} as unknown as ClassicSwapTxAndGasInfo['permit']
 
 function makeResult({
   chainId,
