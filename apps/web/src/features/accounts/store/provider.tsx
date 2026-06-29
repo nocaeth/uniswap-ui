@@ -25,7 +25,7 @@ import {
   Connector as WagmiConnector,
 } from 'wagmi'
 import { CONNECTOR_ICON_OVERRIDE_MAP } from '~/connection/constants'
-import { walletTypeToAmplitudeWalletType } from '~/connection/walletConnect'
+import { walletTypeToAmplitudeWalletType } from '~/connection/walletConnectMeta'
 import { buildCAIP25Session } from '~/features/accounts/store/buildCAIP25Session'
 import { createAccountsStoreGetters } from '~/features/accounts/store/getters'
 import type {
@@ -375,6 +375,13 @@ const UNISWAP_WALLET_CONNECTOR = {
   icon: CONNECTOR_ICON_OVERRIDE_MAP[CONNECTION_PROVIDER_NAMES.UNISWAP_WALLET],
 }
 
+const WALLET_CONNECT_CONNECTOR = {
+  id: CONNECTION_PROVIDER_IDS.WALLET_CONNECT_CONNECTOR_ID,
+  type: 'walletConnect',
+  name: CONNECTION_PROVIDER_NAMES.WALLET_CONNECT,
+  icon: CONNECTOR_ICON_OVERRIDE_MAP[CONNECTION_PROVIDER_NAMES.WALLET_CONNECT],
+}
+
 /** Hook that builds EVM wallet infos from wagmi connectors and account data. */
 function useEVMWalletInfos(pendingConnection: ExternalWallet | undefined): PlatformWalletInfo<Platform.EVM>[] {
   const wagmiAccount = useWagmiAccount()
@@ -382,7 +389,9 @@ function useEVMWalletInfos(pendingConnection: ExternalWallet | undefined): Platf
   const fallbackChainId = useWagmiChainId()
 
   return useMemo(() => {
-    const evmConnectors = __GNOSIS_LEAN_BUILD__ ? connectors : [...connectors, UNISWAP_WALLET_CONNECTOR]
+    const evmConnectors = __GNOSIS_LEAN_BUILD__
+      ? [...connectors, WALLET_CONNECT_CONNECTOR]
+      : [...connectors, UNISWAP_WALLET_CONNECTOR]
 
     return evmConnectors.map((connector) => {
       const currentConnectorIsActive =

@@ -9,7 +9,10 @@ import {
 } from '~/components/WalletModal/PendingWalletConnectionModal/state'
 import { useAccountsStore } from '~/features/accounts/store/hooks'
 import type { ExternalConnector, ExternalWallet } from '~/features/accounts/store/types'
-import { useUniswapMobileConnectionService } from '~/features/wallet/connection/connectors/custom'
+import {
+  useUniswapMobileConnectionService,
+  useWalletConnectConnectionService,
+} from '~/features/wallet/connection/connectors/custom'
 import { useSolanaConnectionService } from '~/features/wallet/connection/connectors/solana'
 import { getEVMConnectionService } from '~/features/wallet/connection/connectors/wagmi'
 import type { ConnectionService } from '~/features/wallet/connection/services/IConnectionService'
@@ -46,12 +49,18 @@ export function useGetConnectionService(): GetConnectionServiceFn {
   }, [evmConnectionService, svmConnectionService, accountDrawer.close, onRejectSVMConnection])
 
   const uniswapMobileService = useUniswapMobileConnectionService()
+  const walletConnectService = useWalletConnectConnectionService()
 
   const overrides: Partial<Record<string, ConnectionService>> = useMemo(() => {
+    const leanOverrides = __GNOSIS_LEAN_BUILD__
+      ? { [CONNECTION_PROVIDER_IDS.WALLET_CONNECT_CONNECTOR_ID]: walletConnectService }
+      : {}
+
     return {
       [CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID]: uniswapMobileService,
+      ...leanOverrides,
     }
-  }, [uniswapMobileService])
+  }, [uniswapMobileService, walletConnectService])
 
   return useEvent((params) => {
     // For wallets that have non-standard connection behavior

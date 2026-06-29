@@ -78,19 +78,30 @@ function getInjectedConnectors({
   wallets: WalletWithInjectedStatus[]
   isEmbeddedWalletEnabled: boolean
 }): WalletWithInjectedStatus[] {
-  return wallets
+  const injectedWallets = wallets.filter((wallet) => {
+    if (
+      wallet.id === CONNECTION_PROVIDER_IDS.COINBASE_RDNS ||
+      wallet.name === CONNECTION_PROVIDER_NAMES.COINBASE_SOLANA_WALLET_ADAPTER
+    ) {
+      // Special-case: Ignore coinbase eip6963-injected connector and coinbase solana wallet adapter; CB is selected separately / not treated as an injector since it can always be accessed via the CB SDK connector.
+      return false
+    } else if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_EXTENSION_RDNS && !isEmbeddedWalletEnabled) {
+      // Special-case: Ignore the Uniswap Extension injection here if it's being displayed separately. This logic is updated with Embedded Wallet support where the Uniswap Extension is displayed with other connectors
+      return false
+    }
+    return wallet.injected
+  })
+
+  const hasSpecificInjectedWallet = injectedWallets.some(
+    (wallet) => wallet.id !== CONNECTION_PROVIDER_IDS.INJECTED_CONNECTOR_TYPE,
+  )
+
+  return injectedWallets
     .filter((wallet) => {
-      if (
-        wallet.id === CONNECTION_PROVIDER_IDS.COINBASE_RDNS ||
-        wallet.name === CONNECTION_PROVIDER_NAMES.COINBASE_SOLANA_WALLET_ADAPTER
-      ) {
-        // Special-case: Ignore coinbase eip6963-injected connector and coinbase solana wallet adapter; CB is selected separately / not treated as an injector since it can always be accessed via the CB SDK connector.
-        return false
-      } else if (wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_EXTENSION_RDNS && !isEmbeddedWalletEnabled) {
-        // Special-case: Ignore the Uniswap Extension injection here if it's being displayed separately. This logic is updated with Embedded Wallet support where the Uniswap Extension is displayed with other connectors
+      if (wallet.id === CONNECTION_PROVIDER_IDS.INJECTED_CONNECTOR_TYPE && hasSpecificInjectedWallet) {
         return false
       }
-      return wallet.injected
+      return true
     })
     .sort((a, b) => {
       // prioritize uniswap extension over other injected connectors

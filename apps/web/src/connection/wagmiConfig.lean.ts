@@ -6,12 +6,12 @@ import type { Chain } from 'viem'
 import { createClient } from 'viem'
 import type { Config, CreateConnectorFn } from 'wagmi'
 import { createConfig, fallback, http } from 'wagmi'
-import { injected, safe } from 'wagmi/connectors'
+import { injected } from 'wagmi/connectors'
 import { PLAYWRIGHT_CONNECT_ADDRESS } from '~/connection/constants'
 import { createRejectableMockConnector } from '~/connection/rejectableConnector'
-import { orderedTransportUrls, SAFE_ALLOWED_ORIGIN } from '~/connection/wagmiConfig.shared'
+import { orderedTransportUrls } from '~/connection/wagmiConfig.shared'
 
-export { orderedTransportUrls, SAFE_ALLOWED_ORIGIN } from '~/connection/wagmiConfig.shared'
+export { orderedTransportUrls } from '~/connection/wagmiConfig.shared'
 
 const GNOSIS_CHAINS = [GNOSIS_CHAIN_INFO] as const
 
@@ -23,12 +23,7 @@ export function createWagmiConnectors(params: {
   /** If `true`, appends the wagmi `mock` connector. Used in Playwright. */
   includeMockConnector: boolean
 }): CreateConnectorFn[] {
-  const baseConnectors = [
-    injected(),
-    safe({
-      allowedDomains: [SAFE_ALLOWED_ORIGIN],
-    }),
-  ]
+  const baseConnectors = [injected()]
 
   return params.includeMockConnector
     ? [
