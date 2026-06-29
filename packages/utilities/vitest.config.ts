@@ -7,6 +7,7 @@ export default defineConfig({
   define: {
     ...vitestPreset.define,
     __DEV__: true,
+    __GNOSIS_LEAN_BUILD__: false,
   },
   test: {
     ...vitestPreset.test,

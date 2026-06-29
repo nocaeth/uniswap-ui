@@ -10,7 +10,6 @@ import {
 import { isE2eTestEnv, isTestEnv } from '@universe/environment'
 import { SessionGateSource } from '@universe/sessions'
 import { CONNECTION_PROVIDER_IDS } from 'uniswap/src/constants/web3'
-import type { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { ORDERED_EVM_CHAINS } from 'uniswap/src/features/chains/chainInfo'
 import { RPCType } from 'uniswap/src/features/chains/types'
 import { isTestnetChain } from 'uniswap/src/features/chains/utils'
@@ -25,10 +24,9 @@ import { coinbaseWallet, injected, safe, walletConnect } from 'wagmi/connectors'
 import { PLAYWRIGHT_CONNECT_ADDRESS } from '~/connection/constants'
 import { createRejectableMockConnector } from '~/connection/rejectableConnector'
 import { WC_PARAMS } from '~/connection/walletConnect'
+import { orderedTransportUrls, SAFE_ALLOWED_ORIGIN } from '~/connection/wagmiConfig.shared'
 
-// Only accept Safe Apps SDK messages from the canonical Safe web app.
-// Tested against bypass patterns in wagmiConfig.test.ts.
-export const SAFE_ALLOWED_ORIGIN = /^https:\/\/app\.safe\.global$/
+export { orderedTransportUrls, SAFE_ALLOWED_ORIGIN } from '~/connection/wagmiConfig.shared'
 
 // Get the appropriate Binance connector based on the environment
 const getBinanceConnector = () => {
@@ -57,19 +55,6 @@ const getBinanceConnector = () => {
   // Otherwise, use the Binance connector with QR modal for mobile connection
   const BinanceConnector = getWagmiConnectorV2()
   return BinanceConnector()
-}
-
-export const orderedTransportUrls = (chain: ReturnType<typeof getChainInfo>): string[] => {
-  const orderedRpcUrls = [
-    // oxlint-disable-next-line typescript/no-unnecessary-condition
-    ...(chain.rpcUrls.interface?.http ?? []),
-    // oxlint-disable-next-line typescript/no-unnecessary-condition
-    ...(chain.rpcUrls.default?.http ?? []),
-    ...(chain.rpcUrls.public?.http ?? []),
-    ...(chain.rpcUrls.fallback?.http ?? []),
-  ]
-
-  return Array.from(new Set(orderedRpcUrls.filter(Boolean)))
 }
 
 function createWagmiConnectors(params: {

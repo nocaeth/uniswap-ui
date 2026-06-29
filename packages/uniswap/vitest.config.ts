@@ -62,6 +62,7 @@ export default defineConfig({
   },
   define: {
     __DEV__: true,
+    __GNOSIS_LEAN_BUILD__: false,
   },
   resolve: {
     ...vitestPreset.resolve,

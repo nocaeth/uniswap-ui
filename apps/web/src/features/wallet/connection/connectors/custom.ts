@@ -12,6 +12,7 @@ import { persistHideMobileAppPromoBannerAtom } from '~/state/application/atoms'
 const APPLY_CUSTOM_CONNECTOR_META_MAP = {
   [CONNECTION_PROVIDER_IDS.UNISWAP_WALLET_CONNECT_CONNECTOR_ID]: applyUniswapWalletConnectorMeta,
 } as const
+const CUSTOM_CONNECTOR_META_TRANSFORMS = __GNOSIS_LEAN_BUILD__ ? [] : Object.values(APPLY_CUSTOM_CONNECTOR_META_MAP)
 
 /**
  * Applies custom connector metadata transformations to the base wallet connector array.
@@ -26,7 +27,7 @@ const APPLY_CUSTOM_CONNECTOR_META_MAP = {
  */
 export function applyCustomConnectorMeta(walletConnectors: WalletConnectorMeta[]): WalletConnectorMeta[] {
   return (
-    Object.values(APPLY_CUSTOM_CONNECTOR_META_MAP)
+    CUSTOM_CONNECTOR_META_TRANSFORMS
       // oxlint-disable-next-line no-shadow
       .reduce((acc, applyCustomConnectorMeta) => applyCustomConnectorMeta(acc), walletConnectors)
       .map((connector) => {

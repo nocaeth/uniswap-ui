@@ -16,6 +16,7 @@
     "start": "nx start web",
     "dev": "nx dev web",
     "build:production": "nx build web -c production",
+    "build:gnosis-lean": "nx build web -c gnosis-lean",
     "build:staging": "nx build web -c staging",
     "build:e2e": "nx build web -c e2e",
     "preview": "nx preview web -c production",

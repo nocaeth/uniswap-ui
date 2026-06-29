@@ -140,3 +140,4 @@ vi.mock('@react-native-community/netinfo', () => ({
 vi.mock('expo-web-browser', () => ({}))
 
 global.__DEV__ = true
+global.__GNOSIS_LEAN_BUILD__ = false
