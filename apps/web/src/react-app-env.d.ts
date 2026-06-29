@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __GNOSIS_LEAN_BUILD__: boolean
+
 interface Window {
   GIT_COMMIT_HASH?: string
   // TODO: Remove all references to window.ethereum once old injection process is fully deprecated

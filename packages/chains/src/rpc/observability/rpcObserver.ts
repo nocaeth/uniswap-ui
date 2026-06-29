@@ -2,6 +2,9 @@ import { logger } from 'utilities/src/logger/logger'
 import { extractProviderName } from './extractProviderName'
 import type { RpcErrorMeta } from './extractRpcErrorMeta'
 
+declare const __DEV__: boolean
+declare const __GNOSIS_LEAN_BUILD__: boolean
+
 export interface RpcRequestContext {
   requestId: string
   method: string
@@ -129,10 +132,20 @@ function shouldLogError({
   return { log: false }
 }
 
+function shouldLogSuccessfulRpcResponses(): boolean {
+  const isGnosisLeanBuild = typeof __GNOSIS_LEAN_BUILD__ !== 'undefined' && __GNOSIS_LEAN_BUILD__
+  const isProductionBuild = typeof __DEV__ !== 'undefined' && !__DEV__
+  return !isGnosisLeanBuild && !isProductionBuild
+}
+
 function createDatadogRpcObserver(): RpcObserver {
   return {
     onRequest: (): void => {},
     onResponse: (ctx: RpcResponseContext): void => {
+      if (!shouldLogSuccessfulRpcResponses()) {
+        return
+      }
+
       logger.info('rpcObserver', 'onResponse', 'RPC response', {
         method: ctx.method,
         chainId: ctx.chainId,

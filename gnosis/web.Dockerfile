@@ -25,11 +25,13 @@ ARG REACT_APP_GNOSIS_SDAI_ZAP_ADDRESS=""
 ARG REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS=""
 ARG REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS=""
 ARG REACT_APP_GNOSIS_SPLIT_ENABLED=""
+ARG GNOSIS_LEAN_BUILD="true"
 
 # The CSP meta-tag plugin reads these from process.env to allow the adapter origin
 # in connect-src (see apps/web/vite/vite.plugins.ts).
 ENV API_BASE_URL_V2_OVERRIDE=$API_BASE_URL_V2_OVERRIDE \
-    GRAPHQL_URL_OVERRIDE=$GRAPHQL_URL_OVERRIDE
+    GRAPHQL_URL_OVERRIDE=$GRAPHQL_URL_OVERRIDE \
+    GNOSIS_LEAN_BUILD=$GNOSIS_LEAN_BUILD
 
 COPY . .
 # Skip the runtime-version gate — the toolchain is pinned by the base image + copied
@@ -57,6 +59,7 @@ RUN f=apps/web/.env.production; \
       "REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS=$REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS" \
       "REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS=$REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS" \
       "REACT_APP_GNOSIS_SPLIT_ENABLED=$REACT_APP_GNOSIS_SPLIT_ENABLED" \
+      "GNOSIS_LEAN_BUILD=$GNOSIS_LEAN_BUILD" \
     ; do case "$kv" in *=) ;; *) printf '%s\n' "$kv" >> "$f";; esac; done
 
 # Plain static build: with DEPLOY_TARGET unset the Cloudflare plugin is skipped and

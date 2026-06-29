@@ -382,7 +382,9 @@ function useEVMWalletInfos(pendingConnection: ExternalWallet | undefined): Platf
   const fallbackChainId = useWagmiChainId()
 
   return useMemo(() => {
-    return [...connectors, UNISWAP_WALLET_CONNECTOR].map((connector) => {
+    const evmConnectors = __GNOSIS_LEAN_BUILD__ ? connectors : [...connectors, UNISWAP_WALLET_CONNECTOR]
+
+    return evmConnectors.map((connector) => {
       const currentConnectorIsActive =
         connector.id === wagmiAccount.connector?.id || pendingConnection?.id === connector.id
       const accountData = currentConnectorIsActive ? wagmiAccount : undefined

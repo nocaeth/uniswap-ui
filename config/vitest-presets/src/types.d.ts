@@ -56,6 +56,7 @@ declare global {
   }
 
   var __DEV__: boolean
+  var __GNOSIS_LEAN_BUILD__: boolean
 }
 
 export {}

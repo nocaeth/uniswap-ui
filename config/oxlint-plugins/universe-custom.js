@@ -1064,6 +1064,7 @@ const DIRECT_VIEM_ETHERS_IMPORT_ALLOWLIST = new Set([
   'apps/web/src/connection/userOpSigning.ts',
   'apps/web/src/connection/rejectableConnector.ts',
   'apps/web/src/connection/wagmiConfig.ts',
+  'apps/web/src/connection/wagmiConfig.lean.ts',
   'apps/web/src/constants/providers.ts',
   'apps/web/src/features/accounts/store/updater.tsx',
   'apps/web/src/features/Swap/hooks/useSendCallback.ts',

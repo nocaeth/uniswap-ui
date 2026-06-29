@@ -1,6 +1,6 @@
 import { logger } from 'utilities/src/logger/logger'
 import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest'
-import { getRpcObserver, resetErrorBuckets, type RpcErrorContext } from './rpcObserver'
+import { getRpcObserver, resetErrorBuckets, type RpcErrorContext, type RpcResponseContext } from './rpcObserver'
 
 vi.mock('utilities/src/logger/logger', () => ({
   logger: {
@@ -30,9 +30,67 @@ function makeError(opts: Partial<RpcErrorContext> = {}): RpcErrorContext {
   }
 }
 
+function makeResponse(opts: Partial<RpcResponseContext> = {}): RpcResponseContext {
+  return {
+    requestId: opts.requestId ?? 'rpc-1',
+    method: opts.method ?? 'eth_call',
+    params: opts.params,
+    chainId: opts.chainId ?? 1,
+    url: opts.url ?? 'https://mainnet.example.com',
+    transport: opts.transport ?? 'viem',
+    durationMs: opts.durationMs ?? 100,
+  }
+}
+
 function getSummaryCall(): unknown[] | undefined {
   return (logger.warn as Mock).mock.calls.find((args: unknown[]) => String(args[2]).includes('Suppressed'))
 }
+
+describe('rpcObserver successful response logging', () => {
+  beforeEach(() => {
+    resetErrorBuckets()
+    vi.mocked(logger.info).mockClear()
+    vi.mocked(logger.warn).mockClear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('logs successful RPC responses outside production and lean builds', () => {
+    vi.stubGlobal('__DEV__', true)
+
+    getRpcObserver().onResponse(makeResponse())
+
+    expect(logger.info).toHaveBeenCalledTimes(1)
+    expect(logger.info).toHaveBeenCalledWith(
+      'rpcObserver',
+      'onResponse',
+      'RPC response',
+      expect.objectContaining({ method: 'eth_call', chainId: 1, provider: 'mainnet.example.com' }),
+    )
+  })
+
+  test('does not log successful RPC responses in production builds', () => {
+    vi.stubGlobal('__DEV__', false)
+
+    getRpcObserver().onResponse(makeResponse())
+
+    expect(logger.info).not.toHaveBeenCalled()
+  })
+
+  test('does not log successful RPC responses in lean builds but preserves error logging', () => {
+    vi.stubGlobal('__DEV__', true)
+    vi.stubGlobal('__GNOSIS_LEAN_BUILD__', true)
+
+    const observer = getRpcObserver()
+    observer.onResponse(makeResponse())
+    observer.onError(makeError())
+
+    expect(logger.info).not.toHaveBeenCalled()
+    expect(logger.warn).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('rpcObserver rate limiting', () => {
   beforeEach(() => {

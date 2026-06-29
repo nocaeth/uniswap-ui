@@ -44,6 +44,7 @@ const PROCESS_ENV_OVERRIDES = [
   'VITEST_WORKER_ID',
   'SKIP_CSP',
   'DISABLE_SOURCEMAP',
+  'GNOSIS_LEAN_BUILD',
 ]
 
 const DEFAULT_PORT = 3000
@@ -262,6 +263,14 @@ export default defineConfig(({ mode, isPreview }) => {
   const isVercelDeploy = DEPLOY_TARGET === 'vercel'
   const isCloudflareDeploy = DEPLOY_TARGET === 'cloudflare'
   const root = path.resolve(__dirname)
+  const isGnosisLeanBuild = env.GNOSIS_LEAN_BUILD === 'true'
+
+  if (isProduction && isGnosisLeanBuild) {
+    const missingGnosisOverrides = ['API_BASE_URL_V2_OVERRIDE', 'GRAPHQL_URL_OVERRIDE'].filter((key) => !env[key])
+    if (missingGnosisOverrides.length > 0) {
+      throw new Error(`Gnosis lean production builds require: ${missingGnosisOverrides.join(', ')}`)
+    }
+  }
 
   // External package aliases only
   const overrides = {
@@ -284,6 +293,102 @@ export default defineConfig(({ mode, isPreview }) => {
       find: /^uniswap\/src\/i18n$/,
       replacement: path.resolve(__dirname, '../../packages/uniswap/src/i18n/index.web-app.ts'),
     },
+    ...(isGnosisLeanBuild
+      ? [
+          {
+            find: /^@universe\/gating$/,
+            replacement: path.resolve(__dirname, '../../packages/gating/src/index.static.ts'),
+          },
+          {
+            find: /^@universe\/gating\/src\/sdk\/statsig$/,
+            replacement: path.resolve(__dirname, '../../packages/gating/src/sdk/statsig.static.ts'),
+          },
+          {
+            find: /^@universe\/gating\/src\/utils$/,
+            replacement: path.resolve(__dirname, '../../packages/gating/src/utils.static.ts'),
+          },
+          {
+            find: /^utilities\/src\/telemetry\/analytics\/analytics$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/analytics.ts'),
+          },
+          {
+            find: /^utilities\/src\/telemetry\/analytics\/analytics\.web$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/analytics.ts'),
+          },
+          {
+            find: /^@amplitude\/analytics-browser$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/amplitudeAnalyticsBrowser.ts'),
+          },
+          {
+            find: /^@universe\/sessions$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/sessions.ts'),
+          },
+          {
+            find: /^@universe\/compliance$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/compliance.tsx'),
+          },
+          {
+            find: /^~\/connection\/wagmiConfig$/,
+            replacement: path.resolve(__dirname, 'src/connection/wagmiConfig.lean.ts'),
+          },
+          {
+            find: /^~\/connection\/walletConnect$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/walletConnect.ts'),
+          },
+          {
+            find: /^~\/state\/livePrices\/LivePricesProvider$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/LivePricesProvider.tsx'),
+          },
+          {
+            find: /^uniswap\/src\/features\/telemetry\/debug\/AnalyticsDebugOverlayLazy$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/AnalyticsDebugOverlayLazy.tsx'),
+          },
+          {
+            find: /^~\/components\/FeatureFlagModal\/FeatureFlagModal$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/NullModal.tsx'),
+          },
+          {
+            find: /^~\/dev\/DevFlagsBox$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/NullModal.tsx'),
+          },
+          {
+            find: /^@datadog\/browser-rum$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/datadogBrowserRum.ts'),
+          },
+          {
+            find: /^@datadog\/browser-logs$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/datadogBrowserLogs.ts'),
+          },
+          {
+            find: /^@datadog\/browser-rum-react$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/datadogBrowserRumReact.tsx'),
+          },
+          {
+            find: /^utilities\/src\/logger\/datadog\/Datadog$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/datadogLogger.ts'),
+          },
+          {
+            find: /^utilities\/src\/logger\/datadog\/datadogLink$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/datadogLink.ts'),
+          },
+          {
+            find: /^uniswap\/src\/utils\/datadog$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/uniswapDatadog.ts'),
+          },
+          {
+            find: /^@solana-mobile\/wallet-adapter-mobile$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/solanaMobileWalletAdapter.ts'),
+          },
+          {
+            find: /^@solana\/wallet-adapter-react$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/solanaWalletAdapterReact.tsx'),
+          },
+          {
+            find: /^@solana\/wallet-adapter-coinbase$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/solanaWalletAdapterCoinbase.ts'),
+          },
+        ]
+      : []),
   ]
 
   // Create process.env definitions for ALL environment variables
@@ -293,6 +398,7 @@ export default defineConfig(({ mode, isPreview }) => {
 
   const defines = {
     __DEV__: !isProduction,
+    __GNOSIS_LEAN_BUILD__: isGnosisLeanBuild,
     'process.env.NODE_ENV': JSON.stringify(mode),
     'process.env.ENVIRONMENT': JSON.stringify(mode),
     'process.env.EXPO_OS': JSON.stringify('web'),
@@ -412,7 +518,7 @@ export default defineConfig(({ mode, isPreview }) => {
         // ignores tsconfig files in Nx generator template directories
         skip: (dir) => dir.includes('files'),
       }),
-      env.SKIP_CSP ? undefined : cspMetaTagPlugin(mode),
+      env.SKIP_CSP ? undefined : cspMetaTagPlugin(mode, { gnosisLeanBuild: isGnosisLeanBuild }),
       svgr({
         svgrOptions: {
           icon: false,
