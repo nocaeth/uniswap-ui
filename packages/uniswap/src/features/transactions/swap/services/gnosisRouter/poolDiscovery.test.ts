@@ -5,6 +5,7 @@ import {
   GNOSIS_EURE_V2,
   GNOSIS_GBPE_V1,
   GNOSIS_GBPE_V2,
+  GNOSIS_GNO,
   GNOSIS_SDAI,
   GNOSIS_USDCE,
   GNOSIS_WSTETH,
@@ -28,6 +29,7 @@ describe('Gnosis pool discovery', () => {
       lower(GNOSIS_SDAI),
       lower(GNOSIS_EURE_V2),
       lower(GNOSIS_WSTETH),
+      lower(GNOSIS_GNO),
     ])
   })
 

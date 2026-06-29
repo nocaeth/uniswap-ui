@@ -34,8 +34,10 @@ export const GNOSIS_SDAI_ADAPTER_ADDRESS = '0xD499b51fcFc66bd31248ef4b28d656d67E
 export const GNOSIS_USDC = '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
 export const GNOSIS_USDC_TRANSMUTER_ADDRESS = '0x0392A2F5Ac47388945D8c84212469F545fAE52B2'
 export const GNOSIS_CURVE_XDAI_USDC_USDT_POOL = '0x7f90122BF0700F9E7e1F688fe926940E8839F353'
+export const GNOSIS_CURVE_X3CRV_TOKEN = '0x1337BedC9D22ecbe766dF105c9623922A27963EC'
 export const GNOSIS_CURVE_USDCE_SDAI_POOL = '0x4a053d86bcccdfb6f85c46b38c5873129212dc1f'
 export const GNOSIS_CURVE_GNO_OSGNO_POOL = '0xb5814811dc4fc2ac127a1f8fb708460bf9fad619'
+export const GNOSIS_CURVE_EURE_X3CRV_POOL = '0x056c6c5e684cec248635ed86033378cc444459b0'
 export const GNOSIS_EURE_V2 = GNOSIS_EURE_CANONICAL_ADDRESS
 // EURe v1 is intentionally not a routing hub.
 export const GNOSIS_EURE_V1 = GNOSIS_EURE_LEGACY_ADDRESS
@@ -45,7 +47,14 @@ export const GNOSIS_GBPE_V1 = GNOSIS_GBPE_LEGACY_ADDRESSES[0]
 
 // Intermediate tokens tried when there is no good direct pool. Keep this bounded:
 // pool-aware route generation prunes missing/empty pools before quote calls.
-export const GNOSIS_BASE_TOKENS: string[] = [GNOSIS_USDCE, GNOSIS_WXDAI, GNOSIS_SDAI, GNOSIS_EURE_V2, GNOSIS_WSTETH]
+export const GNOSIS_BASE_TOKENS: string[] = [
+  GNOSIS_USDCE,
+  GNOSIS_WXDAI,
+  GNOSIS_SDAI,
+  GNOSIS_EURE_V2,
+  GNOSIS_WSTETH,
+  GNOSIS_GNO,
+]
 
 export const GNOSIS_STABLE_ROUTE_TOKENS: string[] = [
   GNOSIS_WXDAI,
@@ -59,12 +68,17 @@ export const GNOSIS_PREFERRED_STABLE_ROUTE_HUBS: string[] = [GNOSIS_USDCE, GNOSI
 export const GNOSIS_ETH_CORRELATED_ROUTE_TOKENS: string[] = [GNOSIS_WETH, GNOSIS_WSTETH]
 export const GNOSIS_PREFERRED_ETH_ROUTE_HUBS: string[] = [GNOSIS_WSTETH]
 
-// Counterparties for which a WXDAI/xDAI swap routes better through the sDAI zap (SdaiZapRouter):
-// WXDAI's only direct v3 edge is the shallow WXDAI/USDC.e pool, while these tokens sit on the deep
-// sDAI-centered cluster (sDAI/EURe, sDAI/wstETH, EURe/USDC.e). Bridging WXDAI<->sDAI is free via the
-// savings adapter, so WXDAI<->{these} is quoted as adapter + a single deep v3 path. Curated to
-// tokens we know route well from sDAI; extend as deeper pools appear. See ./sdaiZap.ts.
-export const GNOSIS_SDAI_ZAP_COUNTERPARTIES: string[] = [GNOSIS_USDCE, GNOSIS_EURE_V2, GNOSIS_WSTETH, GNOSIS_WETH]
+// Known counterparties that usually route well through the sDAI zap (SdaiZapRouter). The quoter may
+// probe other WXDAI/xDAI pairs through sDAI too, but it only selects the zap when it beats the market.
+// Keep this list as the documented/de-risked set for tests, analytics, and future route gating.
+export const GNOSIS_SDAI_ZAP_COUNTERPARTIES: string[] = [
+  GNOSIS_USDCE,
+  GNOSIS_EURE_V2,
+  GNOSIS_GBPE_V2,
+  GNOSIS_GBPE_V1,
+  GNOSIS_WSTETH,
+  GNOSIS_WETH,
+]
 
 export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH]
 
@@ -128,7 +142,7 @@ export const GNOSIS_SDAI_ZAP_ADDRESS: string =
  * or replacement deployments.
  */
 export const GNOSIS_AGGREGATION_ROUTER_ADDRESS: string =
-  process.env['REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS'] || '0xC617d916822E554F3a8660D620325Ca4c2f1f1aD'
+  process.env['REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS'] || '0x5Dc8F465Eb018dA68d61fFdB9B4658C8f929CD13'
 
 /**
  * Curve Router NG address used for quoting the curated Curve leg set. Defaults to Curve's Gnosis
@@ -138,7 +152,7 @@ export const GNOSIS_CURVE_ROUTER_ADDRESS: string =
   process.env['REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS'] || '0x0DCDED3545D565bA3B19E683431381007245d983'
 
 /**
- * Split-fill routing (see ./fetchGnosisQuote.ts and docs/split-fill-routing-spec.md).
+ * Split-fill routing (see ./fetchGnosisQuote.ts).
  *
  * Splits a single EXACT_INPUT swap across pool-disjoint v3 routes, executed atomically in one
  * UniversalRouter transaction, to reduce price impact on size. The universal-router-sdk already
@@ -146,9 +160,9 @@ export const GNOSIS_CURVE_ROUTER_ADDRESS: string =
  * default on Gnosis because gas is negligible; set REACT_APP_GNOSIS_SPLIT_ENABLED=false to disable.
  */
 export const GNOSIS_SPLIT_ENABLED = process.env['REACT_APP_GNOSIS_SPLIT_ENABLED'] !== 'false'
-// Max routes a split fans across. At 2, the SDK enforces slippage per-leg (no aggregate sweep);
-// raise only if 3 deep disjoint routes prove worthwhile.
-export const GNOSIS_MAX_SPLIT_LEGS = 2
+// Max routes a split fans across. Three legs lets Gnosis fan out across the deep stable/ETH/GNO
+// clusters while still keeping calldata and quote search bounded.
+export const GNOSIS_MAX_SPLIT_LEGS = 3
 // Simplex grid resolution per split: G steps => G+1 allocations for a 2-leg split, all quoted in
 // one Multicall3 call. Keep small to bound added quote latency.
 export const GNOSIS_SPLIT_GRID_STEPS = 10

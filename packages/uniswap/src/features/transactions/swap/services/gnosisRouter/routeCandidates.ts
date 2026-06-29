@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines -- cohesive Gnosis graph/ranking module; splitting comparator helpers would obscure the route ranking flow */
 import { BigNumber, type BigNumberish } from '@ethersproject/bignumber'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -41,6 +42,8 @@ export interface GnosisViablePoolGraphEdge {
   liquidity: BigNumber
   poolAddress?: string
   tvlUSD?: number
+  sqrtPriceX96?: BigNumber
+  tick?: number
 }
 
 export interface GnosisPoolGraph {
@@ -66,6 +69,7 @@ interface RankedCandidateRoute {
   route: CandidateRoute
   minimumLiquidity: BigNumber
   minimumTvlUSD?: number
+  spotPricePenalty?: number
   preferenceScore: number
   totalFee: number
   routeKey: string
@@ -179,6 +183,8 @@ export function buildGnosisPoolGraph(poolEdges: readonly GnosisPoolGraphEdge[]):
       liquidity,
       poolAddress: poolEdge.poolAddress,
       tvlUSD: poolEdge.tvlUSD,
+      sqrtPriceX96: poolEdge.sqrtPriceX96,
+      tick: poolEdge.tick,
     })
   }
 
@@ -386,10 +392,74 @@ function createRankedRoute(args: {
     route,
     minimumLiquidity: getMinimumLiquidity(routeEdges),
     minimumTvlUSD: getMinimumTvlUSD(routeEdges),
+    spotPricePenalty: getRouteSpotPricePenalty({ route, routeEdges }),
     preferenceScore: getRoutePreferenceScore({ route, tokenIn, tokenOut }),
     totalFee: route.fees.reduce((sum, fee) => sum + fee, 0),
     routeKey: getGnosisRouteKey(route),
   }
+}
+
+function getRouteSpotPricePenalty(args: {
+  route: CandidateRoute
+  routeEdges: readonly GnosisViablePoolGraphEdge[]
+}): number | undefined {
+  let logSpotRate = 0
+
+  for (const [index, edge] of args.routeEdges.entries()) {
+    const tokenIn = args.route.tokens[index]
+    const tokenOut = args.route.tokens[index + 1]
+    if (!tokenIn || !tokenOut) {
+      return undefined
+    }
+
+    const hopLogSpotRate = getEdgeLogSpotRate({ edge, tokenIn, tokenOut })
+    if (hopLogSpotRate === undefined) {
+      return undefined
+    }
+    logSpotRate += hopLogSpotRate
+  }
+
+  return -logSpotRate
+}
+
+function getEdgeLogSpotRate(args: {
+  edge: GnosisViablePoolGraphEdge
+  tokenIn: string
+  tokenOut: string
+}): number | undefined {
+  const { edge } = args
+  if (!edge.sqrtPriceX96 || edge.sqrtPriceX96.lte(0)) {
+    return undefined
+  }
+
+  const tokenA = normalizeGnosisRouteTokenAddress(edge.tokenA)
+  const tokenB = normalizeGnosisRouteTokenAddress(edge.tokenB)
+  const tokenIn = normalizeGnosisRouteTokenAddress(args.tokenIn)
+  const tokenOut = normalizeGnosisRouteTokenAddress(args.tokenOut)
+  if (!tokenA || !tokenB || !tokenIn || !tokenOut || tokenA === tokenB) {
+    return undefined
+  }
+
+  const token0 = tokenA < tokenB ? tokenA : tokenB
+  const token1 = tokenA < tokenB ? tokenB : tokenA
+  const sqrtPrice = Number(edge.sqrtPriceX96.toString())
+  if (!Number.isFinite(sqrtPrice) || sqrtPrice <= 0) {
+    return undefined
+  }
+
+  const logToken1PerToken0 = 2 * (Math.log(sqrtPrice) - 96 * Math.log(2))
+  if (!Number.isFinite(logToken1PerToken0)) {
+    return undefined
+  }
+
+  if (tokenIn === token0 && tokenOut === token1) {
+    return logToken1PerToken0
+  }
+  if (tokenIn === token1 && tokenOut === token0) {
+    return -logToken1PerToken0
+  }
+
+  return undefined
 }
 
 function getMinimumLiquidity(routeEdges: readonly GnosisViablePoolGraphEdge[]): BigNumber {
@@ -455,6 +525,22 @@ function compareRankedRoutes(a: RankedCandidateRoute, b: RankedCandidateRoute): 
   const hopDelta = a.route.fees.length - b.route.fees.length
   if (hopDelta !== 0) {
     return hopDelta
+  }
+
+  // Total-ordered spot comparison applied once, before the TVL check.
+  // Routes whose marginal price couldn't be computed (undefined/non-finite) map to +Infinity
+  // so they rank last on the price criterion.  This preserves the "better spot beats higher TVL"
+  // design while making the comparator a provably total/transitive order.
+  const spotA =
+    a.spotPricePenalty !== undefined && Number.isFinite(a.spotPricePenalty)
+      ? a.spotPricePenalty
+      : Number.POSITIVE_INFINITY
+  const spotB =
+    b.spotPricePenalty !== undefined && Number.isFinite(b.spotPricePenalty)
+      ? b.spotPricePenalty
+      : Number.POSITIVE_INFINITY
+  if (spotA !== spotB) {
+    return spotA < spotB ? -1 : 1
   }
 
   if (a.minimumTvlUSD !== undefined && b.minimumTvlUSD !== undefined && a.minimumTvlUSD !== b.minimumTvlUSD) {

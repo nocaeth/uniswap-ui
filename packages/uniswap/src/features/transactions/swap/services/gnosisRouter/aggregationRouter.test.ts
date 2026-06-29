@@ -3,8 +3,15 @@ import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { GnosisAggregationQuote } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
 import {
+  GNOSIS_CURVE_EURE_X3CRV_POOL,
   GNOSIS_CURVE_GNO_OSGNO_POOL,
   GNOSIS_CURVE_USDCE_SDAI_POOL,
+  GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+  GNOSIS_CURVE_X3CRV_TOKEN,
+  GNOSIS_EURE_V1,
+  GNOSIS_EURE_V2,
+  GNOSIS_GBPE_V1,
+  GNOSIS_GBPE_V2,
   GNOSIS_GNO,
   GNOSIS_OSGNO,
   GNOSIS_SDAI,
@@ -48,6 +55,37 @@ describe('Gnosis aggregation router helpers', () => {
     expect(osgnoToGno?.route[1]).toBe(GNOSIS_CURVE_GNO_OSGNO_POOL)
     expect(osgnoToGno?.swapParams[0]).toEqual(['1', '0', '1', '1', '2'])
     expect(osgnoToGno ? getGnosisCurveRouteHash(osgnoToGno) : '').toMatch(/^0x[0-9a-f]{64}$/)
+  })
+
+  it('builds the curated Curve eureusd metapool route tuple through x3CRV', async () => {
+    const { getGnosisCurveEureUsdRoute, getGnosisCurveRouteHash } =
+      await import('uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter')
+
+    const wxdaiToEure = getGnosisCurveEureUsdRoute({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_EURE_V1 })
+    expect(wxdaiToEure?.route.slice(0, 5)).toEqual([
+      GNOSIS_WXDAI,
+      GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+      GNOSIS_CURVE_X3CRV_TOKEN,
+      GNOSIS_CURVE_EURE_X3CRV_POOL,
+      GNOSIS_EURE_V1,
+    ])
+    expect(wxdaiToEure?.swapParams[0]).toEqual(['0', '0', '4', '1', '3'])
+    expect(wxdaiToEure?.swapParams[1]).toEqual(['1', '0', '1', '2', '2'])
+    expect(wxdaiToEure ? getGnosisCurveRouteHash(wxdaiToEure) : '').toMatch(/^0x[0-9a-f]{64}$/)
+
+    const eureToWxdai = getGnosisCurveEureUsdRoute({ tokenIn: GNOSIS_EURE_V1, tokenOut: GNOSIS_WXDAI })
+    expect(eureToWxdai?.route.slice(0, 5)).toEqual([
+      GNOSIS_EURE_V1,
+      GNOSIS_CURVE_EURE_X3CRV_POOL,
+      GNOSIS_CURVE_X3CRV_TOKEN,
+      GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+      GNOSIS_WXDAI,
+    ])
+    expect(eureToWxdai?.swapParams[0]).toEqual(['0', '1', '1', '2', '2'])
+    expect(eureToWxdai?.swapParams[1]).toEqual(['0', '0', '6', '1', '3'])
+    expect(eureToWxdai ? getGnosisCurveRouteHash(eureToWxdai) : '').toMatch(/^0x[0-9a-f]{64}$/)
+
+    expect(getGnosisCurveEureUsdRoute({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_EURE_V2 })).toBeUndefined()
   })
 
   it('encodes aggregation execute calldata from quote payload legs', async () => {
@@ -114,6 +152,53 @@ describe('Gnosis aggregation router helpers', () => {
 
     // Keep the imported Interface type live so this test fails if the ABI stops being ethers-compatible.
     expect(aggregationRouterInterface).toBeInstanceOf(Interface)
+  })
+
+  it('allows shared-state execution aliases for canonical displayed output tokens', async () => {
+    vi.resetModules()
+    vi.doMock('uniswap/src/features/transactions/swap/services/gnosisRouter/constants', async () => ({
+      ...(await vi.importActual('uniswap/src/features/transactions/swap/services/gnosisRouter/constants')),
+      GNOSIS_AGGREGATION_ROUTER_ADDRESS: ROUTER,
+      GNOSIS_CURVE_ROUTER_ADDRESS: CURVE,
+    }))
+
+    const {
+      GNOSIS_AGGREGATION_QUOTE_ID,
+      GnosisAggregationStepType,
+      aggregationRouterInterface,
+      buildGnosisAggregationTransaction,
+    } = await import('uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter')
+
+    const quote = {
+      chainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      swapper: SWAPPER,
+      input: { token: GNOSIS_USDCE, amount: '1000' },
+      output: { token: GNOSIS_GBPE_V2, amount: '990', minimumAmount: '985', recipient: RECIPIENT },
+      tradeType: TradingApi.TradeType.EXACT_INPUT,
+      slippage: 0.5,
+      route: [],
+      routeString: 'Curve eureusd -> Uniswap V3',
+      quoteId: GNOSIS_AGGREGATION_QUOTE_ID,
+      gasUseEstimate: '500000',
+      priceImpact: 0,
+      portionBips: 0,
+      aggregation: {
+        tokenIn: GNOSIS_USDCE,
+        tokenOut: GNOSIS_GBPE_V1,
+        legs: [
+          {
+            amountIn: '1000',
+            label: 'Curve eureusd -> Uniswap V3',
+            steps: [{ stepType: GnosisAggregationStepType.V3, data: '0x1234' }],
+          },
+        ],
+      },
+    } as GnosisAggregationQuote
+
+    const tx = buildGnosisAggregationTransaction({ quote, deadline: 1_700_000_000 })
+    const decoded = aggregationRouterInterface.decodeFunctionData('execute', tx?.data ?? '0x')
+    expect(decoded[0]).toBe(GNOSIS_USDCE)
+    expect(decoded[2]).toBe(GNOSIS_GBPE_V1)
   })
 
   it('rejects aggregation calldata when payload tokens differ from the quote tokens', async () => {

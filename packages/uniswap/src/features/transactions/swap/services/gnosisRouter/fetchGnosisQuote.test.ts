@@ -8,8 +8,12 @@ import {
   SDAI_ERC4626_PREVIEW_ABI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/abis'
 import {
+  GNOSIS_EURE_V1,
+  GNOSIS_GBPE_V1,
+  GNOSIS_GBPE_V2,
   GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
   GNOSIS_SDAI,
+  GNOSIS_USDCE,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
   GNOSIS_WXDAI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
@@ -17,6 +21,7 @@ import {
   buildCandidateRouteSets,
   buildPermitTransactionIfNeeded,
   fetchGnosisQuote,
+  getGnosisCurveV3MixedRouteTemplate,
   getGnosisQuoteSlippageAmounts,
   getGnosisSlippageTolerance,
   GNOSIS_MAX_SLIPPAGE_PERCENT,
@@ -117,6 +122,36 @@ describe('buildCandidateRouteSets', () => {
 
     // A non-empty fallback returns the same memoized array reference across calls.
     expect(getFallbackRoutes()).toBe(getFallbackRoutes())
+  })
+})
+
+describe('getGnosisCurveV3MixedRouteTemplate', () => {
+  it('builds the eureusd -> GBPe mixed path through legacy GBPe for either displayed GBPe alias', () => {
+    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_GBPE_V1 })).toMatchObject({
+      direction: 'curve-to-v3',
+      v3TokenIn: GNOSIS_EURE_V1,
+      v3TokenOut: GNOSIS_GBPE_V1,
+      executionTokenOut: GNOSIS_GBPE_V1,
+    })
+    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_GBPE_V2 })).toMatchObject({
+      direction: 'curve-to-v3',
+      v3TokenIn: GNOSIS_EURE_V1,
+      v3TokenOut: GNOSIS_GBPE_V1,
+      executionTokenOut: GNOSIS_GBPE_V1,
+    })
+
+    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_GBPE_V1, tokenOut: GNOSIS_USDCE })).toMatchObject({
+      direction: 'v3-to-curve',
+      v3TokenIn: GNOSIS_GBPE_V1,
+      v3TokenOut: GNOSIS_EURE_V1,
+      executionTokenIn: GNOSIS_GBPE_V1,
+    })
+    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_GBPE_V2, tokenOut: GNOSIS_USDCE })).toMatchObject({
+      direction: 'v3-to-curve',
+      v3TokenIn: GNOSIS_GBPE_V1,
+      v3TokenOut: GNOSIS_EURE_V1,
+      executionTokenIn: GNOSIS_GBPE_V1,
+    })
   })
 })
 

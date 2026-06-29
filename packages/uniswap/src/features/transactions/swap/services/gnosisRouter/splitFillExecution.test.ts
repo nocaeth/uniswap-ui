@@ -1,5 +1,6 @@
 /* oxlint-disable no-bitwise -- decoding UniversalRouter command bytes is inherently bitwise */
-import { Interface } from '@ethersproject/abi'
+import { Interface, defaultAbiCoder } from '@ethersproject/abi'
+import { BigNumber } from '@ethersproject/bignumber'
 import { Percent, TradeType } from '@uniswap/sdk-core'
 import { CommandType, RouterTradeAdapter, SwapRouter } from '@uniswap/universal-router-sdk'
 import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk'
@@ -96,5 +97,45 @@ describe('split-fill execution passthrough (universal-router-sdk)', () => {
     const cmds = commandBytes(encodeRoute(route))
     expect(cmds.filter((c) => c === CommandType.V3_SWAP_EXACT_IN)).toHaveLength(1)
     expect(cmds).not.toContain(CommandType.SWEEP)
+  })
+
+  it('the 3-leg SWEEP amountMin covers the slippage-adjusted aggregate output (dust-leg sandwich safety)', () => {
+    // Safety property for GNOSIS_MAX_SPLIT_LEGS=3: when the SDK routes via three sub-routes it
+    // directs each V3_SWAP_EXACT_IN to the router (amountOutMinimum=0 per-command) and adds a
+    // trailing SWEEP with an aggregate amountMin.  That aggregate MUST equal
+    // slippage-adjusted(sum of ALL three legs), including the smallest.  If any single leg —
+    // even a dust leg — is sandwiched to return zero, the total falls below the SWEEP floor and
+    // the UniversalRouter reverts, so the user's input is never silently lost.
+    //
+    // Leg quoted outputs: 495 + 297 + 198 = 990.
+    // At 0.5% slippage the SWEEP must enforce ≥ floor(990 * 9950 / 10000) = 985.
+    const route = [
+      [v3Pool({ address: POOL1, fee: 500, amountIn: '500', amountOut: '495' })],
+      [v3Pool({ address: POOL2, fee: 3000, amountIn: '300', amountOut: '297' })],
+      [v3Pool({ address: POOL3, fee: 10000, amountIn: '200', amountOut: '198' })],
+    ]
+    // encodeRoute uses Percent(50, 10_000) = 0.5% slippage tolerance.
+    const calldata = encodeRoute(route)
+
+    const iface = new Interface(['function execute(bytes commands, bytes[] inputs, uint256 deadline) payable'])
+    const decoded = iface.decodeFunctionData('execute', calldata)
+    const commands = decoded[0] as string
+    const inputs = decoded[1] as string[]
+
+    const hex = commands.slice(2)
+    const cmdBytes: number[] = []
+    for (let i = 0; i < hex.length; i += 2) {
+      cmdBytes.push(parseInt(hex.slice(i, i + 2), 16) & 0x3f)
+    }
+    const sweepIdx = cmdBytes.indexOf(CommandType.SWEEP)
+    expect(sweepIdx).toBeGreaterThanOrEqual(0)
+
+    // SWEEP input is abi.encode(address token, address recipient, uint160 amountMin).
+    // Decoded as uint256 (ABI pads uint160 to 32 bytes identically).
+    const [, , sweepAmountMin] = defaultAbiCoder.decode(['address', 'address', 'uint256'], inputs[sweepIdx]!)
+
+    const totalOut = BigNumber.from(495 + 297 + 198) // 990
+    const minWithSlippage = totalOut.mul(10_000 - 50).div(10_000) // 985 at 0.5%
+    expect(BigNumber.from(sweepAmountMin).gte(minWithSlippage)).toBe(true)
   })
 })

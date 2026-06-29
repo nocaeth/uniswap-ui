@@ -6,7 +6,7 @@ import { DynamicConfigs, SwapConfigKey, useDynamicConfigValue } from '@universe/
 import { useMemo } from 'react'
 import { useUniswapContext } from 'uniswap/src/contexts/UniswapContext'
 import { useActiveAddress } from 'uniswap/src/features/accounts/store/hooks'
-import type { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { useActiveGasStrategy } from 'uniswap/src/features/gas/hooks'
 import { useTradingApiGasOverrides } from 'uniswap/src/features/gas/hooks/useTradingApiGasOverrides'
 import type {
@@ -33,6 +33,7 @@ import type {
 import { createSwapTxAndGasInfoService } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/swapTxAndGasInfoService'
 import { createUniswapXSwapTxAndGasInfoService } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/uniswapx/uniswapXSwapTxAndGasInfoService'
 import { createWrapTxAndGasInfoService } from 'uniswap/src/features/transactions/swap/review/services/swapTxAndGasInfoService/wrap/wrapTxAndGasInfoService'
+import { getGnosisApprovalTokenAddressOverride } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/useGnosisApprovalInfo'
 import {
   useSwapFormStore,
   useSwapFormStoreDerivedSwapInfo,
@@ -285,7 +286,10 @@ export function useSwapParams(): {
     exactCurrencyField === CurrencyField.INPUT ? TradingApi.TradeType.EXACT_INPUT : TradingApi.TradeType.EXACT_OUTPUT
   const currencyInApprovalAmount =
     tradeType === TradingApi.TradeType.EXACT_OUTPUT ? trade?.maxAmountIn : currencyAmounts[CurrencyField.INPUT]
-  const quoteId = trade && isClassic(trade) ? trade.quote.quote.quoteId : undefined
+  const classicQuote = trade && isClassic(trade) ? trade.quote.quote : undefined
+  const quoteId = classicQuote?.quoteId
+  const gnosisApprovalTokenAddressOverride =
+    chainId === UniverseChainId.Gnosis ? getGnosisApprovalTokenAddressOverride(classicQuote) : undefined
 
   const approvalTxInfo = useTokenApprovalInfo({
     address,
@@ -297,6 +301,7 @@ export function useSwapParams(): {
     routing: trade?.routing,
     tradeType,
     quoteId,
+    gnosisApprovalTokenAddressOverride,
   })
 
   return {

@@ -4,48 +4,17 @@ pragma solidity ^0.8.24;
 import {IERC20} from "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
+import {ICurveRouterNg, IUSDCTransmuter, IV3SwapRouter} from "./GnosisAggregationRouter.sol";
 
-/// @notice Uniswap V3 SwapRouter02 (0xc6D2... on Gnosis). Uses plain ERC20 approvals.
-interface IV3SwapRouter {
-    struct ExactInputParams {
-        bytes path;
-        address recipient;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-    }
-
-    function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
-}
-
-/// @notice Curve Router NG. Routing tuples are produced off-chain and validated by Curve's router.
-interface ICurveRouterNg {
-    function exchange(
-        address[11] calldata route,
-        uint256[5][5] calldata swapParams,
-        uint256 amount,
-        uint256 minDy,
-        address[5] calldata pools,
-        address receiver
-    ) external payable returns (uint256);
-}
-
-/// @notice Gnosis USDC transmuter: Omnibridge USDC <-> USDC.e.
-interface IUSDCTransmuter {
-    function USDC_ON_XDAI() external view returns (address);
-    function USDC_E() external view returns (address);
-    function isEnabled() external view returns (bool);
-    function deposit(uint256 amount) external;
-    function withdraw(uint256 amount) external;
-}
-
-/// @title GnosisAggregationRouter
-/// @notice Exact-input, closed-surface router for Gnosis-only swaps that need to compose
-/// Uniswap V3, Curve Router NG and the USDC transmuter in one atomic transaction.
+/// @title GnosisAggregationRouterV2
+/// @notice Exact-input, ownerless Gnosis router for composing Uniswap V3, Curve Router NG, and the
+/// USDC transmuter in one atomic transaction.
 ///
-/// The contract deliberately does not accept arbitrary target/call calldata. Every action is a
-/// typed step against immutable dependencies, Curve routes are allowlisted by constructor-pinned
-/// hashes, and final slippage is enforced by measuring the router's final tokenOut balance delta.
-contract GnosisAggregationRouter is ReentrancyGuard {
+/// V2 deliberately keeps the same closed action surface as V1: every step targets an immutable
+/// dependency and final slippage is enforced by measuring the router's final tokenOut balance delta.
+/// Unlike V1, Curve routes are not constructor-allowlisted. Any route accepted by the configured
+/// immutable Curve Router NG may be executed.
+contract GnosisAggregationRouterV2 is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     enum StepType {
@@ -75,8 +44,6 @@ contract GnosisAggregationRouter is ReentrancyGuard {
     address public immutable USDC;
     address public immutable USDCE;
 
-    mapping(bytes32 routeHash => bool allowed) public allowedCurveRouteHash;
-
     event AggregationExecuted(
         address indexed sender,
         address indexed recipient,
@@ -85,7 +52,6 @@ contract GnosisAggregationRouter is ReentrancyGuard {
         uint256 amountIn,
         uint256 amountOut
     );
-    event CurveRouteAllowed(bytes32 indexed routeHash);
 
     error Expired();
     error ZeroAddress();
@@ -99,7 +65,6 @@ contract GnosisAggregationRouter is ReentrancyGuard {
     error UnsupportedStep();
     error MalformedPath();
     error PathEndpointMismatch();
-    error CurveRouteNotAllowed();
     error CurveRouteEndpointMismatch();
     error TransmuterDisabled();
     error TransmuterInventoryInsufficient();
@@ -107,12 +72,7 @@ contract GnosisAggregationRouter is ReentrancyGuard {
     error InsufficientOutput();
     error NativeUnsupported();
 
-    constructor(
-        address swapRouter_,
-        address curveRouter_,
-        address usdcTransmuter_,
-        bytes32[] memory allowedCurveRouteHashes
-    ) {
+    constructor(address swapRouter_, address curveRouter_, address usdcTransmuter_) {
         if (swapRouter_ == address(0) || curveRouter_ == address(0) || usdcTransmuter_ == address(0)) {
             revert ZeroAddress();
         }
@@ -127,12 +87,6 @@ contract GnosisAggregationRouter is ReentrancyGuard {
         USDC = IUSDCTransmuter(usdcTransmuter_).USDC_ON_XDAI();
         USDCE = IUSDCTransmuter(usdcTransmuter_).USDC_E();
         if (USDC == address(0) || USDCE == address(0)) revert ZeroAddress();
-
-        for (uint256 i = 0; i < allowedCurveRouteHashes.length; i++) {
-            bytes32 routeHash = allowedCurveRouteHashes[i];
-            allowedCurveRouteHash[routeHash] = true;
-            emit CurveRouteAllowed(routeHash);
-        }
     }
 
     receive() external payable {
@@ -229,8 +183,6 @@ contract GnosisAggregationRouter is ReentrancyGuard {
             abi.decode(data, (address[11], uint256[5][5], address[5], uint256));
 
         if (route[0] != tokenIn) revert CurveRouteEndpointMismatch();
-        bytes32 routeHash = _curveRouteHash(route, swapParams, pools);
-        if (!allowedCurveRouteHash[routeHash]) revert CurveRouteNotAllowed();
 
         tokenOut = _curveOutputToken(route);
         if (tokenOut == address(0) || tokenOut == tokenIn) revert CurveRouteEndpointMismatch();
@@ -275,14 +227,6 @@ contract GnosisAggregationRouter is ReentrancyGuard {
         }
 
         if (amountOut == 0) revert InsufficientOutput();
-    }
-
-    function _curveRouteHash(address[11] memory route, uint256[5][5] memory swapParams, address[5] memory pools)
-        private
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encode(route, swapParams, pools));
     }
 
     /// @dev Curve route array is token, pool/zap, token, pool/zap, token... and stops at

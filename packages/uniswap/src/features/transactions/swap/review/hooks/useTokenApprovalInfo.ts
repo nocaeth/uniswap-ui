@@ -31,6 +31,8 @@ export interface TokenApprovalInfoParams {
   tradeType?: TradingApi.TradeType
   // Used only by the Gnosis client-side approval path to match spender to the selected quote.
   quoteId?: string
+  // Used only by the Gnosis client-side approval path when execution uses a concrete shared-state alias.
+  gnosisApprovalTokenAddressOverride?: string
 }
 
 export type ApprovalTxInfo = {
@@ -59,6 +61,7 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
     routing,
     tradeType,
     quoteId,
+    gnosisApprovalTokenAddressOverride,
   } = params
 
   // Gnosis has no Trading API; resolve ERC20 -> Permit2 approval client-side instead.
@@ -72,6 +75,7 @@ export function useTokenApprovalInfo(params: TokenApprovalInfoParams): ApprovalT
     currencyOutAmount,
     tradeType,
     quoteId,
+    tokenAddressOverride: gnosisApprovalTokenAddressOverride,
   })
 
   const isWrap = wrapType !== WrapType.NotApplicable
