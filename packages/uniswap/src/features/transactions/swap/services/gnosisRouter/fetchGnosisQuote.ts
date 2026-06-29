@@ -87,7 +87,6 @@ import {
   haveSameEndpoints,
   pickDisjointSet,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
-import { logger } from 'utilities/src/logger/logger'
 import {
   GnosisSdaiAdapterDirection,
   GNOSIS_SDAI_ADAPTER_QUOTE_ID,
@@ -105,6 +104,7 @@ import {
   passesAcceptGate,
   selectBestSplit,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/splitAllocation'
+import { logger } from 'utilities/src/logger/logger'
 
 const GNOSIS_CHAIN_ID = UniverseChainId.Gnosis as unknown as TradingApi.ChainId
 
@@ -619,6 +619,8 @@ export interface GnosisCurveV3MixedRouteTemplate {
   curveTemplate: CurveAggregationTemplate
   v3TokenIn: string
   v3TokenOut: string
+  executionTokenIn?: string
+  executionTokenOut?: string
   label: string
 }
 
@@ -635,6 +637,8 @@ interface AggregationCandidate {
   totalOut: BigNumber
   gasEstimate: BigNumber
   routeString: string
+  executionTokenIn?: string
+  executionTokenOut?: string
 }
 
 function isSameAddress(a: string | undefined, b: string): boolean {
@@ -788,7 +792,10 @@ export function getGnosisCurveV3MixedRouteTemplate(args: {
     }
   }
 
-  if (!isGnosisGbpeAddress(args.tokenIn) && isSameAddress(args.tokenOut, GNOSIS_GBPE_V1)) {
+  const tokenInIsGbpe = isGnosisGbpeAddress(args.tokenIn)
+  const tokenOutIsGbpe = isGnosisGbpeAddress(args.tokenOut)
+
+  if (!tokenInIsGbpe && tokenOutIsGbpe) {
     const curveTemplate = buildEureUsdCurveAggregationTemplate({ tokenIn: args.tokenIn, tokenOut: GNOSIS_EURE_V1 })
     if (!curveTemplate) {
       return undefined
@@ -797,12 +804,13 @@ export function getGnosisCurveV3MixedRouteTemplate(args: {
       direction: 'curve-to-v3',
       curveTemplate,
       v3TokenIn: GNOSIS_EURE_V1,
-      v3TokenOut: args.tokenOut,
+      v3TokenOut: GNOSIS_GBPE_V1,
+      executionTokenOut: GNOSIS_GBPE_V1,
       label: 'Curve eureusd -> Uniswap V3',
     }
   }
 
-  if (isSameAddress(args.tokenIn, GNOSIS_GBPE_V1) && !isGnosisGbpeAddress(args.tokenOut)) {
+  if (tokenInIsGbpe && !tokenOutIsGbpe) {
     const curveTemplate = buildEureUsdCurveAggregationTemplate({ tokenIn: GNOSIS_EURE_V1, tokenOut: args.tokenOut })
     if (!curveTemplate) {
       return undefined
@@ -810,8 +818,9 @@ export function getGnosisCurveV3MixedRouteTemplate(args: {
     return {
       direction: 'v3-to-curve',
       curveTemplate,
-      v3TokenIn: args.tokenIn,
+      v3TokenIn: GNOSIS_GBPE_V1,
       v3TokenOut: GNOSIS_EURE_V1,
+      executionTokenIn: GNOSIS_GBPE_V1,
       label: 'Uniswap V3 -> Curve eureusd',
     }
   }
@@ -964,7 +973,10 @@ async function quoteCurveTemplateAmountPairs(args: {
   return quotedByAmount
 }
 
-function buildAggregationCandidate(legs: AggregationLegQuote[]): AggregationCandidate {
+function buildAggregationCandidate(
+  legs: AggregationLegQuote[],
+  executionTokens: { tokenIn?: string | undefined; tokenOut?: string | undefined } = {},
+): AggregationCandidate {
   return {
     legs,
     totalOut: legs.reduce((sum, leg) => sum.add(leg.amountOut), BigNumber.from(0)),
@@ -972,6 +984,8 @@ function buildAggregationCandidate(legs: AggregationLegQuote[]): AggregationCand
       legs.reduce((sum, leg) => sum.add(leg.gasEstimate), BigNumber.from(0)),
     ),
     routeString: legs.map((leg) => leg.label).join(' + '),
+    ...(executionTokens.tokenIn ? { executionTokenIn: executionTokens.tokenIn } : {}),
+    ...(executionTokens.tokenOut ? { executionTokenOut: executionTokens.tokenOut } : {}),
   }
 }
 
@@ -1093,13 +1107,16 @@ async function buildCurveV3MixedAggregationCandidate(args: {
       if (!curveLeg) {
         return undefined
       }
-      return buildAggregationCandidate([
-        buildSerialAggregationLeg({
-          label: args.template.label,
-          first: buildV3AggregationLeg(v3Quoted),
-          second: curveLeg,
-        }),
-      ])
+      return buildAggregationCandidate(
+        [
+          buildSerialAggregationLeg({
+            label: args.template.label,
+            first: buildV3AggregationLeg(v3Quoted),
+            second: curveLeg,
+          }),
+        ],
+        { tokenIn: args.template.executionTokenIn, tokenOut: args.template.executionTokenOut },
+      )
     }
 
     const curveQuotes = await quoteCurveTemplateAmountPairs({
@@ -1129,13 +1146,16 @@ async function buildCurveV3MixedAggregationCandidate(args: {
     ) {
       return undefined
     }
-    return buildAggregationCandidate([
-      buildSerialAggregationLeg({
-        label: args.template.label,
-        first: curveLeg,
-        second: buildV3AggregationLeg(v3Quoted),
-      }),
-    ])
+    return buildAggregationCandidate(
+      [
+        buildSerialAggregationLeg({
+          label: args.template.label,
+          first: curveLeg,
+          second: buildV3AggregationLeg(v3Quoted),
+        }),
+      ],
+      { tokenIn: args.template.executionTokenIn, tokenOut: args.template.executionTokenOut },
+    )
   } catch (error) {
     logger.warn('fetchGnosisQuote', 'buildCurveV3MixedAggregationCandidate', 'Mixed-route candidate failed', { error })
     return undefined
@@ -1301,7 +1321,8 @@ async function tryBuildAggregationQuote(args: {
   }
 
   const slippage = getGnosisSlippageTolerance(args.params)
-  const tokenOut = args.outputToken
+  const executionTokenIn = best.executionTokenIn ?? args.inputToken
+  const executionTokenOut = best.executionTokenOut ?? args.outputToken
   const { maximumAmountIn, minimumAmountOut } = getGnosisQuoteSlippageAmounts({
     amountIn: args.amount,
     amountOut: best.totalOut,
@@ -1314,7 +1335,7 @@ async function tryBuildAggregationQuote(args: {
     swapper: args.params.swapper,
     input: { token: args.inputToken, amount: args.amount.toString(), maximumAmount: maximumAmountIn.toString() },
     output: {
-      token: tokenOut,
+      token: args.outputToken,
       amount: best.totalOut.toString(),
       minimumAmount: minimumAmountOut.toString(),
       recipient: args.params.recipient ?? args.params.swapper,
@@ -1332,8 +1353,8 @@ async function tryBuildAggregationQuote(args: {
   }
   const aggregationQuote = quote as GnosisAggregationQuote
   aggregationQuote.aggregation = {
-    tokenIn: args.inputToken,
-    tokenOut,
+    tokenIn: executionTokenIn,
+    tokenOut: executionTokenOut,
     legs: best.legs.map(
       (leg): GnosisAggregationLeg => ({
         amountIn: leg.amountIn.toString(),

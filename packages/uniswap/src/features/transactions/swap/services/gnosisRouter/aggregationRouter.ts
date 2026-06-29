@@ -4,6 +4,7 @@ import { keccak256 } from '@ethersproject/keccak256'
 import type { TransactionRequest } from '@ethersproject/providers'
 import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import {
   GNOSIS_AGGREGATION_ROUTER_ADDRESS,
   GNOSIS_CURVE_EURE_X3CRV_POOL,
@@ -202,6 +203,18 @@ function isSameGnosisAddress(a: string | undefined, b: string): boolean {
     addressInput1: { address: a, chainId: UniverseChainId.Gnosis },
     addressInput2: { address: b, chainId: UniverseChainId.Gnosis },
   })
+}
+
+function isSameOrSharedStateGnosisAddress(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) {
+    return false
+  }
+  if (isSameGnosisAddress(a, b)) {
+    return true
+  }
+  return getGnosisSharedStateTokenAddresses({ chainId: UniverseChainId.Gnosis, address: a }).some((alias) =>
+    isSameGnosisAddress(alias, b),
+  )
 }
 
 export function isGnosisAggregationEnabled(): boolean {
@@ -424,8 +437,8 @@ export function buildGnosisAggregationTransaction(args: {
   if (
     !topLevelTokenIn ||
     !topLevelTokenOut ||
-    !isSameGnosisAddress(topLevelTokenIn, quote.aggregation.tokenIn) ||
-    !isSameGnosisAddress(topLevelTokenOut, quote.aggregation.tokenOut)
+    !isSameOrSharedStateGnosisAddress(topLevelTokenIn, quote.aggregation.tokenIn) ||
+    !isSameOrSharedStateGnosisAddress(topLevelTokenOut, quote.aggregation.tokenOut)
   ) {
     throw new Error('Malformed Gnosis aggregation quote: top-level and aggregation tokens differ')
   }

@@ -6,7 +6,10 @@ import { useMemo } from 'react'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { convertGasFeeToDisplayValue, useActiveGasStrategy } from 'uniswap/src/features/gas/hooks'
 import type { ApprovalTxInfo } from 'uniswap/src/features/transactions/swap/review/hooks/useTokenApprovalInfo'
-import { getGnosisAggregationApprovalSpender } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
+import {
+  getGnosisAggregationApprovalSpender,
+  isGnosisAggregationQuote,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
 import {
   buildErc20ApproveData,
   PERMIT2_ADDRESS,
@@ -29,6 +32,16 @@ import { ONE_MINUTE_MS, ONE_SECOND_MS } from 'utilities/src/time/time'
 // network-cost estimate (the wallet re-estimates at submission).
 const ERC20_APPROVE_GAS = 55_000
 
+export function getGnosisApprovalTokenAddressOverride(quote: TradingApi.ClassicQuote | undefined): string | undefined {
+  if (!quote || quote.quoteId === GNOSIS_SDAI_ADAPTER_QUOTE_ID || quote.quoteId === GNOSIS_SDAI_ZAP_QUOTE_ID) {
+    return undefined
+  }
+  if (isGnosisAggregationQuote(quote)) {
+    return quote.aggregation.tokenIn
+  }
+  return quote.route?.[0]?.[0]?.tokenIn?.address
+}
+
 /**
  * Client-side ERC20 approval status for Gnosis, replacing the Trading API's `checkApproval`
  * (which doesn't serve Gnosis). Normal V3 swaps approve Permit2; direct sDAI adapter swaps
@@ -44,6 +57,7 @@ export function useGnosisApprovalInfo(params: {
   currencyOutAmount?: Maybe<CurrencyAmount<Currency>>
   tradeType?: TradingApi.TradeType
   quoteId?: string
+  tokenAddressOverride?: string
 }): ApprovalTxInfo {
   const {
     address,
@@ -54,13 +68,14 @@ export function useGnosisApprovalInfo(params: {
     currencyOutAmount,
     tradeType,
     quoteId,
+    tokenAddressOverride,
   } = params
 
   const currencyIn = currencyInApprovalAmount?.currency ?? currencyInAmount?.currency
   const currencyOut = currencyOutAmount?.currency
   const isWrap = wrapType !== WrapType.NotApplicable
   const isNative = Boolean(currencyIn?.isNative)
-  const tokenAddress = currencyIn?.wrapped.address
+  const tokenAddress = tokenAddressOverride ?? currencyIn?.wrapped.address
   const tokenInAddressForRoute = currencyIn?.isNative ? '0x0000000000000000000000000000000000000000' : tokenAddress
   const tokenOutAddressForRoute = currencyOut?.isNative
     ? '0x0000000000000000000000000000000000000000'

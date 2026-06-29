@@ -126,20 +126,31 @@ describe('buildCandidateRouteSets', () => {
 })
 
 describe('getGnosisCurveV3MixedRouteTemplate', () => {
-  it('only builds the eureusd -> GBPe mixed path for exact legacy GBPe boundaries', () => {
-    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_GBPE_V2 })).toBeUndefined()
-
+  it('builds the eureusd -> GBPe mixed path through legacy GBPe for either displayed GBPe alias', () => {
     expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_GBPE_V1 })).toMatchObject({
       direction: 'curve-to-v3',
       v3TokenIn: GNOSIS_EURE_V1,
       v3TokenOut: GNOSIS_GBPE_V1,
+      executionTokenOut: GNOSIS_GBPE_V1,
+    })
+    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_GBPE_V2 })).toMatchObject({
+      direction: 'curve-to-v3',
+      v3TokenIn: GNOSIS_EURE_V1,
+      v3TokenOut: GNOSIS_GBPE_V1,
+      executionTokenOut: GNOSIS_GBPE_V1,
     })
 
-    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_GBPE_V2, tokenOut: GNOSIS_USDCE })).toBeUndefined()
     expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_GBPE_V1, tokenOut: GNOSIS_USDCE })).toMatchObject({
       direction: 'v3-to-curve',
       v3TokenIn: GNOSIS_GBPE_V1,
       v3TokenOut: GNOSIS_EURE_V1,
+      executionTokenIn: GNOSIS_GBPE_V1,
+    })
+    expect(getGnosisCurveV3MixedRouteTemplate({ tokenIn: GNOSIS_GBPE_V2, tokenOut: GNOSIS_USDCE })).toMatchObject({
+      direction: 'v3-to-curve',
+      v3TokenIn: GNOSIS_GBPE_V1,
+      v3TokenOut: GNOSIS_EURE_V1,
+      executionTokenIn: GNOSIS_GBPE_V1,
     })
   })
 })

@@ -10,6 +10,8 @@ import {
   GNOSIS_CURVE_X3CRV_TOKEN,
   GNOSIS_EURE_V1,
   GNOSIS_EURE_V2,
+  GNOSIS_GBPE_V1,
+  GNOSIS_GBPE_V2,
   GNOSIS_GNO,
   GNOSIS_OSGNO,
   GNOSIS_SDAI,
@@ -150,6 +152,53 @@ describe('Gnosis aggregation router helpers', () => {
 
     // Keep the imported Interface type live so this test fails if the ABI stops being ethers-compatible.
     expect(aggregationRouterInterface).toBeInstanceOf(Interface)
+  })
+
+  it('allows shared-state execution aliases for canonical displayed output tokens', async () => {
+    vi.resetModules()
+    vi.doMock('uniswap/src/features/transactions/swap/services/gnosisRouter/constants', async () => ({
+      ...(await vi.importActual('uniswap/src/features/transactions/swap/services/gnosisRouter/constants')),
+      GNOSIS_AGGREGATION_ROUTER_ADDRESS: ROUTER,
+      GNOSIS_CURVE_ROUTER_ADDRESS: CURVE,
+    }))
+
+    const {
+      GNOSIS_AGGREGATION_QUOTE_ID,
+      GnosisAggregationStepType,
+      aggregationRouterInterface,
+      buildGnosisAggregationTransaction,
+    } = await import('uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter')
+
+    const quote = {
+      chainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      swapper: SWAPPER,
+      input: { token: GNOSIS_USDCE, amount: '1000' },
+      output: { token: GNOSIS_GBPE_V2, amount: '990', minimumAmount: '985', recipient: RECIPIENT },
+      tradeType: TradingApi.TradeType.EXACT_INPUT,
+      slippage: 0.5,
+      route: [],
+      routeString: 'Curve eureusd -> Uniswap V3',
+      quoteId: GNOSIS_AGGREGATION_QUOTE_ID,
+      gasUseEstimate: '500000',
+      priceImpact: 0,
+      portionBips: 0,
+      aggregation: {
+        tokenIn: GNOSIS_USDCE,
+        tokenOut: GNOSIS_GBPE_V1,
+        legs: [
+          {
+            amountIn: '1000',
+            label: 'Curve eureusd -> Uniswap V3',
+            steps: [{ stepType: GnosisAggregationStepType.V3, data: '0x1234' }],
+          },
+        ],
+      },
+    } as GnosisAggregationQuote
+
+    const tx = buildGnosisAggregationTransaction({ quote, deadline: 1_700_000_000 })
+    const decoded = aggregationRouterInterface.decodeFunctionData('execute', tx?.data ?? '0x')
+    expect(decoded[0]).toBe(GNOSIS_USDCE)
+    expect(decoded[2]).toBe(GNOSIS_GBPE_V1)
   })
 
   it('rejects aggregation calldata when payload tokens differ from the quote tokens', async () => {
