@@ -39,6 +39,7 @@ const TWO_CHAINS: MultichainTokenEntry[] = [
 
 const rollupMarket = { __typename: 'TokenMarket' as const, id: 'rollup-market' }
 const baseDeploymentMarket = { __typename: 'TokenMarket' as const, id: 'base-deployment-market' }
+const gnosisDeploymentMarket = { __typename: 'TokenMarket' as const, id: 'gnosis-deployment-market' }
 
 type NonNullTokenQueryData = NonNullable<TokenQueryData>
 
@@ -135,6 +136,31 @@ describe(useTDPStatsMarketSource, () => {
       project: tokenQueryData?.project,
     })
     expect(result.current.networkFilterName).toBe(getChainLabel(UniverseChainId.Base))
+  })
+
+  it('uses the GNOSIS response row when Gnosis is selected', () => {
+    mocked(useMultichainTokenEntries).mockReturnValue([
+      { chainId: UniverseChainId.Mainnet, address: '0x111', isNative: false },
+      { chainId: UniverseChainId.Gnosis, address: '0x222', isNative: false },
+    ])
+    const tokenQueryData = buildTokenQueryData({
+      tokens: [
+        {
+          __typename: 'Token' as const,
+          id: 'gnosis-token',
+          chain: 'GNOSIS',
+          address: '0x222',
+          market: gnosisDeploymentMarket,
+        },
+      ] as unknown as NonNullable<NonNullable<TokenQueryData>['project']>['tokens'],
+    })
+    const store = createTDPStore(createTDPState({ selectedMultichainChainId: UniverseChainId.Gnosis }))
+
+    const { result } = renderUseTDPStatsMarketSource(tokenQueryData, store)
+
+    expect(result.current.showAggregatedStats).toBe(false)
+    expect(result.current.filteredDeploymentMarket).toBe(gnosisDeploymentMarket)
+    expect(result.current.marketStatsInput?.market).toBe(gnosisDeploymentMarket)
   })
 
   it('does not set market stats input when selection has no matching project token row', () => {

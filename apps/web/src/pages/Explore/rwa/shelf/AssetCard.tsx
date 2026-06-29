@@ -7,7 +7,6 @@ import { pickPrimaryChainToken } from 'uniswap/src/data/rest/rwa/pickPrimaryChai
 import { rwaSparklineToChartPoints } from 'uniswap/src/data/rest/rwa/sparklineUtils'
 import type { ExploreStockShelfItem } from 'uniswap/src/data/rest/rwa/types'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { NumberType } from 'utilities/src/format/types'
 import { useEvent } from 'utilities/src/react/hooks'
@@ -48,7 +47,7 @@ export function AssetCard({
     navigate(
       getTokenDetailsURL({
         address: primaryChain.address,
-        chain: toGraphQLChain(primaryChain.chainId),
+        chainId: primaryChain.chainId,
         chainQueryParam: exploreFilterChainId ? undefined : TDP_MULTICHAIN_CHAIN_QUERY_VALUE,
       }),
     )

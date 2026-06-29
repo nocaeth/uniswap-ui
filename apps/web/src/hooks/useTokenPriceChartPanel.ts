@@ -1,5 +1,6 @@
 import type { Currency } from '@uniswap/sdk-core'
 import { useLayoutEffect, useMemo } from 'react'
+import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useTokenPriceChange, useTokenSpotPrice } from 'uniswap/src/features/dataApi/tokenDetails/useTokenDetailsData'
 import { usePreferProjectMarketDataForCurrency } from 'uniswap/src/features/rwa/usePreferProjectMarketData'
@@ -18,6 +19,7 @@ export interface UseTokenPriceChartPanelParams {
   skip?: boolean
   /** When omitted, derives RWA preference from the chart currency (no TDP store required). */
   preferProjectMarketData?: boolean
+  dataChainId?: UniverseChainId
 }
 
 export function useTokenPriceChartPanel({
@@ -28,13 +30,14 @@ export function useTokenPriceChartPanel({
   currency,
   skip = false,
   preferProjectMarketData: preferProjectMarketDataOverride,
+  dataChainId,
 }: UseTokenPriceChartPanelParams): {
   priceQuery: ReturnType<typeof useTokenPriceChartData>
   pricePercentChange: number | undefined
   showInvalidSkeleton: boolean
   stale: boolean
 } {
-  const chainId = useMemo(() => fromGraphQLChain(variables.chain), [variables.chain])
+  const chainId = useMemo(() => dataChainId ?? fromGraphQLChain(variables.chain), [dataChainId, variables.chain])
   const spotCurrencyId = useMemo(() => {
     if (!variables.address) {
       return undefined
@@ -52,6 +55,7 @@ export function useTokenPriceChartPanel({
     priceChartType,
     currentPriceOverride,
     preferProjectMarketData,
+    dataChainId: chainId ?? undefined,
   })
 
   useLayoutEffect(() => {

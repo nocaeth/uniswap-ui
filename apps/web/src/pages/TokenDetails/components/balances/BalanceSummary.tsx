@@ -7,6 +7,7 @@ import { NetworkBalanceBreakdown } from 'uniswap/src/components/tokenDetails/Net
 import { computeAggregateBalance } from 'uniswap/src/components/tokenDetails/utils'
 import { useConnectionStatus } from 'uniswap/src/features/accounts/store/hooks'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import type { PortfolioBalance } from 'uniswap/src/features/dataApi/types'
 import { ElementName } from 'uniswap/src/features/telemetry/constants'
 import { sendAnalyticsEvent } from 'uniswap/src/features/telemetry/send'
@@ -19,20 +20,21 @@ import { useTDPStore } from '~/pages/TokenDetails/context/useTDPStore'
 
 export function BalanceSummary(): JSX.Element | null {
   const { isDisconnected } = useConnectionStatus()
-  const { currencyChain, multiChainMap, balanceError, tokenQuery } = useTDPStore((s) => ({
-    currencyChain: s.currencyChain,
+  const { currencyChainId, multiChainMap, balanceError, tokenQuery } = useTDPStore((s) => ({
+    currencyChainId: s.currencyChainId,
     multiChainMap: s.multiChainMap,
     balanceError: s.balanceError,
     tokenQuery: s.tokenQuery,
   }))
 
-  const pageChainBalance = multiChainMap[currencyChain]?.balance
+  const pageChainKey = toGraphQLEntityChain(currencyChainId)
+  const pageChainBalance = multiChainMap[pageChainKey]?.balance
   const otherChainBalances: PortfolioBalance[] = []
   const allBalances: PortfolioBalance[] = []
   for (const [key, value] of Object.entries(multiChainMap)) {
     if (value.balance !== undefined) {
       allBalances.push(value.balance)
-      if (key !== currencyChain) {
+      if (key !== pageChainKey) {
         otherChainBalances.push(value.balance)
       }
     }

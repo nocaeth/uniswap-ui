@@ -1,17 +1,17 @@
 import { ChainToken, MultichainToken, TokenStats, TokenType } from '@uniswap/client-data-api/dist/data/v1/types_pb'
 import { GraphQLApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { createDataApiMultichainToken } from 'uniswap/src/test/fixtures/dataApi/multichainToken'
 import { describe, expect, it, vi } from 'vitest'
 import { TimePeriod } from '~/appGraphql/data/util'
 import { multichainTokenToDisplayToken } from '~/features/Explore/state/listTokens/utils/multichainTokenToDisplayToken'
 
 vi.mock('uniswap/src/features/chains/utils', () => ({
-  toGraphQLChain: vi.fn(),
+  toGraphQLEntityChain: vi.fn(),
 }))
 
-const mockToGraphQLChain = vi.mocked(toGraphQLChain)
+const mockToGraphQLEntityChain = vi.mocked(toGraphQLEntityChain)
 
 describe('multichainTokenToDisplayToken', () => {
   it('should return undefined when chainTokens is empty (e.g. protobuf default)', () => {
@@ -30,14 +30,17 @@ describe('multichainTokenToDisplayToken', () => {
   })
 
   beforeEach(() => {
-    mockToGraphQLChain.mockImplementation((id: number) => {
+    mockToGraphQLEntityChain.mockImplementation((id: number) => {
       if (id === 1) {
-        return 'ethereum' as ReturnType<typeof toGraphQLChain>
+        return 'ethereum' as ReturnType<typeof toGraphQLEntityChain>
       }
       if (id === 8453) {
-        return 'base' as ReturnType<typeof toGraphQLChain>
+        return 'base' as ReturnType<typeof toGraphQLEntityChain>
       }
-      return 'ethereum' as ReturnType<typeof toGraphQLChain>
+      if (id === UniverseChainId.Gnosis) {
+        return 'GNOSIS'
+      }
+      return 'ethereum' as ReturnType<typeof toGraphQLEntityChain>
     })
   })
 
@@ -51,7 +54,7 @@ describe('multichainTokenToDisplayToken', () => {
     const result = multichainTokenToDisplayToken({ mcToken: mc })!
 
     expect(result.id).toBe('mc:1_0xABC')
-    expect(mockToGraphQLChain).toHaveBeenCalledWith(1)
+    expect(mockToGraphQLEntityChain).toHaveBeenCalledWith(1)
   })
 
   it('should use first chainToken for chain, address, and decimals', () => {
@@ -63,7 +66,7 @@ describe('multichainTokenToDisplayToken', () => {
 
     const result = multichainTokenToDisplayToken({ mcToken: mc })!
 
-    expect(mockToGraphQLChain).toHaveBeenCalledWith(8453)
+    expect(mockToGraphQLEntityChain).toHaveBeenCalledWith(8453)
     expect(result.chain).toBe('base')
     expect(result.address).toBe('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913')
     expect(result.decimals).toBe(6)
@@ -101,9 +104,22 @@ describe('multichainTokenToDisplayToken', () => {
       exploreChainId: UniverseChainId.Base,
     })!
 
-    expect(mockToGraphQLChain).toHaveBeenCalledWith(8453)
+    expect(mockToGraphQLEntityChain).toHaveBeenCalledWith(8453)
     expect(result.chain).toBe('base')
     expect(result.address).toBe('0xBaseAddr')
+  })
+
+  it('uses GNOSIS as the display entity chain for Gnosis chain tokens', () => {
+    const mc = createDataApiMultichainToken({
+      chainId: UniverseChainId.Gnosis,
+      address: '0xGnosisAddr',
+      decimals: 18,
+    })
+
+    const result = multichainTokenToDisplayToken({ mcToken: mc })!
+
+    expect(mockToGraphQLEntityChain).toHaveBeenCalledWith(UniverseChainId.Gnosis)
+    expect(result.chain).toBe('GNOSIS')
   })
 
   it('should return undefined when exploreChainId has no matching chainToken', () => {

@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
-import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { getChainLabel } from 'uniswap/src/features/chains/utils'
+import { getChainLabel, toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import type { TokenMarketStatsAggregatedInput } from 'uniswap/src/features/dataApi/tokenDetails/useTokenDetailsData'
 import type { TokenQueryData } from '~/appGraphql/data/Token'
 import { useTDPStore } from '~/pages/TokenDetails/context/useTDPStore'
@@ -35,7 +34,7 @@ function getTDPFilteredDeploymentMarket(ctx: {
   if (!isMultiChainAsset || selectedMultichainChainId === undefined || !tokens) {
     return undefined
   }
-  const gqlChain = getChainInfo(selectedMultichainChainId).backendChain.chain
+  const gqlChain = toGraphQLEntityChain(selectedMultichainChainId)
   return tokens.find((row) => row.chain === gqlChain)?.market ?? undefined
 }
 

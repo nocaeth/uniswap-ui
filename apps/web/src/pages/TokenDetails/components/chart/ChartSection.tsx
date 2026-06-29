@@ -21,6 +21,7 @@ function ChartSectionBody(): JSX.Element {
     currency,
     tokenQueryData,
     pathGraphqlChain,
+    pathChainId,
     pathTokenDbAddress,
     selectedMultichainChainId,
     multiChainMap,
@@ -29,6 +30,7 @@ function ChartSectionBody(): JSX.Element {
     currency: s.currency!,
     tokenQueryData: s.tokenQuery.data?.token,
     pathGraphqlChain: s.currencyChain,
+    pathChainId: s.currencyChainId,
     pathTokenDbAddress: s.tokenQuery.variables?.address,
     selectedMultichainChainId: s.selectedMultichainChainId,
     multiChainMap: s.multiChainMap,
@@ -39,15 +41,20 @@ function ChartSectionBody(): JSX.Element {
 
   const showMultichainAggregation = isMultiChainAsset && selectedMultichainChainId === undefined
 
-  const { chain: tokenChain, address: tokenDBAddress } = useMemo(
+  const {
+    chain: tokenChain,
+    chainId: tokenChainId,
+    address: tokenDBAddress,
+  } = useMemo(
     () =>
       getTDPChartGraphqlTarget({
         selectedMultichainChainId,
         tokenQueryData,
         pathGraphqlChain,
+        pathChainId,
         pathTokenDbAddress,
       }),
-    [pathGraphqlChain, pathTokenDbAddress, selectedMultichainChainId, tokenQueryData],
+    [pathChainId, pathGraphqlChain, pathTokenDbAddress, selectedMultichainChainId, tokenQueryData],
   )
 
   const { chartType, timePeriod, priceChartType, disableCandlestickUI, setDisableCandlestickUI } =
@@ -76,6 +83,7 @@ function ChartSectionBody(): JSX.Element {
           tokenColor={tokenColor}
           timePeriod={timePeriod}
           currency={currency}
+          dataChainId={tokenChainId}
         />
       )}
       {chartType === ChartType.VOLUME && (

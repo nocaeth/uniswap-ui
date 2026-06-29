@@ -5,6 +5,7 @@ import { useLocation, useParams } from 'react-router'
 import { useSporeColors } from 'ui/src'
 import { nativeOnChain } from 'uniswap/src/constants/tokens'
 import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
+import type { GqlEntityChainId } from 'uniswap/src/features/chains/types'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { usePortfolioBalances } from 'uniswap/src/features/portfolio/balances/hooks'
@@ -129,10 +130,11 @@ function useMultiChainMap(tokenProjectQuery: ReturnType<typeof GraphQLApi.useTok
     }
 
     return tokensAcrossChains.reduce<MultiChainMap>((map, current) => {
-      if (!map[current.chain]) {
-        map[current.chain] = {}
+      const chainKey = current.chain as GqlEntityChainId
+      if (!map[chainKey]) {
+        map[chainKey] = {}
       }
-      const update = map[current.chain] ?? {}
+      const update = map[chainKey] ?? {}
       update.address = current.address
 
       // Find the balance for this token using the balancesById map
@@ -150,7 +152,7 @@ function useMultiChainMap(tokenProjectQuery: ReturnType<typeof GraphQLApi.useTok
         }
       }
 
-      map[current.chain] = update
+      map[chainKey] = update
       return map
     }, {})
   }, [balancesById, tokenProjectQuery.data?.token?.project?.tokens])

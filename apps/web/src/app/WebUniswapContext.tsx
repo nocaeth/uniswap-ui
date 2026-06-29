@@ -6,7 +6,6 @@ import { UniswapProvider } from 'uniswap/src/contexts/UniswapContext'
 import { useOnchainDisplayName } from 'uniswap/src/features/accounts/useOnchainDisplayName'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useNavigateToNftExplorerLink } from 'uniswap/src/features/nfts/hooks/useNavigateToNftExplorerLink'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 import { useSetActiveChainId } from 'uniswap/src/features/smartWallet/delegation/hooks/useSetActiveChainId'
@@ -115,7 +114,7 @@ function WebUniswapProviderInner({ children }: PropsWithChildren) {
       const tokenChainId = currencyIdToChain(currencyId)
       const url = getTokenDetailsURL({
         address: currencyIdToAddress(currencyId),
-        chain: tokenChainId ? toGraphQLChain(tokenChainId) : undefined,
+        chainId: tokenChainId ?? undefined,
         chainQueryParam: getTdpChainQueryParam({ selection: chainSelection, tokenChainId }),
       })
       navigate(url)

@@ -1,6 +1,7 @@
 import { GraphQLApi } from '@universe/api'
 import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import type { TokenQueryData } from '~/appGraphql/data/Token'
 import { getNativeTokenDBAddress } from '~/utils/nativeTokens'
 
@@ -9,23 +10,26 @@ export function getTDPChartGraphqlTarget({
   selectedMultichainChainId,
   tokenQueryData,
   pathGraphqlChain,
+  pathChainId,
   pathTokenDbAddress,
 }: {
   selectedMultichainChainId: UniverseChainId | undefined
   tokenQueryData: TokenQueryData | undefined
   pathGraphqlChain: GraphQLApi.Chain
+  pathChainId: UniverseChainId
   pathTokenDbAddress: string | undefined
-}): { chain: GraphQLApi.Chain; address: string | undefined } {
+}): { chain: GraphQLApi.Chain; chainId: UniverseChainId; address: string | undefined } {
   // oxlint-disable-next-line typescript/no-unnecessary-condition -- biome-parity: oxlint is stricter here
   if (selectedMultichainChainId !== undefined && tokenQueryData?.project?.tokens?.length) {
-    const gqlChain = getChainInfo(selectedMultichainChainId).backendChain.chain
-    const row = tokenQueryData.project.tokens.find((t) => t.chain === gqlChain)
+    const requestChain = getChainInfo(selectedMultichainChainId).backendChain.chain
+    const entityChain = toGraphQLEntityChain(selectedMultichainChainId)
+    const row = tokenQueryData.project.tokens.find((t) => t.chain === entityChain)
     if (row) {
       const address =
         // oxlint-disable-next-line typescript/no-unnecessary-condition -- biome-parity: oxlint is stricter here
-        row.address !== undefined && row.address !== null ? row.address : getNativeTokenDBAddress(gqlChain)
-      return { chain: gqlChain, address }
+        row.address !== undefined && row.address !== null ? row.address : getNativeTokenDBAddress(requestChain)
+      return { chain: requestChain, chainId: selectedMultichainChainId, address }
     }
   }
-  return { chain: pathGraphqlChain, address: pathTokenDbAddress }
+  return { chain: pathGraphqlChain, chainId: pathChainId, address: pathTokenDbAddress }
 }

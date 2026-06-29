@@ -6,7 +6,7 @@ import { Flex, useMedia } from 'ui/src'
 import { getNativeAddress } from 'uniswap/src/constants/addresses'
 import { UniswapContext, useUniswapContext } from 'uniswap/src/contexts/UniswapContext'
 import { useUrlContext } from 'uniswap/src/contexts/UrlContext'
-import { isUniverseChainId, toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { isUniverseChainId } from 'uniswap/src/features/chains/utils'
 import { useCurrencyInfo } from 'uniswap/src/features/tokens/useCurrencyInfo'
 import { TokenWarningCard } from 'uniswap/src/features/tokens/warnings/TokenWarningCard'
 import TokenWarningModal from 'uniswap/src/features/tokens/warnings/TokenWarningModal'
@@ -131,7 +131,7 @@ export function TDPSwapComponent() {
       const url = getTokenDetailsURL({
         // The function falls back to "NATIVE" if the address is null
         address: newDefaultToken.isNative ? null : newDefaultToken.address,
-        chain: toGraphQLChain(isUniverseChainId(newDefaultToken.chainId) ? newDefaultToken.chainId : currencyChainId),
+        chainId: isUniverseChainId(newDefaultToken.chainId) ? newDefaultToken.chainId : currencyChainId,
         inputAddress: inputCurrencyURLAddress,
         outputAddress: outputCurrencyURLAddress,
       })

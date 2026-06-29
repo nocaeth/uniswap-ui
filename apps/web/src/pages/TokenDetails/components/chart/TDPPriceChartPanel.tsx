@@ -1,5 +1,6 @@
 import type { Currency } from '@uniswap/sdk-core'
 import { useTranslation } from 'react-i18next'
+import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { TimePeriod, toHistoryDuration } from '~/appGraphql/data/util'
 import { ChartSkeleton } from '~/components/Charts/LoadingState'
 import { PriceChart } from '~/components/Charts/PriceChart'
@@ -17,6 +18,7 @@ interface TDPPriceChartPanelProps {
   tokenColor?: string
   timePeriod: TimePeriod
   currency: Currency
+  dataChainId: UniverseChainId
 }
 
 export function TDPPriceChartPanel({
@@ -27,6 +29,7 @@ export function TDPPriceChartPanel({
   tokenColor,
   timePeriod,
   currency,
+  dataChainId,
 }: TDPPriceChartPanelProps): JSX.Element {
   const { t } = useTranslation()
   const preferProjectMarketData = useTDPPreferProjectMarketData()
@@ -37,6 +40,7 @@ export function TDPPriceChartPanel({
     timePeriod,
     currency,
     preferProjectMarketData,
+    dataChainId,
   })
 
   if (showInvalidSkeleton) {

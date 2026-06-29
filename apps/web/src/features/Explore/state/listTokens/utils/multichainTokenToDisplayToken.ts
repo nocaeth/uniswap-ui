@@ -1,7 +1,7 @@
 import type { MultichainToken } from '@uniswap/client-data-api/dist/data/v1/types_pb'
 import { Amount, Image, TokenProject } from '@uniswap/client-explore/dist/uniswap/explore/v1/service_pb'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { getRestTokenSafetyInfo } from 'uniswap/src/features/dataApi/utils/getCurrencySafetyInfo'
 import { TimePeriod } from '~/appGraphql/data/util'
 import type { TokenStat } from '~/types/explore'
@@ -78,7 +78,7 @@ export function multichainTokenToDisplayToken({
     return undefined
   }
   const chainId = primary.chainId
-  const chain = toGraphQLChain(chainId)
+  const chain = toGraphQLEntityChain(chainId)
   const address = primary.address
   const { mappedSafetyLevel } = getRestTokenSafetyInfo({
     safetyLevel: mcToken.safetyLevel,

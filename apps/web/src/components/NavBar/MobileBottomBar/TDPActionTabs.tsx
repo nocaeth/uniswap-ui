@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router'
 import { Button, Flex, useMedia } from 'ui/src'
 import { ArrowDownCircle } from 'ui/src/components/icons/ArrowDownCircle'
 import { ArrowUpCircle } from 'ui/src/components/icons/ArrowUpCircle'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { isEVMChain } from 'uniswap/src/features/platforms/utils/chains'
 import { NATIVE_CHAIN_ID } from '~/constants/tokens'
 import { useActiveAccount } from '~/features/accounts/store/hooks'
 import { useSelectChain } from '~/hooks/useSelectChain'
 import { useTDPStore } from '~/pages/TokenDetails/context/useTDPStore'
+import { getChainUrlParam } from '~/utils/params/chainParams'
 
 const TDP_ACTION_TABS_MAX_WIDTH = 780
 
@@ -20,8 +22,7 @@ type TabItem = {
 
 export function TDPActionTabs() {
   const { t } = useTranslation()
-  const { currencyChain, currencyChainId, address, tokenColor, multiChainMap } = useTDPStore((s) => ({
-    currencyChain: s.currencyChain,
+  const { currencyChainId, address, tokenColor, multiChainMap } = useTDPStore((s) => ({
     currencyChainId: s.currencyChainId,
     address: s.address,
     tokenColor: s.tokenColor,
@@ -32,9 +33,10 @@ export function TDPActionTabs() {
 
   const currentConnectedChainId = useActiveAccount(currencyChainId)?.chainId
 
-  const hasBalance = Boolean(multiChainMap[currencyChain]?.balance)
+  const pageChainKey = toGraphQLEntityChain(currencyChainId)
+  const hasBalance = Boolean(multiChainMap[pageChainKey]?.balance)
 
-  const chainUrlParam = currencyChain.toLowerCase()
+  const chainUrlParam = getChainUrlParam(currencyChainId)
   const addressUrlParam = address === NATIVE_CHAIN_ID ? 'ETH' : address
   const media = useMedia()
   const showIcons = !media.xs

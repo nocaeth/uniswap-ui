@@ -6,7 +6,7 @@ import { dataApiQueries } from 'uniswap/src/data/apiClients/dataApiService/dataA
 import { normalizeTokenAddressForCache } from 'uniswap/src/data/cache'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { getGnosisTokenListLogoURI } from 'uniswap/src/features/tokens/gnosisTokenList'
 import {
   calculate1DVolOverTvl,
@@ -58,7 +58,7 @@ function getDataApiTokenLogo(token: DataApiPool['token0']): string | undefined {
  */
 function convertDataApiPoolToPoolStat(pool: DataApiPool): PoolStat {
   const feeTierValue = pool.feeTier
-  const chainName = toGraphQLChain(pool.chainId as UniverseChainId)
+  const chainName = toGraphQLEntityChain(pool.chainId as UniverseChainId)
 
   return {
     id: pool.poolId,
@@ -66,7 +66,7 @@ function convertDataApiPoolToPoolStat(pool: DataApiPool): PoolStat {
     protocolVersion: protocolVersionToDisplayString(pool.protocolVersion),
     token0: pool.token0
       ? {
-          chain: toGraphQLChain(pool.token0.chainId as UniverseChainId),
+          chain: toGraphQLEntityChain(pool.token0.chainId as UniverseChainId),
           address: pool.token0.address,
           symbol: pool.token0.symbol,
           name: pool.token0.name,
@@ -76,7 +76,7 @@ function convertDataApiPoolToPoolStat(pool: DataApiPool): PoolStat {
       : undefined,
     token1: pool.token1
       ? {
-          chain: toGraphQLChain(pool.token1.chainId as UniverseChainId),
+          chain: toGraphQLEntityChain(pool.token1.chainId as UniverseChainId),
           address: pool.token1.address,
           symbol: pool.token1.symbol,
           name: pool.token1.name,
