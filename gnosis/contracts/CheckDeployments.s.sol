@@ -115,8 +115,9 @@ contract CheckDeployments is Script {
         _requireZapWiring(zap);
 
         address curveRouter = vm.envOr("REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS", EXPECTED_CURVE_ROUTER);
-        address aggregationRouter = vm.envAddress("REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS");
+        address aggregationRouter = vm.envOr("REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS", address(0));
         require(curveRouter == EXPECTED_CURVE_ROUTER, "Unexpected REACT_APP_GNOSIS_CURVE_ROUTER_ADDRESS");
+        require(aggregationRouter != address(0), "Set REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS");
         require(
             aggregationRouter == EXPECTED_AGGREGATION_ROUTER_V2,
             "Unexpected REACT_APP_GNOSIS_AGGREGATION_ROUTER_ADDRESS"
