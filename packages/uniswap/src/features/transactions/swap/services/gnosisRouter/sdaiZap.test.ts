@@ -6,9 +6,12 @@ const WXDAI = '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
 const SDAI = '0xaf204776c7245bF4147c2612BF6e5972Ee483701'
 const USDCE = '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0'
 const EURE = '0x420CA0f9B9b604cE0fd9C18EF134C705e5Fa3430'
+const GBPE_V2 = '0x8E34bfEC4f6Eb781f9743D9b4af99CD23F9b7053'
+const GBPE_V1 = '0x5Cb9073902F2035222B9749F8fB0c9BFe5527108'
 const WETH = '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1'
 const ZAP = '0x1234567890123456789012345678901234567890'
 const NATIVE = '0x0000000000000000000000000000000000000000'
+const RANDOM_TOKEN = '0x3333333333333333333333333333333333333333'
 const SWAPPER = '0x1111111111111111111111111111111111111111'
 
 // Enable the (env-gated) zap with a deterministic address + counterparty set.
@@ -20,6 +23,8 @@ vi.mock('uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
   GNOSIS_SDAI_ZAP_COUNTERPARTIES: [
     '0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0',
     '0x420CA0f9B9b604cE0fd9C18EF134C705e5Fa3430',
+    '0x8E34bfEC4f6Eb781f9743D9b4af99CD23F9b7053',
+    '0x5Cb9073902F2035222B9749F8fB0c9BFe5527108',
     '0x6A023CCd1ff6F2045C3309768eAd9E68F978f6e1',
   ],
 }))
@@ -31,6 +36,7 @@ import {
   getGnosisSdaiZapEligibility,
   GNOSIS_SDAI_ZAP_QUOTE_ID,
   GnosisSdaiZapDirection,
+  isKnownGnosisSdaiZapCounterparty,
   isGnosisSdaiZapEnabled,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiZap'
 
@@ -88,6 +94,15 @@ describe('sdaiZap eligibility', () => {
     )
   })
 
+  it('routes any non-sDAI ERC20 counterparty through the first-class sDAI edge', () => {
+    expect(getGnosisSdaiZapEligibility({ tokenIn: WXDAI, tokenOut: RANDOM_TOKEN, tradeType: EXACT_INPUT })).toBe(
+      GnosisSdaiZapDirection.DepositAndSwap,
+    )
+    expect(getGnosisSdaiZapEligibility({ tokenIn: RANDOM_TOKEN, tokenOut: WXDAI, tradeType: EXACT_INPUT })).toBe(
+      GnosisSdaiZapDirection.SwapAndRedeem,
+    )
+  })
+
   it('routes counterparty -> WXDAI/native as swap-and-redeem', () => {
     expect(getGnosisSdaiZapEligibility({ tokenIn: WETH, tokenOut: WXDAI, tradeType: EXACT_INPUT })).toBe(
       GnosisSdaiZapDirection.SwapAndRedeem,
@@ -101,6 +116,11 @@ describe('sdaiZap eligibility', () => {
     expect(getGnosisSdaiZapEligibility({ tokenIn: WXDAI, tokenOut: USDCE, tradeType: EXACT_OUTPUT })).toBeUndefined()
     expect(getGnosisSdaiZapEligibility({ tokenIn: USDCE, tokenOut: EURE, tradeType: EXACT_INPUT })).toBeUndefined()
     expect(getGnosisSdaiZapEligibility({ tokenIn: WXDAI, tokenOut: SDAI, tradeType: EXACT_INPUT })).toBeUndefined()
+  })
+
+  it('documents GBPe as a known zap counterparty', () => {
+    expect(isKnownGnosisSdaiZapCounterparty(GBPE_V2)).toBe(true)
+    expect(isKnownGnosisSdaiZapCounterparty(GBPE_V1)).toBe(true)
   })
 
   it('approval spender is the zap for ERC20 input, none for native input', () => {

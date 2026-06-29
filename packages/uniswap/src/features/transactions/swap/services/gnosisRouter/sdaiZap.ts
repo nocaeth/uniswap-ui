@@ -5,6 +5,7 @@ import { TradingApi } from '@universe/api'
 import { BIPS_BASE } from 'uniswap/src/constants/misc'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import {
+  GNOSIS_SDAI,
   GNOSIS_SDAI_ZAP_ADDRESS,
   GNOSIS_SDAI_ZAP_COUNTERPARTIES,
   GNOSIS_WXDAI,
@@ -53,15 +54,21 @@ function isWxdaiOrNative(address: string | undefined): boolean {
 }
 
 function isZapCounterparty(address: string | undefined): boolean {
+  if (!address || isWxdaiOrNative(address) || isGnosisAddressEqual(address, GNOSIS_SDAI)) {
+    return false
+  }
+  return true
+}
+
+export function isKnownGnosisSdaiZapCounterparty(address: string | undefined): boolean {
   return GNOSIS_SDAI_ZAP_COUNTERPARTIES.some((counterparty) => isGnosisAddressEqual(address, counterparty))
 }
 
 /**
  * Whether a swap should route through the sDAI zap, and in which direction. Eligible only for
- * EXACT_INPUT (the contract is exact-input only) between WXDAI/xDAI and a curated counterparty, and
- * only while the zap is configured. This is the SINGLE source of truth shared by the quoter (which
- * produces the zap quote) and the approval hook (which points the ERC20 approval at the zap), so the
- * two can never disagree about whether a given swap uses the zap.
+ * EXACT_INPUT (the contract is exact-input only) between WXDAI/xDAI and a non-sDAI ERC20, and only
+ * while the zap is configured. The quoter still compares the zap against the market before selecting
+ * it, so this acts as a first-class sDAI graph edge without forcing every eligible pair through sDAI.
  */
 export function getGnosisSdaiZapEligibility(args: {
   tokenIn: string | undefined

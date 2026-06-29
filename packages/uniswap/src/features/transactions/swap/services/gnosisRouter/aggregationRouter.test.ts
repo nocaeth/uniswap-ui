@@ -3,8 +3,13 @@ import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import type { GnosisAggregationQuote } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter'
 import {
+  GNOSIS_CURVE_EURE_X3CRV_POOL,
   GNOSIS_CURVE_GNO_OSGNO_POOL,
   GNOSIS_CURVE_USDCE_SDAI_POOL,
+  GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+  GNOSIS_CURVE_X3CRV_TOKEN,
+  GNOSIS_EURE_V1,
+  GNOSIS_EURE_V2,
   GNOSIS_GNO,
   GNOSIS_OSGNO,
   GNOSIS_SDAI,
@@ -48,6 +53,37 @@ describe('Gnosis aggregation router helpers', () => {
     expect(osgnoToGno?.route[1]).toBe(GNOSIS_CURVE_GNO_OSGNO_POOL)
     expect(osgnoToGno?.swapParams[0]).toEqual(['1', '0', '1', '1', '2'])
     expect(osgnoToGno ? getGnosisCurveRouteHash(osgnoToGno) : '').toMatch(/^0x[0-9a-f]{64}$/)
+  })
+
+  it('builds the curated Curve eureusd metapool route tuple through x3CRV', async () => {
+    const { getGnosisCurveEureUsdRoute, getGnosisCurveRouteHash } =
+      await import('uniswap/src/features/transactions/swap/services/gnosisRouter/aggregationRouter')
+
+    const wxdaiToEure = getGnosisCurveEureUsdRoute({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_EURE_V1 })
+    expect(wxdaiToEure?.route.slice(0, 5)).toEqual([
+      GNOSIS_WXDAI,
+      GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+      GNOSIS_CURVE_X3CRV_TOKEN,
+      GNOSIS_CURVE_EURE_X3CRV_POOL,
+      GNOSIS_EURE_V1,
+    ])
+    expect(wxdaiToEure?.swapParams[0]).toEqual(['0', '0', '4', '1', '3'])
+    expect(wxdaiToEure?.swapParams[1]).toEqual(['1', '0', '1', '2', '2'])
+    expect(wxdaiToEure ? getGnosisCurveRouteHash(wxdaiToEure) : '').toMatch(/^0x[0-9a-f]{64}$/)
+
+    const eureToWxdai = getGnosisCurveEureUsdRoute({ tokenIn: GNOSIS_EURE_V1, tokenOut: GNOSIS_WXDAI })
+    expect(eureToWxdai?.route.slice(0, 5)).toEqual([
+      GNOSIS_EURE_V1,
+      GNOSIS_CURVE_EURE_X3CRV_POOL,
+      GNOSIS_CURVE_X3CRV_TOKEN,
+      GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+      GNOSIS_WXDAI,
+    ])
+    expect(eureToWxdai?.swapParams[0]).toEqual(['0', '1', '1', '2', '2'])
+    expect(eureToWxdai?.swapParams[1]).toEqual(['0', '0', '6', '1', '3'])
+    expect(eureToWxdai ? getGnosisCurveRouteHash(eureToWxdai) : '').toMatch(/^0x[0-9a-f]{64}$/)
+
+    expect(getGnosisCurveEureUsdRoute({ tokenIn: GNOSIS_WXDAI, tokenOut: GNOSIS_EURE_V2 })).toBeUndefined()
   })
 
   it('encodes aggregation execute calldata from quote payload legs', async () => {

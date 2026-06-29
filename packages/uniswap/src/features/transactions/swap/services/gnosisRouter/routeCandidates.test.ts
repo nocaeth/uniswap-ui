@@ -1,3 +1,4 @@
+import { BigNumber } from '@ethersproject/bignumber'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import {
   GNOSIS_BASE_TOKENS,
@@ -5,6 +6,7 @@ import {
   GNOSIS_EURE_V2,
   GNOSIS_GBPE_V1,
   GNOSIS_GBPE_V2,
+  GNOSIS_GNO,
   GNOSIS_SDAI,
   GNOSIS_USDCE,
   GNOSIS_WETH,
@@ -22,7 +24,10 @@ import {
 
 const TOKEN_A = '0x1000000000000000000000000000000000000001'
 const TOKEN_B = '0x2000000000000000000000000000000000000002'
+const TOKEN_C = '0x3000000000000000000000000000000000000003'
 const LOW_SORT_CUSTOM_HUB = '0x00000000000000000000000000000000000000aa'
+const Q96 = BigNumber.from('79228162514264337593543950336')
+const SQRT_TWO_Q96 = BigNumber.from('112045541949572279837463876454')
 
 function lower(address: string): string {
   return normalizeGnosisRouteTokenAddress(address)
@@ -36,6 +41,7 @@ function poolEdge(
     liquidity?: string | number
     initialized?: boolean
     tvlUSD?: number
+    sqrtPriceX96?: BigNumber
   } = {},
 ): GnosisPoolGraphEdge {
   return {
@@ -45,6 +51,7 @@ function poolEdge(
     liquidity: overrides.liquidity ?? '100',
     initialized: overrides.initialized ?? true,
     tvlUSD: overrides.tvlUSD,
+    sqrtPriceX96: overrides.sqrtPriceX96,
   }
 }
 
@@ -77,6 +84,7 @@ describe('Gnosis route candidates', () => {
         lower(GNOSIS_SDAI),
         lower(GNOSIS_EURE_V2),
         lower(GNOSIS_WSTETH),
+        lower(GNOSIS_GNO),
       ]),
     )
   })
@@ -221,6 +229,21 @@ describe('Gnosis route candidates', () => {
     })
 
     expect(routes).toEqual([{ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] }])
+  })
+
+  it('ranks capped same-hop routes by spot output before TVL when slot0 is known', () => {
+    const routes = buildRoutes({
+      maxRoutes: 1,
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_C, { fee: FeeAmount.LOW, tvlUSD: 1_000_000, sqrtPriceX96: Q96 }),
+        poolEdge(TOKEN_C, TOKEN_B, { fee: FeeAmount.LOW, tvlUSD: 1_000_000, sqrtPriceX96: Q96 }),
+        poolEdge(TOKEN_A, GNOSIS_USDCE, { fee: FeeAmount.MEDIUM, tvlUSD: 1_000, sqrtPriceX96: SQRT_TWO_Q96 }),
+        poolEdge(GNOSIS_USDCE, TOKEN_B, { fee: FeeAmount.MEDIUM, tvlUSD: 1_000, sqrtPriceX96: Q96 }),
+      ],
+      routingHubs: [TOKEN_C, GNOSIS_USDCE],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, GNOSIS_USDCE, TOKEN_B], fees: [FeeAmount.MEDIUM, FeeAmount.MEDIUM] }])
   })
 
   it('does not generate repeated-token loops', () => {

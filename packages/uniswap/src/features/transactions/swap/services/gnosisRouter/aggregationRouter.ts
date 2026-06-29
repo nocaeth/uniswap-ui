@@ -6,10 +6,13 @@ import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import {
   GNOSIS_AGGREGATION_ROUTER_ADDRESS,
+  GNOSIS_CURVE_EURE_X3CRV_POOL,
   GNOSIS_CURVE_GNO_OSGNO_POOL,
   GNOSIS_CURVE_ROUTER_ADDRESS,
   GNOSIS_CURVE_USDCE_SDAI_POOL,
   GNOSIS_CURVE_XDAI_USDC_USDT_POOL,
+  GNOSIS_CURVE_X3CRV_TOKEN,
+  GNOSIS_EURE_V1,
   GNOSIS_GNO,
   GNOSIS_OSGNO,
   GNOSIS_SDAI,
@@ -24,7 +27,10 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const NATIVE_ADDRESS_SENTINEL = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
 const AGGREGATION_DEADLINE_SECONDS = 60 * 30
 const CURVE_STABLE_SWAP_TYPE = 1
+const CURVE_ADD_LIQUIDITY_SWAP_TYPE = 4
+const CURVE_REMOVE_LIQUIDITY_SWAP_TYPE = 6
 const CURVE_STABLE_POOL_TYPE = 1
+const CURVE_CRYPTO_POOL_TYPE = 2
 const CURVE_X3_N_COINS = 3
 const CURVE_TWO_COIN_N_COINS = 2
 
@@ -100,6 +106,12 @@ const DIRECT_CURVE_POOLS: readonly GnosisCurveDirectPoolConfig[] = [
     nCoins: CURVE_TWO_COIN_N_COINS,
   },
 ]
+
+const EURE_USD_X3POOL_TOKEN_INDICES = new Map<string, number>([
+  [GNOSIS_WXDAI.toLowerCase(), 0],
+  [GNOSIS_USDC.toLowerCase(), 1],
+  [GNOSIS_USDT.toLowerCase(), 2],
+])
 
 export const AGGREGATION_ROUTER_ABI = [
   {
@@ -307,6 +319,79 @@ export function getGnosisCurveDirectPoolRoute(args: {
 
     return {
       label: `${candidate.label} ${args.tokenIn}->${args.tokenOut}`,
+      route,
+      swapParams,
+      pools: Array.from({ length: 5 }, () => ZERO_ADDRESS),
+    }
+  }
+
+  return undefined
+}
+
+export function getGnosisCurveEureUsdRoute(args: {
+  tokenIn: string
+  tokenOut: string
+}): GnosisCurveRouteSpec | undefined {
+  const x3InputIndex = EURE_USD_X3POOL_TOKEN_INDICES.get(args.tokenIn.toLowerCase())
+  if (x3InputIndex !== undefined && isSameGnosisAddress(args.tokenOut, GNOSIS_EURE_V1)) {
+    const route = Array.from({ length: 11 }, () => ZERO_ADDRESS)
+    route[0] = args.tokenIn
+    route[1] = GNOSIS_CURVE_XDAI_USDC_USDT_POOL
+    route[2] = GNOSIS_CURVE_X3CRV_TOKEN
+    route[3] = GNOSIS_CURVE_EURE_X3CRV_POOL
+    route[4] = GNOSIS_EURE_V1
+
+    const swapParams = Array.from({ length: 5 }, () => ['0', '0', '0', '0', '0'])
+    swapParams[0] = [
+      String(x3InputIndex),
+      '0',
+      String(CURVE_ADD_LIQUIDITY_SWAP_TYPE),
+      String(CURVE_STABLE_POOL_TYPE),
+      String(CURVE_X3_N_COINS),
+    ]
+    swapParams[1] = [
+      '1',
+      '0',
+      String(CURVE_STABLE_SWAP_TYPE),
+      String(CURVE_CRYPTO_POOL_TYPE),
+      String(CURVE_TWO_COIN_N_COINS),
+    ]
+
+    return {
+      label: `Curve eureusd ${args.tokenIn}->${GNOSIS_EURE_V1}`,
+      route,
+      swapParams,
+      pools: Array.from({ length: 5 }, () => ZERO_ADDRESS),
+    }
+  }
+
+  const x3OutputIndex = EURE_USD_X3POOL_TOKEN_INDICES.get(args.tokenOut.toLowerCase())
+  if (isSameGnosisAddress(args.tokenIn, GNOSIS_EURE_V1) && x3OutputIndex !== undefined) {
+    const route = Array.from({ length: 11 }, () => ZERO_ADDRESS)
+    route[0] = GNOSIS_EURE_V1
+    route[1] = GNOSIS_CURVE_EURE_X3CRV_POOL
+    route[2] = GNOSIS_CURVE_X3CRV_TOKEN
+    route[3] = GNOSIS_CURVE_XDAI_USDC_USDT_POOL
+    route[4] = args.tokenOut
+
+    const swapParams = Array.from({ length: 5 }, () => ['0', '0', '0', '0', '0'])
+    swapParams[0] = [
+      '0',
+      '1',
+      String(CURVE_STABLE_SWAP_TYPE),
+      String(CURVE_CRYPTO_POOL_TYPE),
+      String(CURVE_TWO_COIN_N_COINS),
+    ]
+    swapParams[1] = [
+      '0',
+      String(x3OutputIndex),
+      String(CURVE_REMOVE_LIQUIDITY_SWAP_TYPE),
+      String(CURVE_STABLE_POOL_TYPE),
+      String(CURVE_X3_N_COINS),
+    ]
+
+    return {
+      label: `Curve eureusd ${GNOSIS_EURE_V1}->${args.tokenOut}`,
       route,
       swapParams,
       pools: Array.from({ length: 5 }, () => ZERO_ADDRESS),
