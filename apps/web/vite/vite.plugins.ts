@@ -18,6 +18,7 @@ const CSP_DIRECTIVE_MAP: Record<string, string> = {
 }
 
 type CspMetaTagPluginOptions = {
+  env?: Record<string, string | undefined>
   gnosisLeanBuild?: boolean
 }
 
@@ -86,9 +87,44 @@ const GNOSIS_LEAN_CSP_ORIGINS = new Set([
   'wss://ws-us3.pusher.com/',
 ])
 
+const GNOSIS_LEAN_CONNECT_SRC_ORIGIN_ENV_KEYS = [
+  'API_BASE_URL_V2_OVERRIDE',
+  'GRAPHQL_URL_OVERRIDE',
+  'REACT_APP_GNOSIS_RPC_URL',
+] as const
+
 function stripGnosisLeanCspOrigins(csp: Record<string, string[]>): void {
   for (const [key, values] of Object.entries(csp)) {
     csp[key] = values.filter((value) => !GNOSIS_LEAN_CSP_ORIGINS.has(value))
+  }
+}
+
+function addConnectSrcOrigin(csp: Record<string, string[]>, url: string): void {
+  try {
+    const origin = new URL(url).origin
+    csp.connectSrc ??= []
+    if (!csp.connectSrc.includes(origin)) {
+      csp.connectSrc.push(origin)
+    }
+  } catch {
+    // ignore malformed override URLs
+  }
+}
+
+function getConfiguredEnvUrl(envUrlKey: string, options: CspMetaTagPluginOptions): string | null {
+  return options.env?.[envUrlKey] ?? process.env[envUrlKey] ?? getLocalEnvUrl(envUrlKey)
+}
+
+function addGnosisLeanConnectSrcOverrides(csp: Record<string, string[]>, options: CspMetaTagPluginOptions): void {
+  if (!options.gnosisLeanBuild) {
+    return
+  }
+
+  for (const envUrlKey of GNOSIS_LEAN_CONNECT_SRC_ORIGIN_ENV_KEYS) {
+    const overrideValue = getConfiguredEnvUrl(envUrlKey, options)
+    if (overrideValue) {
+      addConnectSrcOrigin(csp, overrideValue)
+    }
   }
 }
 
@@ -121,6 +157,7 @@ export function cspMetaTagPlugin(mode?: string, options: CspMetaTagPluginOptions
 
         const outputCSP = JSON.parse(fs.readFileSync(outputCSPPath, 'utf-8'))
         stripGnosisLeanCspOrigins(outputCSP)
+        addGnosisLeanConnectSrcOverrides(outputCSP, options)
         fs.writeFileSync(outputCSPPath, `${JSON.stringify(outputCSP, null, 2)}\n`)
       }
     },
@@ -172,19 +209,14 @@ export function cspMetaTagPlugin(mode?: string, options: CspMetaTagPluginOptions
         // connect-src for ALL modes (dev reads .env.local; the Docker build passes
         // them as process.env) so the browser can reach the adapter.
         for (const overrideKey of ['API_BASE_URL_V2_OVERRIDE', 'GRAPHQL_URL_OVERRIDE']) {
-          const overrideValue = process.env[overrideKey] ?? getLocalEnvUrl(overrideKey)
+          const overrideValue = getConfiguredEnvUrl(overrideKey, options)
           if (!overrideValue) {
             continue
           }
-          try {
-            const origin = new URL(overrideValue).origin
-            if (!baseCSP.connectSrc.includes(origin)) {
-              baseCSP.connectSrc.push(origin)
-            }
-          } catch {
-            // ignore malformed override URLs
-          }
+          addConnectSrcOrigin(baseCSP, overrideValue)
         }
+
+        addGnosisLeanConnectSrcOverrides(baseCSP, options)
 
         // Transform the CSP content using the directive map
         const cspContent = Object.entries(baseCSP)

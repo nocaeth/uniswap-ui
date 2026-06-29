@@ -1,5 +1,4 @@
 import { isE2eTestEnv } from '@universe/environment'
-import type { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { GNOSIS_CHAIN_INFO } from 'uniswap/src/features/chains/evm/info/gnosis'
 import { isTestnetChain } from 'uniswap/src/features/chains/utils'
 import { logger } from 'utilities/src/logger/logger'
@@ -10,27 +9,14 @@ import { createConfig, fallback, http } from 'wagmi'
 import { injected, safe } from 'wagmi/connectors'
 import { PLAYWRIGHT_CONNECT_ADDRESS } from '~/connection/constants'
 import { createRejectableMockConnector } from '~/connection/rejectableConnector'
+import { orderedTransportUrls, SAFE_ALLOWED_ORIGIN } from '~/connection/wagmiConfig.shared'
+
+export { orderedTransportUrls, SAFE_ALLOWED_ORIGIN } from '~/connection/wagmiConfig.shared'
 
 const GNOSIS_CHAINS = [GNOSIS_CHAIN_INFO] as const
 
-// Only accept Safe Apps SDK messages from the canonical Safe web app.
-export const SAFE_ALLOWED_ORIGIN = /^https:\/\/app\.safe\.global$/
-
 export function isGnosisLeanBuild(): boolean {
   return true
-}
-
-export const orderedTransportUrls = (chain: ReturnType<typeof getChainInfo>): string[] => {
-  const orderedRpcUrls = [
-    // oxlint-disable-next-line typescript/no-unnecessary-condition
-    ...(chain.rpcUrls.interface?.http ?? []),
-    // oxlint-disable-next-line typescript/no-unnecessary-condition
-    ...(chain.rpcUrls.default?.http ?? []),
-    ...(chain.rpcUrls.public?.http ?? []),
-    ...(chain.rpcUrls.fallback?.http ?? []),
-  ]
-
-  return Array.from(new Set(orderedRpcUrls.filter(Boolean)))
 }
 
 export function createWagmiConnectors(params: {

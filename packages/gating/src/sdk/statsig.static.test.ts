@@ -7,10 +7,14 @@ import {
 } from '@universe/gating/src/experiments'
 import { FeatureFlagClient, FeatureFlags, getFeatureFlagName } from '@universe/gating/src/flags'
 import { FORCE_DISABLED_FLAGS, FORCE_ENABLED_FLAGS } from '@universe/gating/src/pinnedFeatureFlags'
-import { getStatsigClient } from '@universe/gating/src/sdk/statsig.static'
-import { describe, expect, it } from 'vitest'
+import { getOverrideAdapter, getStatsigClient } from '@universe/gating/src/sdk/statsig.static'
+import { afterEach, describe, expect, it } from 'vitest'
 
 describe('static web Statsig SDK', () => {
+  afterEach(() => {
+    getOverrideAdapter().removeAllOverrides()
+  })
+
   it('returns pinned Gnosis gate values', () => {
     const client = getStatsigClient()
 
@@ -28,6 +32,17 @@ describe('static web Statsig SDK', () => {
     )
   })
 
+  it('honors local gate overrides before static defaults', () => {
+    const pinnedOffName = getFeatureFlagName(FeatureFlags.V2EndpointsPools, FeatureFlagClient.Web)
+    const unpinnedName = getFeatureFlagName(FeatureFlags.DummyFlagTest, FeatureFlagClient.Web)
+
+    getOverrideAdapter().overrideGate(pinnedOffName, true)
+    getOverrideAdapter().overrideGate(unpinnedName, true)
+
+    expect(getStatsigClient().checkGate(pinnedOffName)).toBe(true)
+    expect(getStatsigClient().checkGate(unpinnedName)).toBe(true)
+  })
+
   it('returns caller defaults for experiments', () => {
     const experiment = getStatsigClient().getExperiment(Experiments.PrivateRpc)
 
@@ -42,6 +57,26 @@ describe('static web Statsig SDK', () => {
     expect(config.value).toEqual({})
     expect(config.get(SwapConfigKey.TradingApiSwapRequestMs, 2500)).toBe(2500)
     expect(config.get(SwapConfigKey.ChainedActionsUnsupportedChainIds, [1, 10])).toEqual([1, 10])
+  })
+
+  it('honors local dynamic config and layer overrides', () => {
+    getOverrideAdapter().overrideDynamicConfig(DynamicConfigs.Swap, {
+      [SwapConfigKey.TradingApiSwapRequestMs]: 1234,
+    })
+    getOverrideAdapter().overrideLayer(Layers.SwapPage, {
+      group: 'test-group',
+      [EthAsErc20UniswapXProperties.EthAsErc20UniswapXEnabled]: true,
+    })
+
+    expect(
+      getStatsigClient().getDynamicConfig(DynamicConfigs.Swap).get(SwapConfigKey.TradingApiSwapRequestMs, 2500),
+    ).toBe(1234)
+    expect(getStatsigClient().getLayer(Layers.SwapPage).groupName).toBe('test-group')
+    expect(
+      getStatsigClient()
+        .getLayer(Layers.SwapPage)
+        .get(EthAsErc20UniswapXProperties.EthAsErc20UniswapXEnabled, false),
+    ).toBe(true)
   })
 
   it('keeps swap-path gating deterministic', () => {

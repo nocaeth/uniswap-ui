@@ -247,6 +247,8 @@ export default defineConfig(({ mode, isPreview }) => {
       'UNISWAP_GATEWAY_DNS',
       'API_BASE_URL_V2_OVERRIDE',
       'ENTRY_GATEWAY_API_URL_OVERRIDE',
+      'GRAPHQL_URL_OVERRIDE',
+      'REACT_APP_GNOSIS_RPC_URL',
     ]
     for (const key of VERCEL_OVERRIDABLE_ENV_VARS) {
       if (process.env[key]) {
@@ -326,6 +328,10 @@ export default defineConfig(({ mode, isPreview }) => {
           {
             find: /^@universe\/compliance$/,
             replacement: path.resolve(__dirname, 'src/lean/shims/compliance.tsx'),
+          },
+          {
+            find: /^~\/sideEffects\.full$/,
+            replacement: path.resolve(__dirname, 'src/lean/shims/fullSideEffects.ts'),
           },
           {
             find: /^~\/connection\/wagmiConfig$/,
@@ -518,7 +524,7 @@ export default defineConfig(({ mode, isPreview }) => {
         // ignores tsconfig files in Nx generator template directories
         skip: (dir) => dir.includes('files'),
       }),
-      env.SKIP_CSP ? undefined : cspMetaTagPlugin(mode, { gnosisLeanBuild: isGnosisLeanBuild }),
+      env.SKIP_CSP ? undefined : cspMetaTagPlugin(mode, { env, gnosisLeanBuild: isGnosisLeanBuild }),
       svgr({
         svgrOptions: {
           icon: false,

@@ -85,6 +85,7 @@ export {
   bootstrapStatsigClient,
   getOverrideAdapter,
   getStatsigClient,
+  LocalOverrideAdapterWrapper,
   StatsigClient,
   StatsigContext,
   StatsigProvider,

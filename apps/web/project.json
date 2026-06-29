@@ -46,6 +46,9 @@
         "production": {
           "command": "NODE_OPTIONS=\"--max-old-space-size=$([ -n \\\"$GITHUB_ACTIONS\\\" ] && echo 32768 || echo 16384)\" DEPLOY_TARGET=cloudflare CLOUDFLARE_ENV=production vite build"
         },
+        "gnosis-lean": {
+          "command": "GNOSIS_LEAN_BUILD=true DISABLE_SOURCEMAP=true NODE_OPTIONS=\"--max-old-space-size=$([ -n \\\"$GITHUB_ACTIONS\\\" ] && echo 32768 || echo 16384)\" vite build --mode production"
+        },
         "staging": {
           "command": "NODE_OPTIONS=\"--max-old-space-size=$([ -n \\\"$GITHUB_ACTIONS\\\" ] && echo 32768 || echo 16384)\" ENABLE_ENTRY_GATEWAY_PROXY=true DEPLOY_TARGET=cloudflare CLOUDFLARE_ENV=staging vite build --mode staging"
         },

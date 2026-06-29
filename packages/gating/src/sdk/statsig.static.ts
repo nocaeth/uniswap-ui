@@ -32,53 +32,60 @@ const STATIC_UPDATE_DETAILS: StatsigUpdateDetails = {
 
 const defaultUser: StatsigUser = {}
 
-function typedDefault<T>(_key: string, fallback?: T): TypedReturn<T> {
-  return fallback as TypedReturn<T>
+function getGroupName(value: Record<string, unknown>): string | null {
+  return typeof value['group'] === 'string' ? value['group'] : null
 }
 
-function createEmptyConfig(name: string): DynamicConfig {
+function createEmptyConfig(name: string, value: Record<string, unknown> = {}): DynamicConfig {
   return {
     name,
-    value: {},
+    value,
     ruleID: STATIC_RULE_ID,
     details: STATIC_DETAILS,
     __evaluation: null,
-    get: typedDefault,
+    get: <T>(key: string, fallback?: T): TypedReturn<T> => (key in value ? value[key] : fallback) as TypedReturn<T>,
   }
 }
 
-function createEmptyExperiment(name: string): Experiment {
+function createEmptyExperiment(name: string, value: Record<string, unknown> = {}): Experiment {
   return {
-    ...createEmptyConfig(name),
-    groupName: null,
+    ...createEmptyConfig(name, value),
+    groupName: getGroupName(value),
   }
 }
 
-function createEmptyLayer(name: string): Layer {
+function createEmptyLayer(name: string, value: Record<string, unknown> = {}): Layer {
   return {
     name,
     ruleID: STATIC_RULE_ID,
     details: STATIC_DETAILS,
-    groupName: null,
-    __value: {},
+    groupName: getGroupName(value),
+    __value: value,
     __evaluation: null,
-    get: typedDefault,
+    get: <T>(key: string, fallback?: T): TypedReturn<T> => (key in value ? value[key] : fallback) as TypedReturn<T>,
   }
 }
 
 function createEmptyParameterStore(name: string): ParameterStore {
+  const value: Record<string, unknown> = {}
   return {
     name,
     details: STATIC_DETAILS,
     __configuration: null,
-    get: typedDefault,
+    get: <T>(key: string, fallback?: T): TypedReturn<T> => (key in value ? value[key] : fallback) as TypedReturn<T>,
   }
 }
 
-class StaticOverrideAdapter {
+export class StaticOverrideAdapter {
   private gate: Record<string, boolean> = {}
   private dynamicConfig: Record<string, Record<string, unknown>> = {}
   private layer: Record<string, Record<string, unknown>> = {}
+
+  constructor(_sdkKey?: string) {
+    if (_sdkKey === '') {
+      this.removeAllOverrides()
+    }
+  }
 
   getAllOverrides(): {
     dynamicConfig: Record<string, Record<string, unknown>>
@@ -197,6 +204,10 @@ export class StatsigClient {
   }
 
   checkGate(name: string): boolean {
+    const overrideValue = overrideAdapter.getAllOverrides().gate[name]
+    if (overrideValue !== undefined) {
+      return overrideValue
+    }
     return getPinnedWebFeatureFlagValue(name) ?? false
   }
 
@@ -211,15 +222,15 @@ export class StatsigClient {
   }
 
   getDynamicConfig(name: string): DynamicConfig {
-    return createEmptyConfig(name)
+    return createEmptyConfig(name, overrideAdapter.getAllOverrides().dynamicConfig[name])
   }
 
   getExperiment(name: string): Experiment {
-    return createEmptyExperiment(name)
+    return createEmptyExperiment(name, overrideAdapter.getAllOverrides().dynamicConfig[name])
   }
 
   getLayer(name: string): Layer {
-    return createEmptyLayer(name)
+    return createEmptyLayer(name, overrideAdapter.getAllOverrides().layer[name])
   }
 
   getParameterStore(name: string): ParameterStore {
@@ -342,6 +353,8 @@ export function useLayer(name: string): Layer {
 export function getOverrideAdapter(): StaticOverrideAdapter {
   return overrideAdapter
 }
+
+export { StaticOverrideAdapter as LocalOverrideAdapterWrapper }
 
 export function getStatsigClient(): StatsigClient {
   return staticClient
