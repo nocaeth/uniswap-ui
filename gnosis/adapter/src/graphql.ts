@@ -39,6 +39,7 @@ import {
   type EnvioTransaction,
 } from './envio.js'
 import { feeToTickSpacing, getPoolTicks } from './onchain.js'
+import { getEffectiveTokenPriceUSD } from './prices.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SCHEMA_PATH =
@@ -60,6 +61,20 @@ interface Amt {
   currency: string
 }
 const amt = (id: string, value: number, currency = 'USD'): Amt => ({ id, value, currency })
+
+async function effectivePriceAmount(id: string, token: EnvioToken): Promise<Amt> {
+  return amt(id, (await getEffectiveTokenPriceUSD(token.id, token.priceUSD)) ?? token.priceUSD)
+}
+
+async function priceHighLowAmount(id: string, token: EnvioToken, duration: string, highLow: string): Promise<Amt> {
+  const w = durationWindow(duration)
+  const pts = getTokenPriceHistory(token.id, w.fromTs, w.hourly)
+    .map((p) => p.value)
+    .filter((v) => Number.isFinite(v) && v > 0)
+  const fallbackPrice = (await getEffectiveTokenPriceUSD(token.id, token.priceUSD)) ?? token.priceUSD
+  const value = pts.length ? (highLow === 'LOW' ? Math.min(...pts) : Math.max(...pts)) : fallbackPrice
+  return amt(id, value)
+}
 
 interface DurationWindow {
   fromTs: number
@@ -229,17 +244,13 @@ export const schema = createSchema({
 
     TokenMarket: {
       id: (m: EnvioToken) => `${m.id}-market`,
-      price: (m: EnvioToken) => amt(`${m.id}-price`, m.priceUSD),
+      price: (m: EnvioToken) => effectivePriceAmount(`${m.id}-price`, m),
       totalValueLocked: (m: EnvioToken) => amt(`${m.id}-tvl`, m.tvlUSD),
       volume: (m: EnvioToken, args: { duration?: string }) =>
         amt(`${m.id}-vol-${args.duration ?? 'DAY'}`, volumeForDuration(m, args.duration ?? 'DAY')),
       pricePercentChange: (m: EnvioToken) => amt(`${m.id}-ppc`, m.priceChange1d, ''),
-      priceHighLow: (m: EnvioToken, args: { duration: string; highLow: string }) => {
-        const w = durationWindow(args.duration)
-        const pts = getTokenPriceHistory(m.id, w.fromTs, w.hourly).map((p) => p.value)
-        const v = pts.length ? (args.highLow === 'LOW' ? Math.min(...pts) : Math.max(...pts)) : m.priceUSD
-        return amt(`${m.id}-${args.highLow}-${args.duration}`, v)
-      },
+      priceHighLow: (m: EnvioToken, args: { duration: string; highLow: string }) =>
+        priceHighLowAmount(`${m.id}-${args.highLow}-${args.duration}`, m, args.duration, args.highLow),
       priceHistory: (m: EnvioToken, args: { duration: string }) => {
         const w = durationWindow(args.duration)
         return getTokenPriceHistory(m.id, w.fromTs, w.hourly).map((p) => ({
@@ -297,16 +308,12 @@ export const schema = createSchema({
 
     TokenProjectMarket: {
       id: (m: EnvioToken) => `${m.id}-pmarket`,
-      price: (m: EnvioToken) => amt(`${m.id}-pprice`, m.priceUSD),
+      price: (m: EnvioToken) => effectivePriceAmount(`${m.id}-pprice`, m),
       fullyDilutedValuation: (m: EnvioToken) => amt(`${m.id}-fdv`, m.fdv),
       marketCap: (m: EnvioToken) => amt(`${m.id}-mcap`, m.fdv),
       pricePercentChange24h: (m: EnvioToken) => amt(`${m.id}-ppc24`, m.priceChange1d, ''),
-      priceHighLow: (m: EnvioToken, args: { duration: string; highLow: string }) => {
-        const w = durationWindow(args.duration)
-        const pts = getTokenPriceHistory(m.id, w.fromTs, w.hourly).map((p) => p.value)
-        const v = pts.length ? (args.highLow === 'LOW' ? Math.min(...pts) : Math.max(...pts)) : m.priceUSD
-        return amt(`${m.id}-p${args.highLow}-${args.duration}`, v)
-      },
+      priceHighLow: (m: EnvioToken, args: { duration: string; highLow: string }) =>
+        priceHighLowAmount(`${m.id}-p${args.highLow}-${args.duration}`, m, args.duration, args.highLow),
       volume: (m: EnvioToken, args: { duration?: string }) =>
         amt(`${m.id}-pvol-${args.duration ?? 'DAY'}`, volumeForDuration(m, args.duration ?? 'DAY')),
       priceHistory: (m: EnvioToken, args: { duration: string }) => {
