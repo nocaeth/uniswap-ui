@@ -246,6 +246,23 @@ describe('Gnosis route candidates', () => {
     expect(routes).toEqual([{ tokens: [TOKEN_A, GNOSIS_USDCE, TOKEN_B], fees: [FeeAmount.MEDIUM, FeeAmount.MEDIUM] }])
   })
 
+  it('ranks routes with a finite spot penalty before routes lacking sqrtPriceX96 (mixed-penalty determinism)', () => {
+    // LOW fee has a known slot0 (finite penalty ≈ 0); MEDIUM fee has no sqrtPriceX96 (penalty = Infinity).
+    // Despite MEDIUM having higher TVL, the finite-spot route must rank first and the result must be
+    // deterministic regardless of input order.
+    const routes = buildRoutes({
+      maxRoutes: 2,
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOW, tvlUSD: 1_000, sqrtPriceX96: Q96 }),
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.MEDIUM, tvlUSD: 10_000 }),
+      ],
+    })
+
+    expect(routes).toHaveLength(2)
+    expect(routes[0]).toEqual({ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.LOW] })
+    expect(routes[1]).toEqual({ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.MEDIUM] })
+  })
+
   it('does not generate repeated-token loops', () => {
     const routes = buildRoutes({
       poolEdges: [

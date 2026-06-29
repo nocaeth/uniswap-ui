@@ -527,18 +527,24 @@ function compareRankedRoutes(a: RankedCandidateRoute, b: RankedCandidateRoute): 
     return hopDelta
   }
 
-  if (a.minimumTvlUSD !== undefined && b.minimumTvlUSD !== undefined && a.minimumTvlUSD !== b.minimumTvlUSD) {
-    const spotPenaltyDelta = getFiniteDelta(a.spotPricePenalty, b.spotPricePenalty)
-    if (spotPenaltyDelta !== 0) {
-      return spotPenaltyDelta
-    }
-
-    return b.minimumTvlUSD - a.minimumTvlUSD
+  // Total-ordered spot comparison applied once, before the TVL check.
+  // Routes whose marginal price couldn't be computed (undefined/non-finite) map to +Infinity
+  // so they rank last on the price criterion.  This preserves the "better spot beats higher TVL"
+  // design while making the comparator a provably total/transitive order.
+  const spotA =
+    a.spotPricePenalty !== undefined && Number.isFinite(a.spotPricePenalty)
+      ? a.spotPricePenalty
+      : Number.POSITIVE_INFINITY
+  const spotB =
+    b.spotPricePenalty !== undefined && Number.isFinite(b.spotPricePenalty)
+      ? b.spotPricePenalty
+      : Number.POSITIVE_INFINITY
+  if (spotA !== spotB) {
+    return spotA < spotB ? -1 : 1
   }
 
-  const spotPenaltyDelta = getFiniteDelta(a.spotPricePenalty, b.spotPricePenalty)
-  if (spotPenaltyDelta !== 0) {
-    return spotPenaltyDelta
+  if (a.minimumTvlUSD !== undefined && b.minimumTvlUSD !== undefined && a.minimumTvlUSD !== b.minimumTvlUSD) {
+    return b.minimumTvlUSD - a.minimumTvlUSD
   }
 
   if (!a.minimumLiquidity.eq(b.minimumLiquidity)) {
@@ -556,11 +562,4 @@ function compareRankedRoutes(a: RankedCandidateRoute, b: RankedCandidateRoute): 
   }
 
   return a.routeKey.localeCompare(b.routeKey)
-}
-
-function getFiniteDelta(a: number | undefined, b: number | undefined): number {
-  if (a === undefined || b === undefined || !Number.isFinite(a) || !Number.isFinite(b) || a === b) {
-    return 0
-  }
-  return a - b
 }
