@@ -87,6 +87,7 @@ import {
   haveSameEndpoints,
   pickDisjointSet,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeDisjoint'
+import { logger } from 'utilities/src/logger/logger'
 import {
   GnosisSdaiAdapterDirection,
   GNOSIS_SDAI_ADAPTER_QUOTE_ID,
@@ -634,7 +635,6 @@ interface AggregationCandidate {
   totalOut: BigNumber
   gasEstimate: BigNumber
   routeString: string
-  tokenOut?: string
 }
 
 function isSameAddress(a: string | undefined, b: string): boolean {
@@ -964,7 +964,7 @@ async function quoteCurveTemplateAmountPairs(args: {
   return quotedByAmount
 }
 
-function buildAggregationCandidate(legs: AggregationLegQuote[], tokenOut?: string): AggregationCandidate {
+function buildAggregationCandidate(legs: AggregationLegQuote[]): AggregationCandidate {
   return {
     legs,
     totalOut: legs.reduce((sum, leg) => sum.add(leg.amountOut), BigNumber.from(0)),
@@ -972,7 +972,6 @@ function buildAggregationCandidate(legs: AggregationLegQuote[], tokenOut?: strin
       legs.reduce((sum, leg) => sum.add(leg.gasEstimate), BigNumber.from(0)),
     ),
     routeString: legs.map((leg) => leg.label).join(' + '),
-    tokenOut,
   }
 }
 
@@ -992,23 +991,34 @@ function buildSerialAggregationLeg(args: {
   }
 }
 
-async function quoteBestV3ExactInputForAggregation(args: {
+/**
+ * Discovers pool edges, annotates with TVL, then runs the hop-tier loop (discover → annotate →
+ * buildPoolState → quoteRanked → estimateImpact → viability check) and returns the first viable
+ * route, or undefined when no tier yields one.
+ *
+ * NOTE: `fetchGnosisQuoteInner` runs the same hop-tier/impact logic inline because it also needs
+ * the full ranked list for split-fill and handles indicative vs. firm hop-tier slicing. Both paths
+ * MUST use the same hop-tier progression (`GNOSIS_ROUTE_HOP_TIERS`) and impact threshold
+ * (`GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT`) — update them together.
+ */
+async function findBestViableV3Route(args: {
   provider: JsonRpcProvider
   tokenIn: string
   tokenOut: string
   amount: BigNumber
+  tradeType: TradingApi.TradeType
+  routingHubs: string[]
 }): Promise<QuotedRoute | undefined> {
   const discoveredPoolEdges = await discoverGnosisPoolGraphEdges({
     provider: args.provider,
     tokenIn: args.tokenIn,
     tokenOut: args.tokenOut,
-    routingHubs: GNOSIS_MIXED_AGGREGATION_V3_ROUTING_HUBS,
+    routingHubs: args.routingHubs,
   })
   const poolEdges = await annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges)
   if (!poolEdges.length) {
     return undefined
   }
-
   const poolStateByKey = buildPoolStateByKey(poolEdges)
   for (const maxHops of GNOSIS_ROUTE_HOP_TIERS) {
     const ranked = await quoteRankedAtHops({
@@ -1017,23 +1027,35 @@ async function quoteBestV3ExactInputForAggregation(args: {
       tokenOut: args.tokenOut,
       poolEdges,
       amount: args.amount,
-      tradeType: TradingApi.TradeType.EXACT_INPUT,
+      tradeType: args.tradeType,
       maxHops,
     })
     const best = ranked[0]
     if (!best) {
       continue
     }
-    const impact = estimateRouteImpactPct({
-      quoted: best,
-      byKey: poolStateByKey,
-      tradeType: TradingApi.TradeType.EXACT_INPUT,
-    })
+    const impact = estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType: args.tradeType })
     if (isGnosisQuotePriceImpactViable(impact)) {
       return best
     }
   }
   return undefined
+}
+
+async function quoteBestV3ExactInputForAggregation(args: {
+  provider: JsonRpcProvider
+  tokenIn: string
+  tokenOut: string
+  amount: BigNumber
+}): Promise<QuotedRoute | undefined> {
+  return findBestViableV3Route({
+    provider: args.provider,
+    tokenIn: args.tokenIn,
+    tokenOut: args.tokenOut,
+    amount: args.amount,
+    tradeType: TradingApi.TradeType.EXACT_INPUT,
+    routingHubs: GNOSIS_MIXED_AGGREGATION_V3_ROUTING_HUBS,
+  })
 }
 
 async function buildCurveV3MixedAggregationCandidate(args: {
@@ -1107,17 +1129,15 @@ async function buildCurveV3MixedAggregationCandidate(args: {
     ) {
       return undefined
     }
-    return buildAggregationCandidate(
-      [
-        buildSerialAggregationLeg({
-          label: args.template.label,
-          first: curveLeg,
-          second: buildV3AggregationLeg(v3Quoted),
-        }),
-      ],
-      args.template.v3TokenOut,
-    )
-  } catch {
+    return buildAggregationCandidate([
+      buildSerialAggregationLeg({
+        label: args.template.label,
+        first: curveLeg,
+        second: buildV3AggregationLeg(v3Quoted),
+      }),
+    ])
+  } catch (error) {
+    logger.warn('fetchGnosisQuote', 'buildCurveV3MixedAggregationCandidate', 'Mixed-route candidate failed', { error })
     return undefined
   }
 }
@@ -1281,7 +1301,7 @@ async function tryBuildAggregationQuote(args: {
   }
 
   const slippage = getGnosisSlippageTolerance(args.params)
-  const tokenOut = best.tokenOut ?? args.outputToken
+  const tokenOut = args.outputToken
   const { maximumAmountIn, minimumAmountOut } = getGnosisQuoteSlippageAmounts({
     amountIn: args.amount,
     amountOut: best.totalOut,
