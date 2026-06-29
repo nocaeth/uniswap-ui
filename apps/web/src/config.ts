@@ -123,19 +123,13 @@ const webConfigValues = {
   // #endregion
 }
 
-const isGnosisLeanBuild = typeof __GNOSIS_LEAN_BUILD__ !== 'undefined' && __GNOSIS_LEAN_BUILD__
-
-const walletConnectProjectIdSchema = isGnosisLeanBuild
-  ? z.string().optional().default('').describe('Project ID for WalletConnect')
-  : z.string().min(1).describe('Project ID for WalletConnect')
-
 /** Zod schema for web-specific config fields */
 const webConfigSchema = z.object({
   // Environment & Build Metadata
   webBuildType: z.string().default('vite').describe('Web build tool identifier'),
   gitCommitHash: z.string().default('').describe('Git commit hash at build time'),
   // API Keys
-  walletConnectProjectId: walletConnectProjectIdSchema,
+  walletConnectProjectId: z.string().min(1).describe('Project ID for WalletConnect'),
 
   // Endpoint URLs
   awsApiEndpoint: z.string().min(1).describe('URL for Apollo GraphQL API'),

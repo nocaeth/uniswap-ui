@@ -338,10 +338,6 @@ export default defineConfig(({ mode, isPreview }) => {
             replacement: path.resolve(__dirname, 'src/connection/wagmiConfig.lean.ts'),
           },
           {
-            find: /^~\/connection\/walletConnect$/,
-            replacement: path.resolve(__dirname, 'src/lean/shims/walletConnect.ts'),
-          },
-          {
             find: /^~\/state\/livePrices\/LivePricesProvider$/,
             replacement: path.resolve(__dirname, 'src/lean/shims/LivePricesProvider.tsx'),
           },

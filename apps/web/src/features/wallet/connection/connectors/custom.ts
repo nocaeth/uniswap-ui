@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { CONNECTION_PROVIDER_IDS, CONNECTION_PROVIDER_NAMES } from 'uniswap/src/constants/web3'
 import { CONNECTOR_ICON_OVERRIDE_MAP } from '~/connection/constants'
 import { wagmiConfig } from '~/connection/wagmiConfig'
-import { uniswapWalletConnect } from '~/connection/walletConnect'
+import { WC_PARAMS } from '~/connection/walletConnectMeta'
 import { ConnectionService } from '~/features/wallet/connection/services/IConnectionService'
 import { WalletConnectorMeta } from '~/features/wallet/connection/types/WalletConnectorMeta'
 import { persistHideMobileAppPromoBannerAtom } from '~/state/application/atoms'
@@ -59,11 +59,25 @@ export function useUniswapMobileConnectionService(): ConnectionService {
         // Initialize Uniswap Wallet on click instead of in wagmi config
         // to avoid multiple wallet connect sockets being opened
         // and causing issues with messages getting dropped
+        const { uniswapWalletConnect } = await import('~/connection/walletConnect')
         await connect(wagmiConfig, { connector: uniswapWalletConnect() })
         return { connected: true }
       },
     }),
     [setPersistHideMobileAppPromoBanner],
+  )
+}
+
+export function useWalletConnectConnectionService(): ConnectionService {
+  return useMemo(
+    () => ({
+      connect: async () => {
+        const { walletConnect } = await import('wagmi/connectors')
+        await connect(wagmiConfig, { connector: walletConnect(WC_PARAMS) })
+        return { connected: true }
+      },
+    }),
+    [],
   )
 }
 

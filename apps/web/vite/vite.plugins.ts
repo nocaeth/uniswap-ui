@@ -75,15 +75,8 @@ const GNOSIS_LEAN_CSP_ORIGINS = new Set([
   'https://featureassets.org',
   'https://assetsconfigcdn.org',
   'https://prodregistryv2.org',
-  'https://api.web3modal.org',
   'https://rpc.ankr.com',
   'https://sockjs-us3.pusher.com/',
-  'https://*.walletconnect.com',
-  'https://*.walletconnect.org',
-  'https://verify.walletconnect.com/',
-  'https://verify.walletconnect.org/',
-  'wss://relay.walletconnect.com',
-  'wss://relay.walletconnect.org',
   'wss://ws-us3.pusher.com/',
 ])
 

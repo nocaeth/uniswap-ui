@@ -89,6 +89,7 @@ const createMockAccountsState = (wallets: ExternalWallet[]) => {
             wallet.id === CONNECTION_PROVIDER_IDS.METAMASK_RDNS ||
             wallet.id === CONNECTION_PROVIDER_IDS.BINANCE_WALLET_RDNS ||
             wallet.id === CONNECTION_PROVIDER_IDS.COINBASE_RDNS ||
+            wallet.id === CONNECTION_PROVIDER_IDS.INJECTED_CONNECTOR_TYPE ||
             wallet.id === CONNECTION_PROVIDER_IDS.UNISWAP_EXTENSION_RDNS
               ? 'Injected'
               : 'SDK',
@@ -204,6 +205,26 @@ describe('useOrderedWallets', () => {
       expect(wallet.id).toEqual(expectedWalletIds[index])
     })
     expect(result.current.length).toEqual(expectedWalletIds.length)
+  })
+
+  it('should hide generic injected when specific injected wallets are available', () => {
+    const genericInjectedWallet = createExternalWallet({
+      id: CONNECTION_PROVIDER_IDS.INJECTED_CONNECTOR_TYPE,
+      name: 'Injected',
+      connectorIds: {
+        [Platform.EVM]: `WagmiConnector_${CONNECTION_PROVIDER_IDS.INJECTED_CONNECTOR_TYPE}`,
+      },
+      analyticsWalletType: 'Browser Extension',
+    })
+    mocked(useAccountsStore).mockImplementation((selector) => {
+      const mockState = createMockAccountsState([genericInjectedWallet, ...DEFAULT_WALLETS])
+      return selector(mockState)
+    })
+
+    const { result } = renderHook(() => useOrderedWallets({ showSecondaryConnectors: false }))
+
+    expect(result.current.find((wallet) => wallet.id === CONNECTION_PROVIDER_IDS.INJECTED_CONNECTOR_TYPE)).toBeUndefined()
+    expect(result.current.find((wallet) => wallet.id === CONNECTION_PROVIDER_IDS.METAMASK_RDNS)).toBeDefined()
   })
 
   it('should return only injected wallets for in-wallet browsers', () => {

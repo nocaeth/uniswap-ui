@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Flex, Image, SpinningLoader, Text, useSporeColors } from 'ui/src'
 import { BINANCE_WALLET_ICON } from 'ui/src/assets'
@@ -42,6 +43,53 @@ function OtherWalletsIcon() {
   )
 }
 
+function WalletFallbackIcon({ iconSize }: { iconSize: number }) {
+  return (
+    <Flex
+      width={iconSize}
+      height={iconSize}
+      alignItems="center"
+      justifyContent="center"
+      backgroundColor="$surface3"
+      borderRadius="$rounded8"
+    >
+      <WalletFilled size={20} color="$neutral2" />
+    </Flex>
+  )
+}
+
+function WalletImageIcon({
+  icon,
+  name,
+  iconSize,
+  borderColor,
+}: {
+  icon: string
+  name: string
+  iconSize: number
+  borderColor: string
+}) {
+  const [hasError, setHasError] = useState(false)
+
+  if (hasError) {
+    return <WalletFallbackIcon iconSize={iconSize} />
+  }
+
+  return (
+    <img
+      src={icon}
+      alt={name}
+      style={{
+        width: iconSize,
+        height: iconSize,
+        borderRadius: 8,
+        border: `1px solid ${borderColor}`,
+      }}
+      onError={() => setHasError(true)}
+    />
+  )
+}
+
 /** Returns the correct icon for custom wallet connectors. */
 function getIcon({ wallet, themeColors }: { wallet: ExternalWallet; themeColors: UseSporeColorsReturn }) {
   const iconSize = iconSizes.icon40
@@ -52,18 +100,16 @@ function getIcon({ wallet, themeColors }: { wallet: ExternalWallet; themeColors:
     return <WalletBrandedIcon size={iconSize} withChromeBadge />
   } else if (wallet.id === CONNECTION_PROVIDER_IDS.BINANCE_WALLET_CONNECTOR_ID) {
     return <BinanceWalletIcon iconSize={iconSize} />
+  } else if (!wallet.icon) {
+    return <WalletFallbackIcon iconSize={iconSize} />
   } else {
     // TODO(WEB-7217): RN Web Image is not properly displaying base64 encoded images (Phantom logo) */
     return (
-      <img
-        src={wallet.icon}
-        alt={wallet.name}
-        style={{
-          width: iconSize,
-          height: iconSize,
-          borderRadius: 8,
-          border: `1px solid ${themeColors.surface3.val}`,
-        }}
+      <WalletImageIcon
+        icon={wallet.icon}
+        name={wallet.name}
+        iconSize={iconSize}
+        borderColor={themeColors.surface3.val}
       />
     )
   }
