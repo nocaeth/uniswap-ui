@@ -106,6 +106,15 @@ describe(getTokenDetailsURL, () => {
       `/explore/tokens/ethereum/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48?chain=${TDP_MULTICHAIN_CHAIN_QUERY_VALUE}`,
     )
   })
+
+  it('uses chain URL params instead of backend GraphQL chains for token routes', () => {
+    expect(
+      getTokenDetailsURL({
+        address: '0x1234567890123456789012345678901234567890',
+        chain: UniverseChainId.Gnosis,
+      }),
+    ).toEqual('/explore/tokens/gnosis/0x1234567890123456789012345678901234567890')
+  })
 })
 
 describe(tdpChainSelectionFromFilter, () => {

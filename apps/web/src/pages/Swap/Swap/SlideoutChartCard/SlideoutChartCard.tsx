@@ -150,6 +150,7 @@ function SlideoutChartCardBody({
     priceChartType: PriceChartType.LINE,
     timePeriod,
     currency: selectedCurrency,
+    dataChainId: selectedCurrency.chainId as UniverseChainId,
   })
 
   const { entries, loading } = priceQuery

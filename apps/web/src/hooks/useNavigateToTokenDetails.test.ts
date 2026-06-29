@@ -44,4 +44,16 @@ describe('useNavigateToTokenDetails', () => {
     result.current(BASE_TOKEN, { type: TdpChainSelectionType.Chain, chainId: UniverseChainId.Base })
     expect(navigateMock).toHaveBeenCalledWith(`/explore/tokens/base/${BASE_TOKEN.address}`)
   })
+
+  it('navigates Gnosis tokens with the Gnosis route param', () => {
+    const gnosisToken = {
+      chainId: UniverseChainId.Gnosis,
+      address: '0x1234567890123456789012345678901234567890',
+      isNative: false,
+    } as const
+
+    const { result } = renderHook(() => useNavigateToTokenDetails())
+    result.current(gnosisToken)
+    expect(navigateMock).toHaveBeenCalledWith(`/explore/tokens/gnosis/${gnosisToken.address}`)
+  })
 })

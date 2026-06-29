@@ -12,7 +12,7 @@ const makeEntry = (chainId: UniverseChainId, address = '0x1'): MultichainTokenEn
   isNative: false,
 })
 
-const makeToken = (chain: GraphQLApi.Chain, volume?: number): ProjectTokens[number] =>
+const makeToken = (chain: GraphQLApi.Chain | string, volume?: number): ProjectTokens[number] =>
   ({
     chain,
     address: '0x1',
@@ -33,6 +33,15 @@ describe('getHighestVolumeChain', () => {
       makeToken(GraphQLApi.Chain.Polygon, 2_000_000),
     ]
     expect(getHighestVolumeChain(tokens, entries)).toEqual(makeEntry(UniverseChainId.Base, '0xbase'))
+  })
+
+  it('matches Gnosis volume by the GNOSIS response key', () => {
+    const gnosisEntry = makeEntry(UniverseChainId.Gnosis, '0xgnosis')
+    const tokens: ProjectTokens = [makeToken('GNOSIS', 2_000_000), makeToken(GraphQLApi.Chain.Ethereum, 1_000_000)]
+
+    expect(getHighestVolumeChain(tokens, [makeEntry(UniverseChainId.Mainnet, '0xeth'), gnosisEntry])).toEqual(
+      gnosisEntry,
+    )
   })
 
   it('returns undefined when tokens is undefined', () => {

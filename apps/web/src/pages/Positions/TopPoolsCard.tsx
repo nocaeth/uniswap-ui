@@ -2,7 +2,6 @@ import { GraphQLApi } from '@universe/api'
 import { useTranslation } from 'react-i18next'
 import { Flex, Text } from 'ui/src'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { supportedChainIdFromGQLChain } from '~/appGraphql/data/chainUtils'
 import { gqlToCurrency, unwrapToken } from '~/appGraphql/data/util'
@@ -10,6 +9,7 @@ import { DoubleCurrencyLogo } from '~/components/Logo/DoubleLogo'
 import { LiquidityPositionInfoBadges } from '~/features/Liquidity/LiquidityPositionInfoBadges'
 import { LPIncentiveRewardsBadge } from '~/features/Liquidity/LPIncentives/LPIncentiveRewardsBadge'
 import { PoolStat } from '~/types/explore'
+import { getChainUrlParam } from '~/utils/params/chainParams'
 
 export function TopPoolsCard({ pool }: { pool: PoolStat }) {
   const { t } = useTranslation()
@@ -33,7 +33,7 @@ export function TopPoolsCard({ pool }: { pool: PoolStat }) {
       cursor="pointer"
       hoverStyle={{ backgroundColor: '$surface1Hovered', borderColor: '$surface3Hovered' }}
       tag="a"
-      href={`/explore/pools/${toGraphQLChain(chainId).toLowerCase()}/${pool.id}`}
+      href={`/explore/pools/${getChainUrlParam(chainId)}/${pool.id}`}
       $platform-web={{
         textDecoration: 'none',
       }}

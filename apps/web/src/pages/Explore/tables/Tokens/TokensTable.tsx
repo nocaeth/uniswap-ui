@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Flex, Text, useMedia } from 'ui/src'
 import { InfoCircle } from 'ui/src/components/icons/InfoCircle'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
-import { fromGraphQLChain, toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useTokenSpotPrice } from 'uniswap/src/features/dataApi/tokenDetails/useTokenDetailsData'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { ElementName, SectionName, UniswapEventName } from 'uniswap/src/features/telemetry/constants'
@@ -113,7 +113,7 @@ export function TokenTable({
         const delta1d = token.pricePercentChange1Day?.value
         const delta1dAbs = delta1d !== undefined ? Math.abs(delta1d) : undefined
         const tokenSortIndex = tokenSortRank[mcToken.multichainId]
-        const chainId = getChainIdFromChainUrlParam(token.chain.toLowerCase())
+        const chainId = fromGraphQLChain(token.chain) ?? getChainIdFromChainUrlParam(token.chain.toLowerCase())
         const unwrappedToken = chainId ? unwrapToken(chainId, token) : token
 
         const parseAmount = (amount: number | undefined, type: FiatNumberType): string => {
@@ -158,7 +158,7 @@ export function TokenTable({
             ),
             link: getTokenDetailsURL({
               address: unwrappedToken.address,
-              chain: toGraphQLChain(chainId ?? defaultChainId),
+              chainId: chainId ?? defaultChainId,
               chainUrlParam: chainFilter,
               chainQueryParam:
                 !chainFilter && mcToken.chainTokens.length > 1 ? TDP_MULTICHAIN_CHAIN_QUERY_VALUE : undefined,

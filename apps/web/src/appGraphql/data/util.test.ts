@@ -117,6 +117,16 @@ describe('getTokenDetailsURL', () => {
     ).toBe(`/explore/tokens/ethereum/${DAI.address}`)
   })
 
+  it('uses chainId for the path when provided', () => {
+    expect(
+      getTokenDetailsURL({
+        chain: GraphQLApi.Chain.Ethereum,
+        chainId: UniverseChainId.Gnosis,
+        address: DAI.address,
+      }),
+    ).toBe(`/explore/tokens/gnosis/${DAI.address}`)
+  })
+
   it('maps native token address to NATIVE path segment when chain resolves to a universe chain id', () => {
     const nativeEthAddress = getNativeAddress(UniverseChainId.Mainnet)
     expect(

@@ -17,6 +17,7 @@ import { getTokenPageDescription, getTokenPageTitle, getTokenStructuredData } fr
 import { formatTokenMetatagTitleName } from '~/shared-cloud/metatags'
 import { ExploreTab } from '~/types/explore'
 import { getNativeTokenDBAddress } from '~/utils/nativeTokens'
+import { getChainUrlParam } from '~/utils/params/chainParams'
 
 export function TokenDetailsPage() {
   return (
@@ -58,13 +59,13 @@ function TDPPageContent() {
       image:
         window.location.origin +
         '/api/image/tokens/' +
-        currencyChain.toLowerCase() +
+        getChainUrlParam(currencyChainId) +
         '/' +
         (currency?.isNative ? getNativeTokenDBAddress(currencyChain) : address),
       url: window.location.href,
       description: pageDescription,
     }
-  }, [address, currency, currencyChain, pageDescription, tokenQueryData?.name, tokenQueryData?.symbol])
+  }, [address, currency, currencyChain, currencyChainId, pageDescription, tokenQueryData?.name, tokenQueryData?.symbol])
   const metatags = useDynamicMetatags(metatagProperties)
 
   // Structured TDP data for SEO indexing

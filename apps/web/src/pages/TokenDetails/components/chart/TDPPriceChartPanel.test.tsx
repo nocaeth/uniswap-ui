@@ -1,6 +1,7 @@
 import { GraphQLApi } from '@universe/api'
 import type { ReactNode } from 'react'
 import { USDC_MAINNET } from 'uniswap/src/constants/tokens'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { TimePeriod } from '~/appGraphql/data/util'
 import { ChartType, DataQuality, PriceChartType } from '~/components/Charts/utils'
 import { useTokenPriceChartPanel } from '~/hooks/useTokenPriceChartPanel'
@@ -69,6 +70,7 @@ describe('TDPPriceChartPanel', () => {
         setDisableCandlestickUI={vi.fn()}
         timePeriod={TimePeriod.DAY}
         currency={USDC_MAINNET}
+        dataChainId={UniverseChainId.Mainnet}
       />,
     )
     expect(screen.getByTestId('tdp-price-chart')).toBeInTheDocument()
@@ -95,6 +97,7 @@ describe('TDPPriceChartPanel', () => {
         setDisableCandlestickUI={vi.fn()}
         timePeriod={TimePeriod.DAY}
         currency={USDC_MAINNET}
+        dataChainId={UniverseChainId.Mainnet}
       />,
     )
     expect(document.querySelector('[data-cy="chart-error-view"]')).toBeInTheDocument()

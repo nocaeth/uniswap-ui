@@ -8,7 +8,7 @@ import { DEFAULT_TICK_SPACING, DYNAMIC_FEE_AMOUNT } from 'uniswap/src/constants/
 import { liquidityQueries } from 'uniswap/src/data/apiClients/liquidityService/liquidityQueries'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { PoolSortFields, PoolTableSortState } from '~/appGraphql/data/pools/useTopPools'
 import { OrderDirection } from '~/appGraphql/data/util'
 import { EXPLORE_API_PAGE_SIZE } from '~/features/Explore/state/constants'
@@ -33,7 +33,7 @@ const poolSortFieldToSortBy: Partial<Record<PoolSortFields, PoolSortBy>> = {
  */
 function convertPoolSummaryToPoolStat(pool: PoolSummary): PoolStat {
   const chainId = pool.chainId as UniverseChainId
-  const chainName = toGraphQLChain(chainId)
+  const chainName = toGraphQLEntityChain(chainId)
 
   // The API returns apr as a float (e.g. 0.125 for 12.5%); convert to Percent for the table's formatPercent.
   const aprPercent = pool.apr ? new Percent(Math.round(pool.apr * 10000), 10000) : new Percent(0)

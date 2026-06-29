@@ -3,7 +3,14 @@ import { Token } from '@uniswap/sdk-core'
 import { GraphQLApi } from '@universe/api'
 import { PollingInterval } from 'uniswap/src/constants/misc'
 import { ALL_CHAIN_IDS, getChainInfo, ORDERED_CHAINS } from 'uniswap/src/features/chains/chainInfo'
-import { EnabledChainsInfo, GqlChainId, NetworkLayer, UniverseChainId } from 'uniswap/src/features/chains/types'
+import {
+  EnabledChainsInfo,
+  GqlChainId,
+  GqlEntityChainId,
+  NetworkLayer,
+  UniverseChainId,
+  UniverseChainInfo,
+} from 'uniswap/src/features/chains/types'
 import { Platform } from 'uniswap/src/features/platforms/types/Platform'
 
 // Some code from the web app uses chainId types as numbers
@@ -25,6 +32,10 @@ export function getChainLabel(chainId: UniverseChainId): string {
  */
 export function getChainExplorerName(chainId: UniverseChainId): string {
   return getChainInfo(chainId).explorer.name
+}
+
+export function getOptionalChainInfo(chainId: UniverseChainId): UniverseChainInfo | undefined {
+  return ALL_CHAIN_IDS.includes(chainId) ? getChainInfo(chainId) : undefined
 }
 
 export function isTestnetChain(chainId: UniverseChainId): boolean {
@@ -63,6 +74,10 @@ export function isMainnetChainId(chainId?: UniverseChainId): boolean {
 
 export function toGraphQLChain(chainId: UniverseChainId): GqlChainId {
   return getChainInfo(chainId).backendChain.chain
+}
+
+export function toGraphQLEntityChain(chainId: UniverseChainId): GqlEntityChainId {
+  return chainId === UniverseChainId.Gnosis ? 'GNOSIS' : toGraphQLChain(chainId)
 }
 
 export function fromGraphQLChain(chain: GraphQLApi.Chain | string | undefined): UniverseChainId | null {

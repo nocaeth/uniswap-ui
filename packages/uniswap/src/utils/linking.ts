@@ -5,7 +5,7 @@ import { NATIVE_TOKEN_PLACEHOLDER } from 'uniswap/src/constants/addresses'
 import { UniswapHelpUrls, UniswapStaticUrls } from 'uniswap/src/constants/urls'
 import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain, toUniswapWebAppLink } from 'uniswap/src/features/chains/utils'
+import { getOptionalChainInfo, toUniswapWebAppLink } from 'uniswap/src/features/chains/utils'
 import type { EarnVaultInfo } from 'uniswap/src/features/earn/types'
 import { BACKEND_NATIVE_CHAIN_ADDRESS_STRING } from 'uniswap/src/features/search/utils'
 import { ServiceProviderInfo } from 'uniswap/src/features/transactions/types/transactionDetails'
@@ -170,10 +170,7 @@ export function getExplorerLink({
   data?: string
   type: ExplorerDataType
 }): string {
-  const chainInfo = getChainInfo(chainId)
-
-  // Handle unsupported chain IDs gracefully
-  // oxlint-disable-next-line typescript/no-unnecessary-condition -- chainInfo can be undefined in edge cases (SDK mismatch)
+  const chainInfo = getOptionalChainInfo(chainId)
   if (!chainInfo) {
     return ''
   }
@@ -278,13 +275,12 @@ export function getTokenDetailsURL({
   if (!chain) {
     return '/not-found'
   }
-  const chainInfo = toGraphQLChain(chain)
 
   const adjustedAddress = isNativeCurrencyAddress(chain, address) ? NATIVE_TOKEN_PLACEHOLDER : address
   const adjustedInputAddress =
     inputAddress && isNativeCurrencyAddress(chain, inputAddress) ? NATIVE_TOKEN_PLACEHOLDER : inputAddress
 
-  const chainName = chainUrlParam || String(chainInfo).toLowerCase() || GraphQLApi.Chain.Ethereum.toLowerCase()
+  const chainName = chainUrlParam || getChainInfo(chain).urlParam || GraphQLApi.Chain.Ethereum.toLowerCase()
   const params = new URLSearchParams()
   if (adjustedInputAddress) {
     params.set('inputCurrency', adjustedInputAddress)

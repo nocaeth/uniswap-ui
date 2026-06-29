@@ -2,8 +2,7 @@ import { FeatureFlags, useFeatureFlag } from '@universe/gating'
 import { useTranslation } from 'react-i18next'
 import { Flex, useIsTouchDevice, useMedia } from 'ui/src'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
-import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { fromGraphQLChain, getChainLabel } from 'uniswap/src/features/chains/utils'
+import { getChainLabel, toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { isMultichainProjectTokens } from 'uniswap/src/features/dataApi/tokenProjects/utils/isMultichainProjectTokens'
 import { useLogRWATokenDetailsViewed } from 'uniswap/src/features/rwa/useLogRWATokenDetailsViewed'
 import { InterfacePageName } from 'uniswap/src/features/telemetry/constants'
@@ -40,22 +39,21 @@ export function TokenDetailsContent({ isCompact }: { isCompact: boolean }) {
   const isTouchDevice = useIsTouchDevice()
   const { t } = useTranslation()
 
-  const { tokenQuery, currencyChain, multiChainMap, address, currency } = useTDPStore((s) => ({
+  const { tokenQuery, currencyChainId, multiChainMap, address, currency } = useTDPStore((s) => ({
     tokenQuery: s.tokenQuery,
-    currencyChain: s.currencyChain,
+    currencyChainId: s.currencyChainId,
     multiChainMap: s.multiChainMap,
     address: s.address,
     currency: s.currency!,
   }))
   const tokenQueryData = tokenQuery.data?.token
   const isMultichainAsset = isMultichainProjectTokens(tokenQueryData?.project?.tokens)
-  const pageChainBalance = multiChainMap[currencyChain]?.balance
+  const pageChainBalance = multiChainMap[toGraphQLEntityChain(currencyChainId)]?.balance
 
   const { direction: scrollDirection } = useScroll()
 
-  const chainId = fromGraphQLChain(currencyChain) ?? UniverseChainId.Mainnet
   const currencyInfo = useCurrencyInfo(
-    tokenQueryData?.address ? buildCurrencyId(chainId, tokenQueryData.address) : undefined,
+    tokenQueryData?.address ? buildCurrencyId(currencyChainId, tokenQueryData.address) : undefined,
   )
   const isBridgedAsset = Boolean(currencyInfo?.isBridged)
   const showTokenInfo = !!pageChainBalance || isBridgedAsset
@@ -69,7 +67,7 @@ export function TokenDetailsContent({ isCompact }: { isCompact: boolean }) {
   const earnData = useTokenDetailsEarnData({ enabled: showEarn, tokenQueryData })
   const showRightTokenInfo = isDesktop && (showTokenInfo || earnData.userHasEarnPosition)
 
-  const chainLabel = getChainLabel(chainId)
+  const chainLabel = getChainLabel(currencyChainId)
   const isTDPTokenCarouselEnabled = useFeatureFlag(FeatureFlags.TDPTokenCarousel)
 
   const rwaMatch = useRWATokenDetailsMatch()
@@ -124,7 +122,7 @@ export function TokenDetailsContent({ isCompact }: { isCompact: boolean }) {
             <TokenCarousel
               title={t('explore.popularOn.title', { chain: chainLabel })}
               tooltipText={t('explore.popularOn.tooltip')}
-              chainId={chainId}
+              chainId={currencyChainId}
             />
           )}
           <RelatedTokens />

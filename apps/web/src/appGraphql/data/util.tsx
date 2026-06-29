@@ -6,7 +6,7 @@ import { ColorTokens } from 'ui/src'
 import { nativeOnChain, WRAPPED_NATIVE_CURRENCY } from 'uniswap/src/constants/tokens'
 import { GqlChainId, UniverseChainId } from 'uniswap/src/features/chains/types'
 import {
-  isBackendSupportedChain,
+  fromGraphQLChain,
   isUniverseChainId,
   toGraphQLChain,
   toSupportedChainId,
@@ -18,7 +18,7 @@ import { isNativeCurrencyAddress } from 'uniswap/src/utils/currencyId'
 import { NATIVE_CHAIN_ID } from '~/constants/tokens'
 import { ExploreTab, TokenStat } from '~/types/explore'
 import { getNativeTokenDBAddress } from '~/utils/nativeTokens'
-import { getChainIdFromBackendChain, getChainIdFromChainUrlParam } from '~/utils/params/chainParams'
+import { getChainIdFromBackendChain, getChainIdFromChainUrlParam, getChainUrlParam } from '~/utils/params/chainParams'
 import { CHAIN_SEARCH_PARAM } from '~/utils/params/chainQueryParam'
 
 export enum TimePeriod {
@@ -119,20 +119,26 @@ export function getTokenExploreURL({ tab, chainUrlParam }: { tab: ExploreTab; ch
 export function getTokenDetailsURL({
   address,
   chain,
+  chainId,
   chainUrlParam,
   inputAddress,
   outputAddress,
   chainQueryParam,
 }: {
   address?: string | null
-  chain?: GraphQLApi.Chain
+  chain?: GraphQLApi.Chain | string
+  chainId?: UniverseChainId
   chainUrlParam?: string | undefined
   inputAddress?: string | null
   outputAddress?: string | null
   chainQueryParam?: string
 }) {
-  const chainName = chainUrlParam || chain?.toLowerCase() || GraphQLApi.Chain.Ethereum.toLowerCase()
-  const tokenChainId = chain && isBackendSupportedChain(chain) ? getChainIdFromBackendChain(chain) : undefined
+  const chainName =
+    chainUrlParam ||
+    (chainId ? getChainUrlParam(chainId) : undefined) ||
+    chain?.toLowerCase() ||
+    GraphQLApi.Chain.Ethereum.toLowerCase()
+  const tokenChainId = chainId ?? (chain ? (fromGraphQLChain(chain) ?? undefined) : undefined)
   const selectedChainId = tokenChainId ?? getChainIdFromChainUrlParam(chainName)
 
   const toTokenPathSegment = (addr: string | null | undefined): string => {

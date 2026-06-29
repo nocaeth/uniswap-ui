@@ -1,6 +1,8 @@
 import { GraphQLApi } from '@universe/api'
 import type { MultichainTokenEntry } from 'uniswap/src/components/MultichainTokenDetails/useOrderedMultichainEntries'
+import type { GqlEntityChainId } from 'uniswap/src/features/chains/types'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import type { PortfolioBalance } from 'uniswap/src/features/dataApi/types'
 import type { MultiChainMap } from '~/pages/TokenDetails/context/TDPContext'
 import { getHighestBalanceChain } from '~/pages/TokenDetails/hooks/getHighestBalanceChain'
 
@@ -16,13 +18,12 @@ const entries: MultichainTokenEntry[] = [
   makeEntry(UniverseChainId.Polygon, '0xpoly'),
 ]
 
-function buildMultiChainMap(balances: Partial<Record<GraphQLApi.Chain, number | null | undefined>>): MultiChainMap {
+function buildMultiChainMap(balances: Partial<Record<GqlEntityChainId, number | null | undefined>>): MultiChainMap {
   const map: MultiChainMap = {}
   for (const [chain, balanceUSD] of Object.entries(balances)) {
-    map[chain as GraphQLApi.Chain] = {
+    map[chain as GqlEntityChainId] = {
       address: '0x1',
-      balance:
-        balanceUSD != null ? ({ balanceUSD } as NonNullable<MultiChainMap[GraphQLApi.Chain]>['balance']) : undefined,
+      balance: balanceUSD != null ? ({ balanceUSD } as PortfolioBalance) : undefined,
     }
   }
   return map
@@ -36,6 +37,13 @@ describe('getHighestBalanceChain', () => {
       [GraphQLApi.Chain.Polygon]: 200,
     })
     expect(getHighestBalanceChain(map, entries)).toEqual(makeEntry(UniverseChainId.Base, '0xbase'))
+  })
+
+  it('matches Gnosis balances by the GNOSIS response key', () => {
+    const gnosisEntry = makeEntry(UniverseChainId.Gnosis, '0xgnosis')
+    const map = buildMultiChainMap({ GNOSIS: 1000, [GraphQLApi.Chain.Ethereum]: 100 })
+
+    expect(getHighestBalanceChain(map, [makeEntry(UniverseChainId.Mainnet, '0xeth'), gnosisEntry])).toEqual(gnosisEntry)
   })
 
   it('returns undefined when multichainEntries is empty', () => {

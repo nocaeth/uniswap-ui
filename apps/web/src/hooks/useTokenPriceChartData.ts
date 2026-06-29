@@ -1,6 +1,7 @@
 import { GraphQLApi } from '@universe/api'
 import { UTCTimestamp } from 'lightweight-charts'
 import { useMemo, useReducer } from 'react'
+import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { fromGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { currencyIdToContractInput } from 'uniswap/src/features/dataApi/utils/currencyIdToContractInput'
 import { buildCurrencyId } from 'uniswap/src/utils/currencyId'
@@ -65,12 +66,14 @@ export function useTokenPriceChartData({
   priceChartType,
   currentPriceOverride,
   preferProjectMarketData = false,
+  dataChainId,
 }: {
   variables: TokenPriceChartQueryVariables
   skip: boolean
   priceChartType: PriceChartType
   currentPriceOverride?: number
   preferProjectMarketData?: boolean
+  dataChainId?: UniverseChainId
 }): ChartQueryResult<PriceChartData, ChartType.PRICE> & { disableCandlestickUI: boolean } {
   const [fallback, enablePriceHistoryFallback] = useReducer(() => true, false)
   // Project markets do not provide OHLC, so RWA charts always render as line charts even if stale UI state says candle.
@@ -85,13 +88,13 @@ export function useTokenPriceChartData({
 
   // Fetch CoinGecko data for line charts to prefer its priceHistory
   // Construct currencyId from chain and address for the CoinGecko query
+  const resolvedDataChainId = dataChainId ?? fromGraphQLChain(variables.chain) ?? undefined
   const currencyIdValue = useMemo(() => {
     if (!variables.address) {
       return undefined
     }
-    const chainId = fromGraphQLChain(variables.chain)
-    return chainId ? buildCurrencyId(chainId, variables.address) : undefined
-  }, [variables.chain, variables.address])
+    return resolvedDataChainId ? buildCurrencyId(resolvedDataChainId, variables.address) : undefined
+  }, [resolvedDataChainId, variables.address])
 
   const shouldFetchCoinGeckoHistory =
     effectivePriceChartType === PriceChartType.LINE && (!variables.multichain || preferProjectMarketData)
@@ -125,7 +128,9 @@ export function useTokenPriceChartData({
     // RWA pages use project-level history because the useful chart is the underlying security, not wrapper liquidity.
     const coinGeckoProject = coinGeckoData?.tokenProjects?.[0]
     const coinGeckoMarket = coinGeckoProject?.markets?.[0]
-    const coinGeckoTokenMarket = coinGeckoProject?.tokens.find((token) => token.chain === variables.chain)?.market
+    const coinGeckoTokenMarket = coinGeckoProject?.tokens.find((token) => {
+      return resolvedDataChainId !== undefined && fromGraphQLChain(token.chain) === resolvedDataChainId
+    })?.market
     let coinGeckoPriceHistory: (PriceHistoryEntry | undefined)[] | undefined =
       coinGeckoTokenMarket?.priceHistory ?? coinGeckoMarket?.priceHistory
     let coinGeckoCurrentPrice = coinGeckoTokenMarket?.price?.value ?? coinGeckoMarket?.price?.value
@@ -279,8 +284,8 @@ export function useTokenPriceChartData({
     fallback,
     loading,
     preferProjectMarketData,
+    resolvedDataChainId,
     variables.duration,
-    variables.chain,
     variables.multichain,
   ])
 }

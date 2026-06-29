@@ -1,4 +1,5 @@
 import { GraphQLApi } from '@universe/api'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { TimePeriod } from '~/appGraphql/data/util'
 import type { PriceChartData } from '~/components/Charts/PriceChart'
 import { ChartType, DataQuality, PriceChartType } from '~/components/Charts/utils'
@@ -83,12 +84,13 @@ function makeSubgraphResult(priceHistory: typeof SUBGRAPH_PRICE_HISTORY, ohlc: t
 function makeCoinGeckoResult(
   priceHistory: typeof COINGECKO_PRICE_HISTORY | [],
   projectPriceHistory: typeof COINGECKO_PROJECT_PRICE_HISTORY | [] = [],
+  tokenChain: GraphQLApi.Chain | string = GraphQLApi.Chain.Ethereum,
 ) {
   return {
     data: {
       tokenProjects: [
         {
-          tokens: [{ chain: GraphQLApi.Chain.Ethereum, market: { priceHistory } }],
+          tokens: [{ chain: tokenChain, market: { priceHistory } }],
           markets: projectPriceHistory.length ? [{ price: { value: 32 }, priceHistory: projectPriceHistory }] : [],
         },
       ],
@@ -162,6 +164,21 @@ describe('useTokenPriceChartData', () => {
 
     // Subgraph entries start at value 10
     expect(result.current.entries[0].value).toBe(10)
+  })
+
+  it('uses dataChainId to match token-level CoinGecko history when request chain is an adapter enum', () => {
+    mockUseTokenPriceHistoryQuery.mockReturnValue(makeCoinGeckoResult(COINGECKO_PRICE_HISTORY, [], 'GNOSIS'))
+
+    const { result } = renderHook(() =>
+      useTokenPriceChartData({
+        variables: BASE_VARIABLES,
+        skip: false,
+        priceChartType: PriceChartType.LINE,
+        dataChainId: UniverseChainId.Gnosis,
+      }),
+    )
+
+    expect(result.current.entries[0].value).toBe(20)
   })
 
   it('uses project CoinGecko price history for multichain tokens when project market data is preferred', () => {

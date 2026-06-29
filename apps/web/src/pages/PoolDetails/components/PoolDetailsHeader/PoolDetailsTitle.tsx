@@ -5,7 +5,6 @@ import { Flex, styled, Text, TouchableArea, useMedia } from 'ui/src'
 import { ArrowDownArrowUp } from 'ui/src/components/icons/ArrowDownArrowUp'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
 import type { FeeData } from 'uniswap/src/features/positions/types'
 import { getTokenDetailsURL } from '~/appGraphql/data/util'
 import { HEADER_TRANSITION } from '~/components/StickyCollapsibleHeader/constants'
@@ -42,7 +41,7 @@ export function PoolDetailsTitle({
 }): JSX.Element {
   const media = useMedia()
   const { defaultChainId } = useEnabledChains()
-  const graphQLChain = toGraphQLChain(chainId ?? defaultChainId)
+  const tokenChainId = chainId ?? defaultChainId
   const titleVariant = getHeaderTitleVariant({ isCompact, media })
   return (
     <Flex row gap="$spacing12" alignItems="center" width="max-content">
@@ -50,7 +49,7 @@ export function PoolDetailsTitle({
         <StyledLink
           to={getTokenDetailsURL({
             address: token0?.address,
-            chain: graphQLChain,
+            chainId: tokenChainId,
           })}
         >
           <Text variant={titleVariant} transition={HEADER_TRANSITION}>
@@ -60,7 +59,7 @@ export function PoolDetailsTitle({
         <StyledLink
           to={getTokenDetailsURL({
             address: token1?.address,
-            chain: graphQLChain,
+            chainId: tokenChainId,
           })}
         >
           <Text variant={titleVariant} transition={HEADER_TRANSITION}>

@@ -101,6 +101,7 @@ export function TokenHoverCard({
     skip: !isOpen,
     priceChartType: PriceChartType.LINE,
     currentPriceOverride: spotPrice,
+    dataChainId: chainId,
   })
 
   const price = entries.length > 0 ? entries[entries.length - 1].value : undefined
@@ -149,10 +150,10 @@ export function TokenHoverCard({
   const handleExpand = useCallback((): void => {
     const url = getTokenDetailsURL({
       address: rawAddress,
-      chain: gqlChain,
+      chainId,
     })
     navigate(url)
-  }, [rawAddress, gqlChain, navigate])
+  }, [rawAddress, chainId, navigate])
 
   if (isTouchDevice || !currencyInfo || !isDataLivelinessUIEnabled) {
     return <>{children}</>

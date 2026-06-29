@@ -1,6 +1,7 @@
 import { GraphQLApi } from '@universe/api'
 import { UTCTimestamp } from 'lightweight-charts'
 import { USDC_MAINNET } from 'uniswap/src/constants/tokens'
+import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { useTokenSpotPrice } from 'uniswap/src/features/dataApi/tokenDetails/useTokenDetailsData'
 import { usePreferProjectMarketDataForCurrency } from 'uniswap/src/features/rwa/usePreferProjectMarketData'
 import { TimePeriod } from '~/appGraphql/data/util'
@@ -130,6 +131,28 @@ describe('useTokenPriceChartPanel', () => {
     )
 
     expect(result.current.showInvalidSkeleton).toBe(true)
+  })
+
+  it('uses dataChainId for spot price and chart data identity', () => {
+    renderHook(() =>
+      useTokenPriceChartPanel({
+        variables,
+        priceChartType: PriceChartType.LINE,
+        timePeriod: TimePeriod.DAY,
+        currency: USDC_MAINNET,
+        dataChainId: UniverseChainId.Gnosis,
+      }),
+    )
+
+    expect(mockUseTokenSpotPrice).toHaveBeenCalledWith(
+      `${UniverseChainId.Gnosis}-${variables.address}`,
+      expect.any(Object),
+    )
+    expect(mockUseTokenPriceChartData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataChainId: UniverseChainId.Gnosis,
+      }),
+    )
   })
 
   it('keeps project market data preference off when the token is not a tokenized security', () => {

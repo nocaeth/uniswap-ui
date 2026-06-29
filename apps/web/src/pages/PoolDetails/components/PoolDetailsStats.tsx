@@ -7,7 +7,6 @@ import { Flex, styled, Text, useMedia, View } from 'ui/src'
 import { nativeOnChain } from 'uniswap/src/constants/tokens'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useLocalizationContext } from 'uniswap/src/features/language/LocalizationContext'
 import { NumberType } from 'utilities/src/format/types'
 import { PoolData } from '~/appGraphql/data/pools/usePoolData'
@@ -147,7 +146,7 @@ const PoolBalanceTokenNames = ({ token, chainId }: { token: TokenFullData; chain
         <StyledLink
           to={getTokenDetailsURL({
             address: unwrappedToken.address,
-            chain: toGraphQLChain(chainId ?? defaultChainId),
+            chainId: chainId ?? defaultChainId,
           })}
         >
           <PoolBalanceText>{unwrappedToken.symbol}</PoolBalanceText>

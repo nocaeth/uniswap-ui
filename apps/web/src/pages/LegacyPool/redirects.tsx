@@ -1,8 +1,7 @@
 import { Navigate, useParams, useSearchParams } from 'react-router'
 import { useEnabledChains } from 'uniswap/src/features/chains/hooks/useEnabledChains'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
 import { useAccount } from '~/hooks/useAccount'
-import { searchParamToBackendName } from '~/utils/params/chainParams'
+import { getChainUrlParam, searchParamToBackendName } from '~/utils/params/chainParams'
 
 // /pool
 export function LegacyPoolRedirects() {
@@ -22,6 +21,6 @@ export function LegacyPositionPageRedirects() {
 
   const chainName =
     searchParamToBackendName(searchParams.get('chain'))?.toLowerCase() ??
-    toGraphQLChain(connectedChainId ?? defaultChainId).toLowerCase()
+    getChainUrlParam(connectedChainId ?? defaultChainId)
   return <Navigate to={`/positions/v3/${chainName}/${tokenId}`} replace />
 }

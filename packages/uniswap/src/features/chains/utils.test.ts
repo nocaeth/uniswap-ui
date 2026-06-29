@@ -11,6 +11,7 @@ import {
   getEnabledChains,
   getPollingIntervalByBlocktime,
   hexadecimalStringToInt,
+  toGraphQLEntityChain,
   toSupportedChainId,
   toUniswapWebAppLink,
 } from 'uniswap/src/features/chains/utils'
@@ -42,6 +43,16 @@ describe(fromGraphQLChain, () => {
 
   it('handles unsupported chain', () => {
     expect(fromGraphQLChain(GraphQLApi.Chain.UnknownChain)).toEqual(null)
+  })
+})
+
+describe(toGraphQLEntityChain, () => {
+  it('uses GNOSIS for Gnosis entity rows', () => {
+    expect(toGraphQLEntityChain(UniverseChainId.Gnosis)).toEqual('GNOSIS')
+  })
+
+  it('uses the backend GraphQL chain for non-Gnosis entities', () => {
+    expect(toGraphQLEntityChain(UniverseChainId.Mainnet)).toEqual(GraphQLApi.Chain.Ethereum)
   })
 })
 

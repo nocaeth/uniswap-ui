@@ -74,6 +74,7 @@ export interface RetryOptions {
 }
 
 export type GqlChainId = Exclude<GraphQLApi.Chain, GraphQLApi.Chain.UnknownChain | GraphQLApi.Chain.EthereumGoerli>
+export type GqlEntityChainId = GqlChainId | 'GNOSIS'
 
 export interface BackendChain {
   chain: GqlChainId

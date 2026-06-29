@@ -6,7 +6,7 @@ import {
   useTokenProjectTokensTvlPartsFragment as useTokenProjectTokensTvlPartsFragmentFromApi,
   useTokenProjectUrlsPartsFragment as useTokenProjectUrlsPartsFragmentFromApi,
 } from '@universe/api'
-import { toGraphQLChain } from 'uniswap/src/features/chains/utils'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import { currencyIdToChain, currencyIdToGraphQLAddress } from 'uniswap/src/utils/currencyId'
 
 function currencyIdToGraphQLTokenVariables(currencyId: string): {
@@ -24,7 +24,7 @@ function currencyIdToGraphQLTokenVariables(currencyId: string): {
 
   return {
     address: currencyIdToGraphQLAddress(currencyId),
-    chain: toGraphQLChain(chainId),
+    chain: toGraphQLEntityChain(chainId),
   }
 }
 

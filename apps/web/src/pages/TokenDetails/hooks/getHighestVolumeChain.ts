@@ -1,5 +1,5 @@
 import type { MultichainTokenEntry } from 'uniswap/src/components/MultichainTokenDetails/useOrderedMultichainEntries'
-import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
+import { toGraphQLEntityChain } from 'uniswap/src/features/chains/utils'
 import type { TokenQueryData } from '~/appGraphql/data/Token'
 
 type ProjectTokens = NonNullable<NonNullable<NonNullable<TokenQueryData>['project']>['tokens']>
@@ -30,7 +30,7 @@ export function getHighestVolumeChain(
   let bestVolume = 0
 
   for (const entry of multichainEntries) {
-    const gqlChain = getChainInfo(entry.chainId).backendChain.chain
+    const gqlChain = toGraphQLEntityChain(entry.chainId)
     const volume = volumeByChain.get(gqlChain) ?? 0
     if (volume > bestVolume) {
       bestVolume = volume
