@@ -1,7 +1,7 @@
 import { VersionedTransaction } from '@solana/web3.js'
 import { JupiterExecuteResponse, TradingApi } from '@universe/api'
 import { base64ToUint8, uint8ToBase64 } from '@universe/encoding'
-import { call, delay, spawn } from 'typed-redux-saga'
+import { call, delay, put, spawn } from 'typed-redux-saga'
 import { JupiterApiClient } from 'uniswap/src/data/apiClients/jupiterApi/JupiterFetchClient'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { refetchQueriesViaOnchainOverrideVariant } from 'uniswap/src/features/portfolio/portfolioUpdates/refetchQueriesViaOnchainOverrideVariantSaga'
@@ -22,7 +22,6 @@ import {
 import { tryCatch } from 'utilities/src/errors'
 import { ONE_SECOND_MS } from 'utilities/src/time/time'
 import { signSolanaTransactionWithCurrentWallet } from '~/connection/signSolanaTransaction'
-import store from '~/state'
 import { popupRegistry } from '~/state/popups/registry'
 import { PopupType } from '~/state/popups/types'
 import { getSwapTransactionInfo } from '~/state/sagas/transactions/utils'
@@ -103,7 +102,7 @@ function* updateAppState({
     },
   }
 
-  store.dispatch(addTransaction(transaction))
+  yield* put(addTransaction(transaction))
 
   popupRegistry.addPopup({ type: PopupType.Transaction, hash }, hash)
 

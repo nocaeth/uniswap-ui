@@ -18,7 +18,7 @@ import {
 import { isLimitOrder, isUniswapXOrderPending } from 'uniswap/src/features/transactions/utils/uniswapX.utils'
 import { zeroAddress } from '~/chains'
 import { usePendingTransactions, usePendingUniswapXOrders } from '~/state/transactions/hooks'
-import { isExistingTransaction } from '~/state/transactions/utils'
+import { isExistingTransaction } from '~/state/transactions/storeUtils'
 
 export function useOpenLimitOrders(account: string): { openLimitOrders: UniswapXOrderDetails[]; loading: boolean } {
   const dispatch = useDispatch()
