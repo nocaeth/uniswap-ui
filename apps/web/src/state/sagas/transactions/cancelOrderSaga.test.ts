@@ -5,25 +5,17 @@ import { cancelTransaction } from 'uniswap/src/features/transactions/slice'
 import { TransactionStatus } from 'uniswap/src/features/transactions/types/transactionDetails'
 import { cancelOrderSaga } from '~/state/sagas/transactions/cancelOrderSaga'
 
-const { mockGetSigner, mockLogger, mockUpdateTransaction, mockAppStore } = vi.hoisted(() => ({
+const { mockGetSigner, mockLogger, mockUpdateTransaction } = vi.hoisted(() => ({
   mockGetSigner: vi.fn(),
   mockLogger: {
     debug: vi.fn(),
     error: vi.fn(),
   },
   mockUpdateTransaction: vi.fn((payload: unknown) => ({ type: 'transactions/updateTransaction', payload })),
-  mockAppStore: {
-    getState: vi.fn(() => ({ transactions: {} })),
-    dispatch: vi.fn(),
-  },
 }))
 
 vi.mock('~/state/sagas/transactions/utils', () => ({
   getSigner: mockGetSigner,
-}))
-
-vi.mock('~/state', () => ({
-  default: mockAppStore,
 }))
 
 vi.mock('utilities/src/logger/logger', () => ({
@@ -115,8 +107,7 @@ describe('cancelOrderSaga', () => {
     mockSendTransaction.mockRejectedValue(error)
     const address = '0x123'
 
-    // Set up the app store mock so updateFailedCancellationStatus finds the transaction
-    mockAppStore.getState.mockReturnValue({
+    const { store, task } = createTestStore({
       transactions: {
         [address]: {
           [UniverseChainId.Mainnet]: {
@@ -132,8 +123,6 @@ describe('cancelOrderSaga', () => {
         },
       },
     })
-
-    const { store, task } = createTestStore()
 
     store.dispatch(
       cancelTransaction({

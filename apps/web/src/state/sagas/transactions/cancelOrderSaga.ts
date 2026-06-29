@@ -1,10 +1,9 @@
 import type { TransactionRequest } from '@ethersproject/abstract-provider'
-import { call, take } from 'typed-redux-saga'
+import { call, put, select, take } from 'typed-redux-saga'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { cancelTransaction, TransactionsState, updateTransaction } from 'uniswap/src/features/transactions/slice'
 import { TransactionStatus } from 'uniswap/src/features/transactions/types/transactionDetails'
 import { logger } from 'utilities/src/logger/logger'
-import store from '~/state'
 import { getSigner } from '~/state/sagas/transactions/utils'
 
 interface CancelOrderPayload {
@@ -31,7 +30,7 @@ export function* cancelOrderSaga() {
   }
 }
 
-function updateFailedCancellationStatus({
+function* updateFailedCancellationStatus({
   address,
   chainId,
   id,
@@ -39,12 +38,15 @@ function updateFailedCancellationStatus({
   address: string
   chainId: UniverseChainId
   id: string
-}): void {
-  const transaction = (store.getState() as { transactions: TransactionsState }).transactions[address]?.[chainId]?.[id]
+}) {
+  const transaction = yield* select(
+    (state: { transactions: TransactionsState }) => state.transactions[address]?.[chainId]?.[id],
+  )
+
   if (!transaction || transaction.status !== TransactionStatus.Cancelling) {
     return
   }
-  store.dispatch(
+  yield* put(
     updateTransaction({
       ...transaction,
       status: TransactionStatus.FailedCancel,
@@ -52,18 +54,18 @@ function updateFailedCancellationStatus({
   )
 }
 
-export async function handleCancelOrder(payload: CancelOrderPayload): Promise<void> {
+export function* handleCancelOrder(payload: CancelOrderPayload) {
   const { cancelRequest, address, chainId } = payload
 
   try {
-    const signer = await getSigner(address)
+    const signer = yield* call(getSigner, address)
 
     logger.debug('cancelOrderSaga', 'handleCancelOrder', 'Submitting cancellation transaction', {
       chainId,
       id: payload.id,
     })
 
-    const response = await signer.sendTransaction(cancelRequest)
+    const response = yield* call(() => signer.sendTransaction(cancelRequest))
 
     logger.debug('cancelOrderSaga', 'handleCancelOrder', 'Cancellation transaction submitted', {
       chainId,
@@ -75,7 +77,7 @@ export async function handleCancelOrder(payload: CancelOrderPayload): Promise<vo
     // (cancelled or filled) and update the transaction in Redux state.
     // No need to manually update the transaction status here.
   } catch (error) {
-    updateFailedCancellationStatus({ address, chainId, id: payload.id })
+    yield* updateFailedCancellationStatus({ address, chainId, id: payload.id })
     logger.error(error, {
       tags: { file: 'cancelOrderSaga', function: 'handleCancelOrder' },
       extra: { chainId, id: payload.id },

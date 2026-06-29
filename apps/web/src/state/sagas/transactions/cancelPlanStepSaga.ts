@@ -1,12 +1,11 @@
 import type { TransactionRequest } from '@ethersproject/abstract-provider'
-import { call, take } from 'typed-redux-saga'
+import { call, put, take } from 'typed-redux-saga'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { CancelableStepInfo } from 'uniswap/src/features/transactions/hooks/useIsCancelable'
 import { cancelPlanStep } from 'uniswap/src/features/transactions/slice'
 import { activePlanStore } from 'uniswap/src/features/transactions/swap/review/stores/activePlan/activePlanStore'
 import { signalPlanCancellation } from 'uniswap/src/utils/saga'
 import { logger } from 'utilities/src/logger/logger'
-import store from '~/state'
 import { handleCancelOrder } from '~/state/sagas/transactions/cancelOrderSaga'
 
 interface CancelPlanStepPayload {
@@ -35,7 +34,7 @@ export function* cancelPlanStepSaga() {
   }
 }
 
-async function handleCancelPlanStep(payload: CancelPlanStepPayload): Promise<void> {
+function* handleCancelPlanStep(payload: CancelPlanStepPayload) {
   const { planId, cancelRequest, cancelableStepInfo, address } = payload
   const { step, stepIndex, cancellationType } = cancelableStepInfo
 
@@ -51,7 +50,7 @@ async function handleCancelPlanStep(payload: CancelPlanStepPayload): Promise<voi
   activePlanStore.getState().actions.markPlanCancelled(planId)
 
   // Signal cancellation to interrupt watchPlanStep if it's waiting
-  store.dispatch(signalPlanCancellation({ planId }))
+  yield* put(signalPlanCancellation({ planId }))
 
   // Classic swaps cannot be cancelled on web - plan is already marked cancelled above
   // which will stop future steps from executing
@@ -68,7 +67,7 @@ async function handleCancelPlanStep(payload: CancelPlanStepPayload): Promise<voi
       throw new Error('Cannot cancel UniswapX step without orderId')
     }
 
-    await handleCancelOrder({
+    yield* call(handleCancelOrder, {
       cancelRequest,
       id: cancelableStepInfo.orderId,
       address,
