@@ -57,7 +57,7 @@ function isZapCounterparty(address: string | undefined): boolean {
   if (!address || isWxdaiOrNative(address) || isGnosisAddressEqual(address, GNOSIS_SDAI)) {
     return false
   }
-  return true
+  return isKnownGnosisSdaiZapCounterparty(address)
 }
 
 export function isKnownGnosisSdaiZapCounterparty(address: string | undefined): boolean {
@@ -66,9 +66,10 @@ export function isKnownGnosisSdaiZapCounterparty(address: string | undefined): b
 
 /**
  * Whether a swap should route through the sDAI zap, and in which direction. Eligible only for
- * EXACT_INPUT (the contract is exact-input only) between WXDAI/xDAI and a non-sDAI ERC20, and only
- * while the zap is configured. The quoter still compares the zap against the market before selecting
- * it, so this acts as a first-class sDAI graph edge without forcing every eligible pair through sDAI.
+ * EXACT_INPUT (the contract is exact-input only) between WXDAI/xDAI and a token in
+ * GNOSIS_SDAI_ZAP_COUNTERPARTIES, and only while the zap is configured. Limiting to the documented
+ * counterparty set avoids probing sDAI-cluster pools for pairs (e.g. WXDAI↔GNO) that can never win
+ * through the zap. The quoter still compares the zap against the market before selecting it.
  */
 export function getGnosisSdaiZapEligibility(args: {
   tokenIn: string | undefined

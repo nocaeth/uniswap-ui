@@ -94,13 +94,15 @@ describe('sdaiZap eligibility', () => {
     )
   })
 
-  it('routes any non-sDAI ERC20 counterparty through the first-class sDAI edge', () => {
-    expect(getGnosisSdaiZapEligibility({ tokenIn: WXDAI, tokenOut: RANDOM_TOKEN, tradeType: EXACT_INPUT })).toBe(
-      GnosisSdaiZapDirection.DepositAndSwap,
-    )
-    expect(getGnosisSdaiZapEligibility({ tokenIn: RANDOM_TOKEN, tokenOut: WXDAI, tradeType: EXACT_INPUT })).toBe(
-      GnosisSdaiZapDirection.SwapAndRedeem,
-    )
+  it('is not eligible for tokens outside the curated counterparty set (no eager probing)', () => {
+    // RANDOM_TOKEN is not in GNOSIS_SDAI_ZAP_COUNTERPARTIES — both directions must return undefined
+    // to avoid wasted sDAI-cluster pool discovery on pairs that can never win through the zap.
+    expect(
+      getGnosisSdaiZapEligibility({ tokenIn: WXDAI, tokenOut: RANDOM_TOKEN, tradeType: EXACT_INPUT }),
+    ).toBeUndefined()
+    expect(
+      getGnosisSdaiZapEligibility({ tokenIn: RANDOM_TOKEN, tokenOut: WXDAI, tradeType: EXACT_INPUT }),
+    ).toBeUndefined()
   })
 
   it('routes counterparty -> WXDAI/native as swap-and-redeem', () => {
