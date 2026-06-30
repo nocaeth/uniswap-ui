@@ -39,7 +39,7 @@ import { createPublicClient, getAddress, http, type Address, type PublicClient }
 import { gnosis } from 'viem/chains'
 import { fetchExploreStats, getTokenRow } from './envio.js'
 import type { EnvioToken } from './envio.js'
-import { deriveOsgnoPriceUsd, fetchOsgnoRate, GNO_ADDRESS, isOsgnoAddress, OSGNO_ADDRESS } from './osgnoOracle.js'
+import { getEffectiveTokenPriceUSD } from './prices.js'
 
 // Gnosis-only deployment. Uniswap's DataApiService (positions backend) does not
 // cover Gnosis, so we serve ListPositions/GetPosition for V3 by reading the
@@ -88,37 +88,6 @@ const RPC_URL =
   process.env.POSITIONS_RPC_URL ?? process.env.GNOSIS_RPC_URL ?? process.env.RPC_GNOSIS ?? 'http://localhost:8545'
 
 const client: PublicClient = createPublicClient({ chain: gnosis, transport: http(RPC_URL) })
-const OSGNO_RATE_CACHE_MS = 60_000
-
-let cachedOsgnoRate: { value: number; expiresAt: number } | undefined
-
-async function getCachedOsgnoRate(): Promise<number | undefined> {
-  const now = Date.now()
-  if (cachedOsgnoRate && cachedOsgnoRate.expiresAt > now) {
-    return cachedOsgnoRate.value
-  }
-  const value = await fetchOsgnoRate(client).catch((error) => {
-    console.warn('osGNO oracle price unavailable; falling back to indexed osGNO price', error)
-    return undefined
-  })
-  if (value !== undefined) {
-    cachedOsgnoRate = { value, expiresAt: now + OSGNO_RATE_CACHE_MS }
-  }
-  return value
-}
-
-function getIndexedTokenPriceUSD(address: string): number | undefined {
-  const priceUSD = getTokenRow(address)?.priceUSD
-  return priceUSD && priceUSD > 0 ? priceUSD : undefined
-}
-
-async function getEffectiveTokenPriceUSD(address: string, indexedPriceUSD?: number): Promise<number | undefined> {
-  const fallbackPriceUSD = indexedPriceUSD && indexedPriceUSD > 0 ? indexedPriceUSD : getIndexedTokenPriceUSD(address)
-  if (!isOsgnoAddress(address)) {
-    return fallbackPriceUSD
-  }
-  return deriveOsgnoPriceUsd(getIndexedTokenPriceUSD(GNO_ADDRESS), await getCachedOsgnoRate()) ?? fallbackPriceUSD
-}
 
 const Q128 = 1n << 128n
 const MAX_UINT256 = (1n << 256n) - 1n
@@ -851,7 +820,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
       return canonical === undefined || !presentAddrs.has(canonical)
     })
 
-    const [results, nativeBalance, osGnoPriceUsd] = await Promise.all([
+    const [results, nativeBalance, tokenPricesUsd] = await Promise.all([
       entries.length
         ? client.multicall({
             allowFailure: true,
@@ -864,9 +833,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
           })
         : Promise.resolve([] as { status: 'success' | 'failure'; result?: unknown }[]),
       client.getBalance({ address: owner }).catch(() => 0n),
-      entries.some((entry) => isOsgnoAddress(entry.address))
-        ? getEffectiveTokenPriceUSD(OSGNO_ADDRESS)
-        : Promise.resolve(undefined),
+      Promise.all(entries.map((entry) => getEffectiveTokenPriceUSD(entry.address, entry.token.priceUSD))),
     ])
 
     const balances: PortfolioBalance[] = []
@@ -942,7 +909,7 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
         name: entry.token.name,
         decimals: entry.token.decimals,
         raw,
-        priceUsd: isOsgnoAddress(entry.address) ? (osGnoPriceUsd ?? entry.token.priceUSD) : entry.token.priceUSD,
+        priceUsd: tokenPricesUsd[i] ?? entry.token.priceUSD,
         priceChange1d: entry.token.priceChange1d,
         logoUrl: entry.token.logo,
         type: TokenType.ERC20,
@@ -951,13 +918,14 @@ async function getPortfolio(req: GetPortfolioRequest): Promise<GetPortfolioRespo
 
     if (nativeBalance > 0n) {
       const wxdai = getTokenRow(WXDAI_ADDRESS)
+      const wxdaiPriceUsd = await getEffectiveTokenPriceUSD(WXDAI_ADDRESS, wxdai?.priceUSD)
       addBalance({
         address: NATIVE_XDAI_ADDRESS,
         symbol: 'xDAI',
         name: 'xDAI',
         decimals: 18,
         raw: nativeBalance,
-        priceUsd: wxdai?.priceUSD ?? 0,
+        priceUsd: wxdaiPriceUsd ?? wxdai?.priceUSD ?? 0,
         priceChange1d: wxdai?.priceChange1d ?? 0,
         logoUrl: wxdai?.logo ?? '',
         type: TokenType.NATIVE,
