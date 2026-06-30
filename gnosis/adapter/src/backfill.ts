@@ -47,6 +47,9 @@ const SWAP_TOPIC = '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115f
 const MINT_TOPIC = '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde'
 const BURN_TOPIC = '0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c'
 const FACTORY_START_BLOCK = Number(process.env.FACTORY_START_BLOCK ?? 27145342)
+// Stop indexing this many blocks short of chain head so we never persist non-final
+// (reorg-able) blocks. Must match sync.ts so the two paths meet at the same boundary.
+const SYNC_FINALITY_BLOCKS = Number(process.env.SYNC_FINALITY_BLOCKS ?? 24)
 const BLOCKS_PER_DAY = 17280 // Gnosis ~5s blocks
 
 const DAY = 86400
@@ -109,26 +112,49 @@ interface HyperResponse {
   archive_height: number
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// Rate-limit (429) plus transient gateway/server errors worth retrying.
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+
+// Capped exponential backoff with jitter.
+function backoffMs(attempt: number): number {
+  const base = Math.min(1_500 * 2 ** attempt, 30_000)
+  return base + Math.random() * base * 0.25
+}
+
 async function hyperQuery(body: unknown): Promise<HyperResponse> {
   if (!ENVIO_API_TOKEN) {
     throw new Error('ENVIO_API_TOKEN is required for HyperSync (https://envio.dev/app/api-tokens)')
   }
+  let lastError: Error = new Error('HyperSync: too many retries')
   for (let attempt = 0; attempt < 15; attempt++) {
-    const res = await fetch(HYPERSYNC_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${ENVIO_API_TOKEN}` },
-      body: JSON.stringify(body),
-    })
-    if (res.status === 429) {
-      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
+    let res: Response
+    try {
+      res = await fetch(HYPERSYNC_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${ENVIO_API_TOKEN}` },
+        body: JSON.stringify(body),
+      })
+    } catch (error) {
+      // Network/connection failure — transient, retry with backoff.
+      lastError = error instanceof Error ? error : new Error(String(error))
+      await sleep(backoffMs(attempt))
       continue
     }
-    if (!res.ok) {
+    if (res.ok) {
+      return (await res.json()) as HyperResponse
+    }
+    // Fail fast on non-retryable client errors; back off on 429 + transient 5xx.
+    if (!RETRYABLE_STATUS.has(res.status)) {
       throw new Error(`HyperSync ${res.status}: ${await res.text()}`)
     }
-    return (await res.json()) as HyperResponse
+    lastError = new Error(`HyperSync ${res.status}: ${await res.text()}`)
+    await sleep(backoffMs(attempt))
   }
-  throw new Error('HyperSync: too many 429s')
+  throw lastError
 }
 
 async function hyperHeight(): Promise<number> {
@@ -227,6 +253,10 @@ export async function runBackfill(): Promise<void> {
   const t0 = Date.now()
   const client = createPublicClient({ chain: gnosis, transport: http(RPC_URL) })
   const height = await hyperHeight()
+  // Index only up to the finality boundary; sync.ts continues from here once the
+  // tail blocks are final. Persisting live blocks here would leave reorg-able data
+  // with no rollback path (sync only moves forward from updatedAtBlock).
+  const target = Math.max(FACTORY_START_BLOCK, height - SYNC_FINALITY_BLOCKS)
   const nowTs = Math.floor(Date.now() / 1000)
   const windowFromBlock =
     process.env.INDEX_FROM_BLOCK != null
@@ -237,7 +267,7 @@ export async function runBackfill(): Promise<void> {
   const hourlyFromTs = nowTs - HOURLY_DAYS * DAY
   const txFromTs = nowTs - TX_DAYS * DAY
   console.log(
-    `HyperSync height ${height}; RPC ${RPC_URL}\nindex window: blocks ${windowFromBlock}..${height} (~${INDEX_DAYS || 'all'}d), hourly ${HOURLY_DAYS}d, tx feed ${TX_DAYS}d`,
+    `HyperSync height ${height} (indexing to final block ${target}, ${height - target} blocks behind head); RPC ${RPC_URL}\nindex window: blocks ${windowFromBlock}..${target} (~${INDEX_DAYS || 'all'}d), hourly ${HOURLY_DAYS}d, tx feed ${TX_DAYS}d`,
   )
 
   // 1) All pools from the factory (full history — cheap).
@@ -245,6 +275,7 @@ export async function runBackfill(): Promise<void> {
   for (let from = FACTORY_START_BLOCK; ; ) {
     const r = await hyperQuery({
       from_block: from,
+      to_block: target + 1,
       logs: [{ address: [FACTORY], topics: [[POOL_CREATED_TOPIC]] }],
       field_selection: { log: ['topic1', 'topic2', 'topic3', 'data', 'block_number'] },
     })
@@ -259,7 +290,7 @@ export async function runBackfill(): Promise<void> {
         })
       }
     }
-    if (!r.next_block || r.next_block <= from) {
+    if (!r.next_block || r.next_block <= from || r.next_block > target) {
       break
     }
     from = r.next_block
@@ -337,6 +368,7 @@ export async function runBackfill(): Promise<void> {
   for (let from = windowFromBlock; ; ) {
     const r = await hyperQuery({
       from_block: from,
+      to_block: target + 1,
       logs: [{ address: poolAddrs, topics: [[SWAP_TOPIC, MINT_TOPIC, BURN_TOPIC]] }],
       field_selection: {
         log: ['address', 'topic0', 'data', 'block_number', 'transaction_hash', 'log_index'],
@@ -405,6 +437,7 @@ export async function runBackfill(): Promise<void> {
           const amt1 = Number(uint('0x' + raw.slice(192, 256))) / 10 ** d1
           addMap(a.dayDelta0, day, amt0)
           addMap(a.dayDelta1, day, amt1)
+          addMap(a.dayTx, day, 1)
           if (ts >= txFromTs) {
             recentTx.push({
               hash: lg.transaction_hash ?? '',
@@ -425,6 +458,7 @@ export async function runBackfill(): Promise<void> {
           const amt1 = Number(uint('0x' + raw.slice(128, 192))) / 10 ** d1
           addMap(a.dayDelta0, day, -amt0)
           addMap(a.dayDelta1, day, -amt1)
+          addMap(a.dayTx, day, 1)
           if (ts >= txFromTs) {
             recentTx.push({
               hash: lg.transaction_hash ?? '',
@@ -443,7 +477,7 @@ export async function runBackfill(): Promise<void> {
         }
       }
     }
-    if (!r.next_block || r.next_block <= from || r.next_block > height) {
+    if (!r.next_block || r.next_block <= from || r.next_block > target) {
       break
     }
     from = r.next_block
@@ -875,7 +909,7 @@ export async function runBackfill(): Promise<void> {
 
   // 12) Meta.
   const insMeta = db.prepare('INSERT OR REPLACE INTO meta (key,value) VALUES (?,?)')
-  insMeta.run('updatedAtBlock', String(height))
+  insMeta.run('updatedAtBlock', String(target))
   insMeta.run('updatedAt', String(nowTs))
   insMeta.run('indexDays', String(INDEX_DAYS))
   insMeta.run('chainId', '100')
