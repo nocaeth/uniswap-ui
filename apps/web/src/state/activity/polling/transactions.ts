@@ -154,6 +154,67 @@ export function usePollPendingTransactions(onActivityUpdate: OnActivityUpdate) {
     [account.chainId, account.address, account.isConnected, blockTimestamp, removeTransaction, publicClient],
   )
 
+  // The Trading API does not serve Gnosis (and other chains outside TradingApi.ChainId), so pending
+  // transactions there cannot be polled via fetchSwaps. Poll the receipt on-chain via the public client.
+  const getReceiptOnChain = useCallback(
+    (tx: PendingTransactionDetails): { promise: Promise<ReceiptWithStatus>; cancel: () => void } => {
+      const pollingInterval = account.chainId ? getChainInfo(account.chainId).tradingApiPollingIntervalMs : ms('1s')
+      const retryOptions: RetryOptions = {
+        n: 20,
+        minWait: pollingInterval,
+        medWait: pollingInterval,
+        maxWait: pollingInterval,
+      }
+
+      return retry(() => {
+        if (!tx.hash || !isValidHexString(tx.hash)) {
+          throw new Error(`Invalid transaction hash: hash not defined`)
+        }
+        if (!publicClient) {
+          throw new RetryableError()
+        }
+        return publicClient
+          .getTransactionReceipt({ hash: tx.hash })
+          .then((viemReceipt) => {
+            const finalizedStatus: 'success' | 'reverted' = viemReceipt.status === 'success' ? 'success' : 'reverted'
+
+            const adaptedReceipt: TransactionReceipt = receiptFromViemReceipt(viemReceipt) ?? {
+              transactionIndex: 0,
+              blockHash: tx.hash ?? '',
+              blockNumber: 0,
+              confirmedTime: Date.now(),
+              gasUsed: 0,
+              effectiveGasPrice: 0,
+            }
+
+            return { status: finalizedStatus, receipt: adaptedReceipt } as ReceiptWithStatus
+          })
+          .catch(() => {
+            // viem throws TransactionReceiptNotFoundError while the tx is still pending.
+            // Mirror the Trading API path's cleanup of stale txs before retrying.
+            if (account.isConnected) {
+              if (tx.deadline) {
+                if (blockTimestamp && tx.deadline < Number(blockTimestamp)) {
+                  removeTransaction(tx.id)
+                }
+              } else if (tx.addedTime + ms(`6h`) < Date.now()) {
+                removeTransaction(tx.id)
+              }
+            }
+
+            throw new RetryableError()
+          })
+      }, retryOptions) as { promise: Promise<ReceiptWithStatus>; cancel: () => void }
+    },
+    [account.chainId, account.isConnected, blockTimestamp, removeTransaction, publicClient],
+  )
+
+  const getReceipt = useCallback(
+    (tx: PendingTransactionDetails) =>
+      toTradingApiSupportedChainId(account.chainId) ? getReceiptWithTradingApi(tx) : getReceiptOnChain(tx),
+    [account.chainId, getReceiptWithTradingApi, getReceiptOnChain],
+  )
+
   useEffect(() => {
     if (!account.address || !account.chainId || !publicClient || !lastBlockNumber || !hasPending) {
       return undefined
@@ -162,7 +223,7 @@ export function usePollPendingTransactions(onActivityUpdate: OnActivityUpdate) {
     const cancels = pendingTransactions
       .filter((tx) => shouldCheckTransaction(lastBlockNumber, tx))
       .map((tx) => {
-        const { promise, cancel } = getReceiptWithTradingApi(tx)
+        const { promise, cancel } = getReceipt(tx)
         promise
           .then(({ status, receipt, sponsorInfo }) => {
             if (!account.chainId) {
@@ -210,6 +271,6 @@ export function usePollPendingTransactions(onActivityUpdate: OnActivityUpdate) {
     hasPending,
     dispatch,
     onActivityUpdate,
-    getReceiptWithTradingApi,
+    getReceipt,
   ])
 }
