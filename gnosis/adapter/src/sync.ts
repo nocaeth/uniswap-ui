@@ -163,29 +163,48 @@ interface RawEvent {
   feeUSD: number
 }
 
+// Rate-limit (429) plus transient gateway/server errors worth retrying.
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
+
+// Capped exponential backoff with jitter.
+function backoffMs(attempt: number): number {
+  const base = Math.min(1_500 * 2 ** attempt, 30_000)
+  return base + Math.random() * base * 0.25
+}
+
 async function hyperQuery(body: unknown): Promise<HyperResponse> {
   if (!ENVIO_API_TOKEN) {
     throw new Error('ENVIO_API_TOKEN is required for HyperSync (https://envio.dev/app/api-tokens)')
   }
+  let lastError: Error = new Error('HyperSync: too many retries')
   for (let attempt = 0; attempt < 15; attempt++) {
-    const res = await fetch(HYPERSYNC_URL, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${ENVIO_API_TOKEN}`,
-      },
-      body: JSON.stringify(body),
-    })
-    if (res.status === 429) {
-      await sleep(1_500 * (attempt + 1))
+    let res: Response
+    try {
+      res = await fetch(HYPERSYNC_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${ENVIO_API_TOKEN}`,
+        },
+        body: JSON.stringify(body),
+      })
+    } catch (error) {
+      // Network/connection failure — transient, retry with backoff.
+      lastError = error instanceof Error ? error : new Error(String(error))
+      await sleep(backoffMs(attempt))
       continue
     }
-    if (!res.ok) {
+    if (res.ok) {
+      return (await res.json()) as HyperResponse
+    }
+    // Fail fast on non-retryable client errors; back off on 429 + transient 5xx.
+    if (!RETRYABLE_STATUS.has(res.status)) {
       throw new Error(`HyperSync ${res.status}: ${await res.text()}`)
     }
-    return (await res.json()) as HyperResponse
+    lastError = new Error(`HyperSync ${res.status}: ${await res.text()}`)
+    await sleep(backoffMs(attempt))
   }
-  throw new Error('HyperSync: too many 429s')
+  throw lastError
 }
 
 async function hyperHeight(): Promise<number> {
@@ -715,6 +734,10 @@ async function fetchNewEvents(
   const poolById = new Map(pools.map((p) => [p.id, p]))
   const tokenDecimals = new Map(loadTokens().map((t) => [t.id, t.decimals]))
   const events: RawEvent[] = []
+  // Scaling note: every known pool address is sent in one log selection. Efficient at
+  // current pool counts; if the list grows large enough to hit request-size/planning
+  // limits, drop the address filter (topic-only scan) and keep the local poolById
+  // filter below, or chunk poolAddresses across multiple queries.
   const poolAddresses = pools.map((p) => p.id)
   for (let from = fromBlock; ; ) {
     const r = await hyperQuery({
@@ -820,7 +843,9 @@ function applyEvents(events: RawEvent[]): number {
       insertSeen.run(ev.id, ev.blockNumber, ev.timestamp)
       const day = floorDay(ev.timestamp)
       const hour = floorHour(ev.timestamp)
-      const txCount = ev.type === 'SWAP' ? 1 : 0
+      // Count every event (swap/mint/burn) toward pool txCount, matching Uniswap
+      // subgraph semantics; parsePoolEvent only returns these three types.
+      const txCount = 1
       upsertPoolDay.run(ev.poolId, day, ev.volumeUSD, 0, ev.feeUSD, ev.token0Price, ev.token1Price, txCount)
       upsertPoolHour.run(ev.poolId, hour, ev.volumeUSD, ev.token0Price, ev.token1Price)
       upsertTokenDay.run(ev.token0, day, tokenPrice.get(ev.token0) ?? 0, ev.volumeUSD, 0)
