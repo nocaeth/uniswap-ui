@@ -8,6 +8,7 @@ import {
   GNOSIS_GNO,
   GNOSIS_SDAI,
   GNOSIS_USDCE,
+  GNOSIS_WETH,
   GNOSIS_WSTETH,
   GNOSIS_WXDAI,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
@@ -30,6 +31,7 @@ describe('Gnosis pool discovery', () => {
       lower(GNOSIS_EURE_V2),
       lower(GNOSIS_WSTETH),
       lower(GNOSIS_GNO),
+      lower(GNOSIS_WETH),
     ])
   })
 

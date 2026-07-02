@@ -54,6 +54,7 @@ export const GNOSIS_BASE_TOKENS: string[] = [
   GNOSIS_EURE_V2,
   GNOSIS_WSTETH,
   GNOSIS_GNO,
+  GNOSIS_WETH,
 ]
 
 export const GNOSIS_STABLE_ROUTE_TOKENS: string[] = [
