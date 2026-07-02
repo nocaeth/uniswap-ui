@@ -59,6 +59,8 @@ export interface BuildGnosisRouteCandidatesArgs {
   maxRoutes?: number
   maxHops?: number
   routingHubs?: readonly string[]
+  // Token decimals keyed by lowercased address; enables value-normalized depth ranking.
+  decimalsByAddress?: ReadonlyMap<string, number>
 }
 
 export interface BuildGnosisRouteCandidatesFromPoolEdgesArgs extends Omit<BuildGnosisRouteCandidatesArgs, 'graph'> {
@@ -68,6 +70,7 @@ export interface BuildGnosisRouteCandidatesFromPoolEdgesArgs extends Omit<BuildG
 interface RankedCandidateRoute {
   route: CandidateRoute
   minimumLiquidity: BigNumber
+  minimumNormalizedDepth?: number
   minimumTvlUSD?: number
   spotPricePenalty?: number
   preferenceScore: number
@@ -250,6 +253,7 @@ export function buildGnosisRouteCandidatesFromPoolEdges(
     maxRoutes: args.maxRoutes,
     maxHops: args.maxHops,
     routingHubs: args.routingHubs,
+    decimalsByAddress: args.decimalsByAddress,
   })
 }
 
@@ -278,6 +282,7 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
           tokenOut,
           maxHops,
           routingHubs: routeHubCandidates.filter((hub) => hub !== tokenIn && hub !== tokenOut),
+          decimalsByAddress: args.decimalsByAddress,
         }),
       )
     }
@@ -291,10 +296,57 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
     }
   }
 
-  return [...uniqueRoutes.values()]
-    .sort(compareRankedRoutes)
-    .slice(0, maxRoutes)
-    .map((rankedRoute) => rankedRoute.route)
+  const sortedRoutes = [...uniqueRoutes.values()].sort(compareRankedRoutes)
+  return selectStratifiedRoutes({ sortedRoutes, maxRoutes }).map((rankedRoute) => rankedRoute.route)
+}
+
+/**
+ * Applies the maxRoutes cap with per-hop-count representation. A plain slice of the hops-first
+ * ordering would let a large population of short routes crowd every longer route out of the cap,
+ * silently undoing a deeper hop search exactly when it matters (cluster-crossing pairs that only
+ * connect via 4-5 hops). Selection round-robins across hop-count groups (best of each length, then
+ * second best of each, …); survivors keep the full comparator order, so when the cap does not bind
+ * the output is identical to the plain sort.
+ */
+function selectStratifiedRoutes(args: {
+  sortedRoutes: readonly RankedCandidateRoute[]
+  maxRoutes: number
+}): RankedCandidateRoute[] {
+  const { sortedRoutes, maxRoutes } = args
+  if (sortedRoutes.length <= maxRoutes) {
+    return [...sortedRoutes]
+  }
+
+  // Groups inherit the comparator order (sortedRoutes is hops-first, best-first within a hop count).
+  const routesByHopCount = new Map<number, RankedCandidateRoute[]>()
+  for (const route of sortedRoutes) {
+    const hopCount = route.route.fees.length
+    const group = routesByHopCount.get(hopCount) ?? []
+    group.push(route)
+    routesByHopCount.set(hopCount, group)
+  }
+
+  const groups = [...routesByHopCount.entries()].sort(([a], [b]) => a - b).map(([, group]) => group)
+  const selected = new Set<RankedCandidateRoute>()
+  for (let rank = 0; selected.size < maxRoutes; rank++) {
+    let pickedAny = false
+    for (const group of groups) {
+      const route = group[rank]
+      if (!route) {
+        continue
+      }
+      selected.add(route)
+      pickedAny = true
+      if (selected.size >= maxRoutes) {
+        break
+      }
+    }
+    if (!pickedAny) {
+      break
+    }
+  }
+
+  return sortedRoutes.filter((route) => selected.has(route))
 }
 
 function buildRankedGnosisRouteCandidates(args: {
@@ -303,6 +355,7 @@ function buildRankedGnosisRouteCandidates(args: {
   tokenOut: string
   maxHops: number
   routingHubs: readonly string[]
+  decimalsByAddress?: ReadonlyMap<string, number>
 }): RankedCandidateRoute[] {
   const rankedRoutes: RankedCandidateRoute[] = []
   const visitedTokens = new Set<string>([args.tokenIn])
@@ -354,6 +407,7 @@ function buildRankedGnosisRouteCandidates(args: {
               routeEdges: nextRouteEdges,
               tokenIn: args.tokenIn,
               tokenOut: args.tokenOut,
+              decimalsByAddress: args.decimalsByAddress,
             }),
           )
           continue
@@ -386,11 +440,13 @@ function createRankedRoute(args: {
   routeEdges: readonly GnosisViablePoolGraphEdge[]
   tokenIn: string
   tokenOut: string
+  decimalsByAddress?: ReadonlyMap<string, number>
 }): RankedCandidateRoute {
-  const { route, routeEdges, tokenIn, tokenOut } = args
+  const { route, routeEdges, tokenIn, tokenOut, decimalsByAddress } = args
   return {
     route,
     minimumLiquidity: getMinimumLiquidity(routeEdges),
+    minimumNormalizedDepth: getMinimumNormalizedDepth({ routeEdges, decimalsByAddress }),
     minimumTvlUSD: getMinimumTvlUSD(routeEdges),
     spotPricePenalty: getRouteSpotPricePenalty({ route, routeEdges }),
     preferenceScore: getRoutePreferenceScore({ route, tokenIn, tokenOut }),
@@ -403,7 +459,7 @@ function getRouteSpotPricePenalty(args: {
   route: CandidateRoute
   routeEdges: readonly GnosisViablePoolGraphEdge[]
 }): number | undefined {
-  let logSpotRate = 0
+  let logExpectedRate = 0
 
   for (const [index, edge] of args.routeEdges.entries()) {
     const tokenIn = args.route.tokens[index]
@@ -416,10 +472,13 @@ function getRouteSpotPricePenalty(args: {
     if (hopLogSpotRate === undefined) {
       return undefined
     }
-    logSpotRate += hopLogSpotRate
+    // Discount each hop by its pool fee so the penalty approximates the expected log output at
+    // zero size, not just the raw spot rate — otherwise a HIGH-fee route ranks equal to a
+    // LOWEST-fee route at the same spot price.
+    logExpectedRate += hopLogSpotRate + Math.log(1 - edge.fee / 1_000_000)
   }
 
-  return -logSpotRate
+  return -logExpectedRate
 }
 
 function getEdgeLogSpotRate(args: {
@@ -477,6 +536,65 @@ function getMinimumLiquidity(routeEdges: readonly GnosisViablePoolGraphEdge[]): 
   return minimumLiquidity
 }
 
+/**
+ * Minimum value-normalized depth (whole token1 units) across a route's pools, or undefined when
+ * any hop lacks slot0 state or token1 decimals. Per pool the in-range token1-side depth is
+ * L * sqrtPriceX96 / 2^96, scaled by 10^-token1Decimals to whole tokens. This ignores tick-range
+ * boundaries and the token0 side, so it is only an approximation — but unlike raw L it is
+ * comparable across pools with different token decimals and prices.
+ */
+function getMinimumNormalizedDepth(args: {
+  routeEdges: readonly GnosisViablePoolGraphEdge[]
+  decimalsByAddress?: ReadonlyMap<string, number>
+}): number | undefined {
+  const { routeEdges, decimalsByAddress } = args
+  if (!decimalsByAddress) {
+    return undefined
+  }
+
+  let minimumDepth: number | undefined
+  for (const edge of routeEdges) {
+    const depth = getEdgeNormalizedDepth({ edge, decimalsByAddress })
+    if (depth === undefined) {
+      return undefined
+    }
+    minimumDepth = minimumDepth === undefined ? depth : Math.min(minimumDepth, depth)
+  }
+
+  return minimumDepth
+}
+
+function getEdgeNormalizedDepth(args: {
+  edge: GnosisViablePoolGraphEdge
+  decimalsByAddress: ReadonlyMap<string, number>
+}): number | undefined {
+  const { edge, decimalsByAddress } = args
+  if (!edge.sqrtPriceX96 || edge.sqrtPriceX96.lte(0)) {
+    return undefined
+  }
+
+  const tokenA = normalizeGnosisRouteTokenAddress(edge.tokenA)
+  const tokenB = normalizeGnosisRouteTokenAddress(edge.tokenB)
+  if (!tokenA || !tokenB || tokenA === tokenB) {
+    return undefined
+  }
+
+  const token1 = tokenA < tokenB ? tokenB : tokenA
+  const token1Decimals = decimalsByAddress.get(token1)
+  if (token1Decimals === undefined) {
+    return undefined
+  }
+
+  const liquidity = Number(edge.liquidity.toString())
+  const sqrtPrice = Number(edge.sqrtPriceX96.toString())
+  if (!Number.isFinite(liquidity) || !Number.isFinite(sqrtPrice) || liquidity <= 0 || sqrtPrice <= 0) {
+    return undefined
+  }
+
+  const depth = (liquidity * sqrtPrice) / 2 ** 96 / 10 ** token1Decimals
+  return Number.isFinite(depth) ? depth : undefined
+}
+
 function getMinimumTvlUSD(routeEdges: readonly GnosisViablePoolGraphEdge[]): number | undefined {
   let minimumTvlUSD: number | undefined
 
@@ -527,10 +645,10 @@ function compareRankedRoutes(a: RankedCandidateRoute, b: RankedCandidateRoute): 
     return hopDelta
   }
 
-  // Total-ordered spot comparison applied once, before the TVL check.
+  // Total-ordered fee-discounted spot comparison applied once, before the TVL check.
   // Routes whose marginal price couldn't be computed (undefined/non-finite) map to +Infinity
-  // so they rank last on the price criterion.  This preserves the "better spot beats higher TVL"
-  // design while making the comparator a provably total/transitive order.
+  // so they rank last on the price criterion.  This preserves the "better expected output beats
+  // higher TVL" design while making the comparator a provably total/transitive order.
   const spotA =
     a.spotPricePenalty !== undefined && Number.isFinite(a.spotPricePenalty)
       ? a.spotPricePenalty
@@ -545,6 +663,16 @@ function compareRankedRoutes(a: RankedCandidateRoute, b: RankedCandidateRoute): 
 
   if (a.minimumTvlUSD !== undefined && b.minimumTvlUSD !== undefined && a.minimumTvlUSD !== b.minimumTvlUSD) {
     return b.minimumTvlUSD - a.minimumTvlUSD
+  }
+
+  // Depth in normalized token1 units when both routes have it (raw L is incomparable across pools
+  // with different token decimals/prices); otherwise fall back to the raw in-range L comparison.
+  if (
+    a.minimumNormalizedDepth !== undefined &&
+    b.minimumNormalizedDepth !== undefined &&
+    a.minimumNormalizedDepth !== b.minimumNormalizedDepth
+  ) {
+    return b.minimumNormalizedDepth - a.minimumNormalizedDepth
   }
 
   if (!a.minimumLiquidity.eq(b.minimumLiquidity)) {

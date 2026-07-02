@@ -191,6 +191,11 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   [GNOSIS_COW.toLowerCase()]: { symbol: 'COW', decimals: 18 },
 }
 
+// Decimals view of KNOWN_TOKENS for value-normalized depth ranking in candidate generation.
+const KNOWN_TOKEN_DECIMALS: ReadonlyMap<string, number> = new Map(
+  Object.entries(KNOWN_TOKENS).map(([address, meta]) => [address, meta.decimals]),
+)
+
 // Token metadata is immutable, so cache it across quotes/keystrokes indefinitely.
 const tokenMetaCache = new Map<string, TokenMeta>()
 // Pool state changes every block; cache it only briefly to dedupe rapid refetches.
@@ -258,6 +263,7 @@ function buildCandidateRoutesFromPoolEdges(args: {
     tokenOut: args.tokenOut,
     graph: buildGnosisPoolGraph(args.poolEdges),
     maxHops: args.maxHops,
+    decimalsByAddress: KNOWN_TOKEN_DECIMALS,
   })
 }
 
