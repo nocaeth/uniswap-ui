@@ -1,5 +1,6 @@
 import { Interface } from '@ethersproject/abi'
 import { BigNumber } from '@ethersproject/bignumber'
+import type { JsonRpcProvider } from '@ethersproject/providers'
 import { FeeAmount } from '@uniswap/v3-sdk'
 import { TradingApi } from '@universe/api'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
@@ -29,16 +30,22 @@ import {
 import {
   buildCandidateRouteSets,
   buildPermitTransactionIfNeeded,
+  clearGnosisTokenMetaCache,
+  estimateRouteImpactPct,
   fetchGnosisQuote,
   getGnosisCurveV3MixedRouteTemplate,
   getGnosisQuoteSlippageAmounts,
   getGnosisSlippageTolerance,
   GNOSIS_MAX_SLIPPAGE_PERCENT,
   isGnosisQuotePriceImpactViable,
+  prefetchGnosisTokenMetas,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
 import { discoverGnosisPoolGraphEdges } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolDiscovery'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
-import type { GnosisPoolGraphEdge } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
+import {
+  getRoutePoolKey,
+  type GnosisPoolGraphEdge,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
 import { GNOSIS_SDAI_ADAPTER_QUOTE_ID } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/sdaiAdapter'
 
 vi.mock('uniswap/src/features/transactions/swap/services/gnosisRouter/provider', () => ({
@@ -326,6 +333,77 @@ describe('getGnosisSlippageTolerance', () => {
   it('uses the default when unset and floors negatives to zero', () => {
     expect(getGnosisSlippageTolerance({})).toBe(0.5)
     expect(getGnosisSlippageTolerance({ slippageTolerance: -1 })).toBe(0)
+  })
+})
+
+describe('token metadata prefetch and impact-estimate gate', () => {
+  const multicallInterface = new Interface(MULTICALL3_ABI)
+  const erc20MetaInterface = new Interface(ERC20_METADATA_ABI)
+  // Not in KNOWN_TOKENS — stands in for any long-tail token (the original COW→EURe failure mode).
+  const TOKEN_X = '0x3000000000000000000000000000000000000003'
+
+  // ethers Contract requires a real-looking provider; only `call` is exercised (Multicall3 aggregate3).
+  const provider = { call: vi.fn(), _isProvider: true }
+  const asProvider = (): JsonRpcProvider => provider as unknown as JsonRpcProvider
+
+  // TOKEN_X/WXDAI pool at 1:1 spot (sqrtPriceX96 = 2^96, both 18 decimals).
+  const route = { tokens: [TOKEN_X, GNOSIS_WXDAI], fees: [FeeAmount.MEDIUM] }
+  const byKey = new Map([
+    [
+      getRoutePoolKey({ tokenA: TOKEN_X, tokenB: GNOSIS_WXDAI, fee: FeeAmount.MEDIUM }),
+      { sqrtPriceX96: BigNumber.from(2).pow(96), tick: 0, liquidity: BigNumber.from('1000000000000000000') },
+    ],
+  ])
+  // Garbage quote through a near-dead pool: 100 in → 0.0315 out at 1:1 spot (~99.97% impact).
+  const garbageQuote = {
+    route,
+    amountIn: BigNumber.from('100000000000000000000'),
+    amountOut: BigNumber.from('31500000000000000'),
+    gasEstimate: BigNumber.from(0),
+  }
+
+  const metaMulticallResult = (symbol: string, decimals: number): string =>
+    multicallInterface.encodeFunctionResult('aggregate3', [
+      [
+        { success: true, returnData: erc20MetaInterface.encodeFunctionResult('symbol', [symbol]) },
+        { success: true, returnData: erc20MetaInterface.encodeFunctionResult('decimals', [decimals]) },
+      ],
+    ])
+
+  beforeEach(() => {
+    clearGnosisTokenMetaCache()
+    provider.call.mockReset()
+  })
+
+  it('estimates 0 (fail-open) for an unknown token, and real impact once the prefetch fills the cache', async () => {
+    // Before prefetch: TOKEN_X is in neither KNOWN_TOKENS nor tokenMetaCache → estimator is blind.
+    expect(estimateRouteImpactPct({ quoted: garbageQuote, byKey, tradeType: TradingApi.TradeType.EXACT_INPUT })).toBe(0)
+
+    provider.call.mockResolvedValueOnce(metaMulticallResult('XTKN', 18))
+    await prefetchGnosisTokenMetas({ provider: asProvider(), addresses: [TOKEN_X, GNOSIS_WXDAI] })
+    // WXDAI is already known: only TOKEN_X should have been read, in a single multicall.
+    expect(provider.call).toHaveBeenCalledTimes(1)
+
+    // After prefetch: knownMetasForRoute falls back to tokenMetaCache and the garbage quote is
+    // measured at its real ~100% impact instead of being waved through as viable.
+    const impact = estimateRouteImpactPct({
+      quoted: garbageQuote,
+      byKey,
+      tradeType: TradingApi.TradeType.EXACT_INPUT,
+    })
+    expect(impact).toBeGreaterThan(GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT)
+    expect(isGnosisQuotePriceImpactViable(impact)).toBe(false)
+  })
+
+  it('skips the multicall entirely when every address is already known', async () => {
+    await prefetchGnosisTokenMetas({ provider: asProvider(), addresses: [GNOSIS_WXDAI, GNOSIS_USDCE] })
+    expect(provider.call).not.toHaveBeenCalled()
+  })
+
+  it('is non-fatal on RPC failure and leaves the estimator fail-open', async () => {
+    provider.call.mockRejectedValueOnce(new Error('rpc down'))
+    await expect(prefetchGnosisTokenMetas({ provider: asProvider(), addresses: [TOKEN_X] })).resolves.toBeUndefined()
+    expect(estimateRouteImpactPct({ quoted: garbageQuote, byKey, tradeType: TradingApi.TradeType.EXACT_INPUT })).toBe(0)
   })
 })
 

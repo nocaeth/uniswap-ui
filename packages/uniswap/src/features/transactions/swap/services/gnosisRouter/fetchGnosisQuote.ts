@@ -8,6 +8,7 @@ import { computePoolAddress, FeeAmount, Pool, Route, Trade } from '@uniswap/v3-s
 import { type DiscriminatedQuoteResponse, TradingApi } from '@universe/api'
 import { BIPS_BASE } from 'uniswap/src/constants/misc'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { getGnosisSharedStateTokenAddresses } from 'uniswap/src/features/tokens/gnosisCanonicalTokens'
 import {
   ERC20_METADATA_ABI,
   MULTICALL3_ABI,
@@ -415,26 +416,92 @@ function poolStatesForRoute(route: CandidateRoute, byKey: Map<string, PoolState>
   return states
 }
 
-/** Token metadata for a route from the static known-token table, or undefined for any unknown token. */
+/**
+ * Token metadata for a route from the static known-token table, falling back to on-chain metadata
+ * already read into tokenMetaCache (prefetched per quote for the swap endpoints, and populated by
+ * finalizeRoutes). Undefined only for a token missing from both.
+ */
 function knownMetasForRoute(route: CandidateRoute): Map<string, TokenMeta> | undefined {
   const metas = new Map<string, TokenMeta>()
   for (const raw of route.tokens) {
-    const known = KNOWN_TOKENS[raw.toLowerCase()]
-    if (!known) {
+    const key = raw.toLowerCase()
+    const known = KNOWN_TOKENS[key]
+    const meta = known ? { symbol: known.symbol, decimals: known.decimals } : tokenMetaCache.get(key)
+    if (!meta) {
       return undefined
     }
-    metas.set(raw.toLowerCase(), { address: raw, symbol: known.symbol, decimals: known.decimals })
+    metas.set(key, { address: raw, symbol: meta.symbol, decimals: meta.decimals })
   }
   return metas
 }
 
 /**
+ * Best-effort prefetch of symbol/decimals for tokens outside KNOWN_TOKENS into tokenMetaCache, so
+ * estimateRouteImpactPct can gate hop escalation for arbitrary tokens. Only the swap endpoints can
+ * ever be unknown — intermediates are always KNOWN_TOKENS hubs. Non-fatal by design: on any read
+ * failure the cache is left unpopulated and the estimator falls back to fail-open.
+ */
+export async function prefetchGnosisTokenMetas(args: {
+  provider: JsonRpcProvider
+  addresses: readonly string[]
+}): Promise<void> {
+  const expanded = args.addresses.flatMap((address) =>
+    getGnosisSharedStateTokenAddresses({ chainId: UniverseChainId.Gnosis, address }),
+  )
+  const unknown = [...new Set(expanded.map((a) => a.toLowerCase()))].filter(
+    (a) => !KNOWN_TOKENS[a] && !tokenMetaCache.has(a),
+  )
+  if (!unknown.length) {
+    return
+  }
+
+  const calls: ReadCall[] = unknown.flatMap((addr) => [
+    { target: addr, allowFailure: true, callData: erc20MetaInterface.encodeFunctionData('symbol') },
+    { target: addr, allowFailure: true, callData: erc20MetaInterface.encodeFunctionData('decimals') },
+  ])
+
+  try {
+    const results = await getMulticall(args.provider).callStatic.aggregate3(calls)
+    unknown.forEach((addr, i) => {
+      const symbolResult = results[2 * i]
+      const decimalsResult = results[2 * i + 1]
+      if (!decimalsResult?.success) {
+        return
+      }
+      let symbol = 'UNKNOWN'
+      if (symbolResult?.success) {
+        try {
+          symbol = erc20MetaInterface.decodeFunctionResult('symbol', symbolResult.returnData)[0]
+        } catch {
+          /* non-standard symbol */
+        }
+      }
+      try {
+        const decimals = Number(erc20MetaInterface.decodeFunctionResult('decimals', decimalsResult.returnData)[0])
+        tokenMetaCache.set(addr, { address: addr, symbol, decimals })
+      } catch {
+        /* undecodable decimals — leave uncached so the estimator stays fail-open for this token */
+      }
+    })
+  } catch {
+    // Metadata prefetch only feeds the impact estimator; never fail the quote on it.
+  }
+}
+
+/** Test-only reset for the module-level token metadata cache. */
+export function clearGnosisTokenMetaCache(): void {
+  tokenMetaCache.clear()
+}
+
+/**
  * Cheap price-impact estimate (%) for a quoted route from discovery state alone (no extra RPC),
  * reusing the same impact math as the firm path. Used to gate split-fill and indicative quotes.
- * Returns 0 (treated as viable) when pool state or token metadata is unavailable, so it never
- * over-rejects — the firm path re-checks with freshly read pool state before a quote is emitted.
+ * Token metadata comes from KNOWN_TOKENS or the prefetched tokenMetaCache (see
+ * prefetchGnosisTokenMetas), so the fail-open 0 ("treated as viable") is only reachable when that
+ * prefetch failed or pool state is missing — it never over-rejects, and the firm path re-checks
+ * with freshly read pool state before a quote is emitted.
  */
-function estimateRouteImpactPct(args: {
+export function estimateRouteImpactPct(args: {
   quoted: QuotedRoute
   byKey: Map<string, PoolState>
   tradeType: TradingApi.TradeType
@@ -1911,7 +1978,12 @@ async function fetchGnosisQuoteInner(
     tokenIn: resolvedIn,
     tokenOut: resolvedOut,
   })
-  const poolEdges = await annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges)
+  // Endpoint metadata backs the cheap impact estimate that gates hop escalation; without it the
+  // estimator is blind (fail-open) and a garbage quote through a near-dead pool can win a tier.
+  const [poolEdges] = await Promise.all([
+    annotateGnosisPoolGraphEdgesWithTvl(discoveredPoolEdges),
+    prefetchGnosisTokenMetas({ provider, addresses: [resolvedIn, resolvedOut] }),
+  ])
   if (!poolEdges.length) {
     const [aggregationQuote, zapQuote] = await Promise.all([
       tryBuildAggregationQuote({ provider, params, inputToken, outputToken, amount }),
