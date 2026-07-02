@@ -102,6 +102,13 @@ export const GNOSIS_MAX_POOLS_PER_PAIR = 2
 // swaps fall back to the full initialized-pool graph.
 export const GNOSIS_MIN_CANDIDATE_POOL_TVL_USD = 1_000
 
+// A non-hub token qualifies as a routing intermediate (soft hub) when it has at least two pools to
+// distinct counterpart tokens, each with confirmed TVL at or above this floor — one pool in, one
+// pool out is the minimum to be useful as a stepping-stone. Tokens without TVL metadata never
+// qualify (fail-closed): the curated GNOSIS_BASE_TOKENS already cover the no-metadata world, and
+// widening the search on unknown data would explode candidate generation.
+export const GNOSIS_MIN_INTERMEDIATE_POOL_TVL_USD = 10_000
+
 // Multicall3 is deployed at the same canonical address on Gnosis as everywhere else.
 export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11'
 

@@ -417,3 +417,56 @@ describe('Gnosis route candidates', () => {
     ])
   })
 })
+
+describe('soft hub intermediates', () => {
+  // TOKEN_C is not a curated hub; routingHubs is empty so eligibility comes from TVL alone.
+  it('routes through a non-hub token with two distinct qualifying pools', () => {
+    const routes = buildRoutes({
+      routingHubs: [],
+      poolEdges: [poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000 }), poolEdge(TOKEN_C, TOKEN_B, { tvlUSD: 12_000 })],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, TOKEN_C, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] }])
+  })
+
+  it('does not qualify a token with only one qualifying counterpart', () => {
+    const routes = buildRoutes({
+      routingHubs: [],
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000 }),
+        poolEdge(TOKEN_C, TOKEN_B, { tvlUSD: 5_000 }), // below the $10k floor
+      ],
+    })
+
+    expect(routes).toEqual([])
+  })
+
+  it('does not qualify on two fee tiers against the same counterpart', () => {
+    const routes = buildRoutes({
+      routingHubs: [],
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000, fee: FeeAmount.LOW }),
+        poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000, fee: FeeAmount.MEDIUM }),
+        poolEdge(TOKEN_C, TOKEN_B, { tvlUSD: 5_000 }),
+      ],
+    })
+
+    expect(routes).toEqual([])
+  })
+
+  it('never qualifies intermediates without TVL metadata (curated hubs only)', () => {
+    const withoutMetadata = buildRoutes({
+      routingHubs: [],
+      poolEdges: [poolEdge(TOKEN_A, TOKEN_C), poolEdge(TOKEN_C, TOKEN_B)],
+    })
+    const curatedHubStillWorks = buildRoutes({
+      routingHubs: [GNOSIS_USDCE],
+      poolEdges: [poolEdge(TOKEN_A, GNOSIS_USDCE), poolEdge(GNOSIS_USDCE, TOKEN_B)],
+    })
+
+    expect(withoutMetadata).toEqual([])
+    expect(curatedHubStillWorks).toEqual([
+      { tokens: [TOKEN_A, GNOSIS_USDCE, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] },
+    ])
+  })
+})

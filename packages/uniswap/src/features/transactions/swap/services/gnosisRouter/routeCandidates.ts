@@ -10,6 +10,7 @@ import {
   GNOSIS_MAX_CANDIDATE_ROUTES,
   GNOSIS_MAX_POOLS_PER_PAIR,
   GNOSIS_MAX_ROUTE_HOPS,
+  GNOSIS_MIN_INTERMEDIATE_POOL_TVL_USD,
   GNOSIS_PREFERRED_ETH_ROUTE_HUBS,
   GNOSIS_PREFERRED_STABLE_ROUTE_HUBS,
   GNOSIS_STABLE_ROUTE_TOKENS,
@@ -265,7 +266,14 @@ export function buildGnosisRouteCandidates(args: BuildGnosisRouteCandidatesArgs)
   const maxHops = Math.min(GNOSIS_MAX_ROUTE_HOPS, Math.max(1, Math.trunc(args.maxHops ?? GNOSIS_MAX_ROUTE_HOPS)))
   const tokenIns = getGnosisRouteEquivalentAddresses(args.tokenIn)
   const tokenOuts = getGnosisRouteEquivalentAddresses(args.tokenOut)
-  const routeHubCandidates = [...getGnosisRouteEquivalentAddressSet(args.routingHubs ?? GNOSIS_BASE_TOKENS)]
+  // Curated hubs are always eligible; tokens with confirmed depth qualify as soft hubs on top, so
+  // the whitelist bounds the search only where TVL metadata can't vouch for an intermediate.
+  const routeHubCandidates = [
+    ...new Set([
+      ...getGnosisRouteEquivalentAddressSet(args.routingHubs ?? GNOSIS_BASE_TOKENS),
+      ...getQualifyingIntermediateTokens(args.graph),
+    ]),
+  ]
   const rankedRoutes: RankedCandidateRoute[] = []
 
   for (const tokenIn of tokenIns) {
@@ -346,6 +354,38 @@ function selectStratifiedRoutes(args: {
   }
 
   return sortedRoutes.filter((route) => selected.has(route))
+}
+
+/**
+ * Non-hub tokens that qualify as routing intermediates (soft hubs): at least two pool edges to
+ * distinct counterpart tokens, each with confirmed TVL >= GNOSIS_MIN_INTERMEDIATE_POOL_TVL_USD —
+ * one pool in and one pool out is the minimum to be useful as a stepping-stone. Edges without TVL
+ * metadata never qualify a token (fail-closed; see the constant's doc). Computed once per graph,
+ * not per DFS step. Returned addresses are normalized, matching the DFS hub set.
+ */
+function getQualifyingIntermediateTokens(graph: GnosisPoolGraph): Set<string> {
+  const qualifying = new Set<string>()
+
+  for (const [token, neighbors] of graph.adjacency) {
+    let qualifiedCounterparts = 0
+    for (const edges of neighbors.values()) {
+      const hasQualifyingEdge = edges.some(
+        (edge) =>
+          typeof edge.tvlUSD === 'number' &&
+          Number.isFinite(edge.tvlUSD) &&
+          edge.tvlUSD >= GNOSIS_MIN_INTERMEDIATE_POOL_TVL_USD,
+      )
+      if (hasQualifyingEdge) {
+        qualifiedCounterparts += 1
+        if (qualifiedCounterparts >= 2) {
+          qualifying.add(token)
+          break
+        }
+      }
+    }
+  }
+
+  return qualifying
 }
 
 function buildRankedGnosisRouteCandidates(args: {
