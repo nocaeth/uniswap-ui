@@ -41,6 +41,7 @@ import {
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/approvals'
 import {
   GNOSIS_BASE_TOKENS,
+  GNOSIS_COW,
   GNOSIS_EURE_V1,
   GNOSIS_EURE_V2,
   GNOSIS_GBPE_V1,
@@ -187,6 +188,7 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   [GNOSIS_EURE_V1.toLowerCase()]: { symbol: 'EURe', decimals: 18 },
   [GNOSIS_GBPE_V2.toLowerCase()]: { symbol: 'GBPe', decimals: 18 },
   [GNOSIS_GBPE_V1.toLowerCase()]: { symbol: 'GBPe', decimals: 18 },
+  [GNOSIS_COW.toLowerCase()]: { symbol: 'COW', decimals: 18 },
 }
 
 // Token metadata is immutable, so cache it across quotes/keystrokes indefinitely.
