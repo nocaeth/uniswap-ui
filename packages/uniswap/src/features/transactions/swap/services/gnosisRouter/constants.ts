@@ -33,6 +33,7 @@ export const GNOSIS_OSGNO = '0xf490c80aae5f2616d3e3bda2483e30c4cb21d1a0'
 export const GNOSIS_SDAI_ADAPTER_ADDRESS = '0xD499b51fcFc66bd31248ef4b28d656d67E591A94'
 export const GNOSIS_USDC = '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
 export const GNOSIS_COW = '0x177127622c4A00F3d409B75571e12cB3c8973d3c'
+export const GNOSIS_WBTC = '0x8e5bBbb09Ed1ebdE8674Cda39A0c169401db4252'
 export const GNOSIS_USDC_TRANSMUTER_ADDRESS = '0x0392A2F5Ac47388945D8c84212469F545fAE52B2'
 export const GNOSIS_CURVE_XDAI_USDC_USDT_POOL = '0x7f90122BF0700F9E7e1F688fe926940E8839F353'
 export const GNOSIS_CURVE_X3CRV_TOKEN = '0x1337BedC9D22ecbe766dF105c9623922A27963EC'
@@ -80,6 +81,9 @@ export const GNOSIS_SDAI_ZAP_COUNTERPARTIES: string[] = [
   GNOSIS_GBPE_V1,
   GNOSIS_WSTETH,
   GNOSIS_WETH,
+  // Reached via the same sDAI->wstETH bridge as WETH above (WXDAI's own v3 gateway pool is too
+  // shallow for WBTC-size trades; sDAI->wstETH->WBTC avoids it entirely).
+  GNOSIS_WBTC,
 ]
 
 export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH]
