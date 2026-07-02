@@ -8,6 +8,7 @@
     "dev": "bun --watch src/server.ts",
     "start": "bun src/server.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test src",
     "backfill": "bun src/backfill.ts",
     "sync": "bun src/sync.ts",
     "sync-schema": "cp ../../packages/api/src/clients/graphql/schema.graphql ./schema.graphql"

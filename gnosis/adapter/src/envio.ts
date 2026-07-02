@@ -297,6 +297,39 @@ export function getPoolRow(address: string): EnvioPool | undefined {
   return poolFromRow(p, tokenMap)
 }
 
+/**
+ * TVL-ordered pool snapshot for the topV3Pools query (the router client builds its full pool
+ * graph from this instead of probing the factory per pair). Lean on purpose: no chart/rollup
+ * loads, just the pools table joined to its tokens.
+ */
+export function getTopPools(args: { first: number; tvlCursor?: number; tokenFilter?: string }): EnvioPool[] {
+  const db = getDb()
+  const conditions: string[] = []
+  const params: (string | number)[] = []
+  if (args.tokenFilter) {
+    const a = args.tokenFilter.toLowerCase()
+    conditions.push('(token0 = ? OR token1 = ?)')
+    params.push(a, a)
+  }
+  if (args.tvlCursor !== undefined) {
+    conditions.push('tvlUSD < ?')
+    params.push(args.tvlCursor)
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+  const rows = db
+    .query<PoolRow>(`SELECT * FROM pools ${where} ORDER BY tvlUSD DESC, id ASC LIMIT ?`)
+    .all(...params, args.first)
+
+  const tokenMap = new Map<string, TokenRow>()
+  for (const id of [...new Set(rows.flatMap((p) => [p.token0, p.token1]))]) {
+    const t = db.query<TokenRow>('SELECT * FROM tokens WHERE id = ?').get(id)
+    if (t) {
+      tokenMap.set(id, t)
+    }
+  }
+  return rows.map((p) => poolFromRow(p, tokenMap))
+}
+
 /** Find the V3 pool whose price chart best represents a token (deepest pool it is in). */
 export function getDeepestPoolForToken(address: string): EnvioPool | undefined {
   const db = getDb()

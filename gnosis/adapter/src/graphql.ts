@@ -34,6 +34,7 @@ import {
   getTokenTransactions,
   getTokenTvlHistory,
   getTokenVolumeHistory,
+  getTopPools,
   type EnvioPool,
   type EnvioToken,
   type EnvioTransaction,
@@ -225,6 +226,14 @@ export const schema = createSchema({
         const p = getPoolRow(args.address)
         return p ? poolSource(p) : null
       },
+      topV3Pools: (_: unknown, args: { first: number; tvlCursor?: number | null; tokenFilter?: string | null }) =>
+        getTopPools({
+          first: args.first,
+          tvlCursor: args.tvlCursor ?? undefined,
+          tokenFilter: args.tokenFilter ?? undefined,
+        }).map(poolSource),
+      topV4Pools: () => [],
+      topV2Pairs: () => [],
       v4Pool: () => null,
       v2Pair: () => null,
       v3Transactions: (_: unknown, args: { first: number; timestampCursor?: number | null }) =>
