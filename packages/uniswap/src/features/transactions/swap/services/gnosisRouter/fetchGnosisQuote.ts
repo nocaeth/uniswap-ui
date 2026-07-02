@@ -48,6 +48,7 @@ import {
   GNOSIS_GBPE_V2,
   GNOSIS_GNO,
   GNOSIS_INDICATIVE_QUOTE_TIMEOUT_MS,
+  GNOSIS_MAX_ROUTE_HOPS,
   GNOSIS_MAX_SPLIT_LEGS,
   GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
   GNOSIS_MIN_CANDIDATE_POOL_TVL_USD,
@@ -57,7 +58,6 @@ import {
   GNOSIS_OSGNO,
   GNOSIS_QUOTE_TIMEOUT_MS,
   GNOSIS_QUOTER_ADDRESS,
-  GNOSIS_ROUTE_HOP_TIERS,
   GNOSIS_SDAI,
   GNOSIS_SPLIT_ENABLED,
   GNOSIS_SPLIT_GRID_STEPS,
@@ -424,7 +424,7 @@ function knownMetasForRoute(route: CandidateRoute): Map<string, TokenMeta> | und
 
 /**
  * Cheap price-impact estimate (%) for a quoted route from discovery state alone (no extra RPC),
- * reusing the same impact math as the firm path. Used to gate hop expansion and indicative quotes.
+ * reusing the same impact math as the firm path. Used to gate split-fill and indicative quotes.
  * Returns 0 (treated as viable) when pool state or token metadata is unavailable, so it never
  * over-rejects — the firm path re-checks with freshly read pool state before a quote is emitted.
  */
@@ -1008,14 +1008,14 @@ function buildSerialAggregationLeg(args: {
 }
 
 /**
- * Discovers pool edges, annotates with TVL, then runs the hop-tier loop (discover → annotate →
- * buildPoolState → quoteRanked → estimateImpact → viability check) and returns the first viable
- * route, or undefined when no tier yields one.
+ * Discovers pool edges, annotates with TVL, quotes the full candidate set in one pass at the hop
+ * ceiling (discover → annotate → buildPoolState → quoteRanked → estimateImpact) and returns the
+ * best-output route when it clears the absurd-impact ceiling, or undefined.
  *
- * NOTE: `fetchGnosisQuoteInner` runs the same hop-tier/impact logic inline because it also needs
- * the full ranked list for split-fill and handles indicative vs. firm hop-tier slicing. Both paths
- * MUST use the same hop-tier progression (`GNOSIS_ROUTE_HOP_TIERS`) and impact threshold
- * (`GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT`) — update them together.
+ * NOTE: `fetchGnosisQuoteInner` runs the same single-pass logic inline because it also needs the
+ * full ranked list for split-fill. Both paths MUST use the same hop ceiling
+ * (`GNOSIS_MAX_ROUTE_HOPS`) and impact threshold (`GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT`) — update
+ * them together.
  */
 async function findBestViableV3Route(args: {
   provider: JsonRpcProvider
@@ -1036,26 +1036,21 @@ async function findBestViableV3Route(args: {
     return undefined
   }
   const poolStateByKey = buildPoolStateByKey(poolEdges)
-  for (const maxHops of GNOSIS_ROUTE_HOP_TIERS) {
-    const ranked = await quoteRankedAtHops({
-      provider: args.provider,
-      tokenIn: args.tokenIn,
-      tokenOut: args.tokenOut,
-      poolEdges,
-      amount: args.amount,
-      tradeType: args.tradeType,
-      maxHops,
-    })
-    const best = ranked[0]
-    if (!best) {
-      continue
-    }
-    const impact = estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType: args.tradeType })
-    if (isGnosisQuotePriceImpactViable(impact)) {
-      return best
-    }
+  const ranked = await quoteRankedAtHops({
+    provider: args.provider,
+    tokenIn: args.tokenIn,
+    tokenOut: args.tokenOut,
+    poolEdges,
+    amount: args.amount,
+    tradeType: args.tradeType,
+    maxHops: GNOSIS_MAX_ROUTE_HOPS,
+  })
+  const best = ranked[0]
+  if (!best) {
+    return undefined
   }
-  return undefined
+  const impact = estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType: args.tradeType })
+  return isGnosisQuotePriceImpactViable(impact) ? best : undefined
 }
 
 async function quoteBestV3ExactInputForAggregation(args: {
@@ -1924,34 +1919,23 @@ async function fetchGnosisQuoteInner(
   }
   const poolStateByKey = buildPoolStateByKey(poolEdges)
 
-  // Expand the hop limit only as needed: quote the cheapest (fewest-hop) candidate set first and stop
-  // as soon as its best route is viable; widen to longer routes only when shorter ones are not (e.g. a
-  // deep cluster-crossing path needs >3 hops). Indicative quotes use only the first tier to keep
-  // keystroke latency flat. quoteRankedAtHops keeps the preferred-then-fallback (TVL) behavior per tier;
-  // the firm path re-checks viability with freshly read pool state before emitting a quote.
-  const hopTiers = indicative ? GNOSIS_ROUTE_HOP_TIERS.slice(0, 1) : GNOSIS_ROUTE_HOP_TIERS
-  let ranked: QuotedRoute[] = []
-  let best: QuotedRoute | undefined
-  let bestImpact = 0
-  for (const maxHops of hopTiers) {
-    ranked = await quoteRankedAtHops({
-      provider,
-      tokenIn: resolvedIn,
-      tokenOut: resolvedOut,
-      poolEdges,
-      amount,
-      tradeType,
-      maxHops,
-    })
-    best = ranked[0]
-    if (!best) {
-      continue
-    }
-    bestImpact = estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType })
-    if (isGnosisQuotePriceImpactViable(bestImpact)) {
-      break
-    }
-  }
+  // Single pass at the hop ceiling: every candidate route (1..GNOSIS_MAX_ROUTE_HOPS hops) is quoted
+  // in one Multicall3 eth_call and the best actual output wins, for firm and indicative quotes
+  // alike. Escalating hop tiers were dropped: stopping at the first tier under the absurd-impact
+  // ceiling let a thin-but-quotable short route (e.g. 40% impact) shadow a deep longer route
+  // (e.g. 0.5%), and the 3-hop-only indicative pass missed routes the firm pass could find.
+  // quoteRankedAtHops keeps the preferred-then-fallback (TVL) behavior; the impact ceiling remains
+  // purely as the final absurd-quote rejection below.
+  const ranked = await quoteRankedAtHops({
+    provider,
+    tokenIn: resolvedIn,
+    tokenOut: resolvedOut,
+    poolEdges,
+    amount,
+    tradeType,
+    maxHops: GNOSIS_MAX_ROUTE_HOPS,
+  })
+  const best = ranked[0]
 
   if (!best) {
     const [aggregationQuote, zapQuote] = await Promise.all([
@@ -1964,6 +1948,8 @@ async function fetchGnosisQuoteInner(
     }
     throw new Error(`No Gnosis V3 route found for ${params.tokenIn} -> ${params.tokenOut}`)
   }
+
+  const bestImpact = estimateRouteImpactPct({ quoted: best, byKey: poolStateByKey, tradeType })
 
   // Indicative quotes only need input/output amounts; skip all the extra reads. Apply the same
   // absurd-quote guard as the firm path here too, using the cheap discovery-state impact estimate,

@@ -148,7 +148,7 @@ describe('Gnosis route candidates', () => {
     })
   })
 
-  it('finds a deep 4-hop route only when the hop limit is raised above the default 3', () => {
+  it('finds a deep 4-hop route by default (single-pass hop ceiling), but not under a lower explicit cap', () => {
     const chain = [
       poolEdge(TOKEN_A, GNOSIS_USDCE, { fee: FeeAmount.LOW }),
       poolEdge(GNOSIS_USDCE, GNOSIS_SDAI, { fee: FeeAmount.LOWEST }),
@@ -160,8 +160,8 @@ describe('Gnosis route candidates', () => {
       fees: [FeeAmount.LOW, FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM],
     }
 
-    expect(buildRoutes({ poolEdges: chain })).toEqual([]) // default cap of 3 cannot reach it
-    expect(buildRoutes({ poolEdges: chain, maxHops: 4 })).toContainEqual(fourHop)
+    expect(buildRoutes({ poolEdges: chain })).toContainEqual(fourHop) // default = GNOSIS_MAX_ROUTE_HOPS
+    expect(buildRoutes({ poolEdges: chain, maxHops: 3 })).toEqual([]) // explicit lower cap cannot reach it
   })
 
   it('expands only the two deepest fee tiers per pair (fan-out cap)', () => {
