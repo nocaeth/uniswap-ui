@@ -170,3 +170,15 @@ export const GNOSIS_SPLIT_GRID_STEPS = 10
 // Minimum output improvement (bps) over the single best route before a split is used. Gnosis gas
 // is negligible, so this token-gain floor is the whole accept gate (no net-of-gas term).
 export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 3
+// Depth-based split probe: also run the split grid whenever the trade would consume at least this
+// fraction of the thinnest pool's in-range depth on the best route. The cheap impact estimate
+// fails open to 0 when metadata/pool state is missing, which would otherwise silently skip the
+// grid for exactly the large trades that most need splitting; the depth ratio needs no token
+// metadata (raw units cancel), so it backstops that blind spot. Probing costs one extra Multicall3
+// round-trip. The accept gate (GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS) still decides on real quotes.
+export const GNOSIS_SPLIT_PROBE_DEPTH_FRACTION = 0.25
+// Candidate routes whose thinnest pool holds less than this fraction of the trade size in-range
+// cannot win on output; they are dropped before quoting so they don't waste candidate-cap slots
+// and quoter calldata. Fail-open: routes with unknown depth are never pruned, and pruning never
+// leaves fewer than a minimum survivor count (see pruneShallowCandidateRoutes).
+export const GNOSIS_MIN_ROUTE_DEPTH_INPUT_FRACTION = 0.01

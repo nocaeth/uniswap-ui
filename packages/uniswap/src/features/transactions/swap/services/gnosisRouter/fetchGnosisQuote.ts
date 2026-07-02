@@ -53,6 +53,7 @@ import {
   GNOSIS_MAX_SPLIT_LEGS,
   GNOSIS_MAX_VIABLE_PRICE_IMPACT_PCT,
   GNOSIS_MIN_CANDIDATE_POOL_TVL_USD,
+  GNOSIS_MIN_ROUTE_DEPTH_INPUT_FRACTION,
   GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS,
   GNOSIS_MULTICALL3_ADDRESS,
   GNOSIS_CURVE_ROUTER_ADDRESS,
@@ -62,6 +63,7 @@ import {
   GNOSIS_SDAI,
   GNOSIS_SPLIT_ENABLED,
   GNOSIS_SPLIT_GRID_STEPS,
+  GNOSIS_SPLIT_PROBE_DEPTH_FRACTION,
   GNOSIS_USDC,
   GNOSIS_USDC_TRANSMUTER_ADDRESS,
   GNOSIS_UNIVERSAL_ROUTER_ADDRESS,
@@ -80,8 +82,10 @@ import {
   buildGnosisRouteCandidates,
   filterGnosisPoolGraphEdgesByTvl,
   getGnosisRouteKey,
+  getPoolRawToken1Depth,
   getRoutePoolKey,
   hasGnosisPoolTvlMetadata,
+  normalizeGnosisRouteTokenAddress,
   type CandidateRoute,
   type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
@@ -520,6 +524,123 @@ export function estimateRouteImpactPct(args: {
   })
 }
 
+/**
+ * Largest fraction of any hop pool's in-range depth that the trade would consume along a route,
+ * carried hop-to-hop at spot price (fees and within-hop slippage ignored — this is a sizing
+ * heuristic, not a quote). Works entirely in raw token units from discovery pool state: within one
+ * pool the trade/depth ratio is unit-free (decimals cancel), so unlike the impact estimate this
+ * needs no token metadata. EXACT_OUTPUT trades walk the route backwards from the requested output.
+ * Returns undefined when any hop lacks pool state (callers fail open).
+ */
+function maxRouteDepthUsage(args: {
+  route: CandidateRoute
+  amount: BigNumber
+  tradeType: TradingApi.TradeType
+  byKey: Map<string, PoolState>
+}): number | undefined {
+  const { route, amount, tradeType, byKey } = args
+  const states = poolStatesForRoute(route, byKey)
+  if (!states) {
+    return undefined
+  }
+
+  const exactOutput = tradeType === TradingApi.TradeType.EXACT_OUTPUT
+  const hopCount = route.fees.length
+  let amountRaw = Number(amount.toString())
+  if (!Number.isFinite(amountRaw) || amountRaw <= 0) {
+    return undefined
+  }
+
+  let maxUsage = 0
+  for (let step = 0; step < hopCount; step++) {
+    const hop = exactOutput ? hopCount - 1 - step : step
+    const currentToken = route.tokens[exactOutput ? hop + 1 : hop]
+    const pairToken = route.tokens[exactOutput ? hop : hop + 1]
+    const state = states[hop]
+    if (currentToken === undefined || pairToken === undefined || state === undefined) {
+      return undefined
+    }
+
+    const current = normalizeGnosisRouteTokenAddress(currentToken)
+    const pair = normalizeGnosisRouteTokenAddress(pairToken)
+    if (!current || !pair || current === pair) {
+      return undefined
+    }
+
+    const sqrtPrice = Number(state.sqrtPriceX96.toString())
+    if (!Number.isFinite(sqrtPrice) || sqrtPrice <= 0) {
+      return undefined
+    }
+    // Raw-unit spot price of token0 in token1, and the pool's raw token1-side depth.
+    const rateRaw = (sqrtPrice / 2 ** 96) ** 2
+    const depthRaw = getPoolRawToken1Depth({ liquidity: state.liquidity, sqrtPriceX96: state.sqrtPriceX96 })
+    if (depthRaw === undefined || depthRaw <= 0) {
+      return undefined
+    }
+
+    const isCurrentToken0 = current < pair
+    const amountToken1Raw = isCurrentToken0 ? amountRaw * rateRaw : amountRaw
+    if (!Number.isFinite(amountToken1Raw)) {
+      return undefined
+    }
+    maxUsage = Math.max(maxUsage, amountToken1Raw / depthRaw)
+
+    // Carry the amount to the hop's other token at spot for the next hop.
+    amountRaw = isCurrentToken0 ? amountRaw * rateRaw : amountRaw / rateRaw
+    if (!Number.isFinite(amountRaw) || amountRaw <= 0) {
+      return undefined
+    }
+  }
+
+  return maxUsage
+}
+
+// Depth pruning never drops below this many candidates, so a mis-sized depth heuristic can only
+// trim the tail, never leave the quoter without routes (or a split without disjoint alternatives).
+const GNOSIS_MIN_PRUNE_SURVIVORS = 3
+
+/**
+ * Drops candidate routes whose thinnest pool holds less than GNOSIS_MIN_ROUTE_DEPTH_INPUT_FRACTION
+ * of the trade in-range: they cannot win on output and only waste candidate-cap slots and quoter
+ * calldata. Fail-open: routes with unknown depth are always kept, and pruning never leaves fewer
+ * than GNOSIS_MIN_PRUNE_SURVIVORS candidates (backfilled with the least-shallow pruned routes,
+ * original ranking order preserved).
+ */
+export function pruneShallowCandidateRoutes(args: {
+  routes: CandidateRoute[]
+  amount: BigNumber
+  tradeType: TradingApi.TradeType
+  byKey: Map<string, PoolState>
+}): CandidateRoute[] {
+  const { routes, amount, tradeType, byKey } = args
+  if (routes.length <= GNOSIS_MIN_PRUNE_SURVIVORS) {
+    return routes
+  }
+
+  const usageLimit = 1 / GNOSIS_MIN_ROUTE_DEPTH_INPUT_FRACTION
+  const usages = routes.map((route) => maxRouteDepthUsage({ route, amount, tradeType, byKey }))
+  const keep = usages.map((usage) => usage === undefined || usage <= usageLimit)
+  let survivors = keep.filter(Boolean).length
+  if (survivors === routes.length) {
+    return routes
+  }
+
+  // Backfill the least-shallow pruned routes until the survivor floor is met.
+  const prunedByUsage = routes
+    .map((_, index) => index)
+    .filter((index) => !keep[index])
+    .sort((a, b) => (usages[a] ?? Number.POSITIVE_INFINITY) - (usages[b] ?? Number.POSITIVE_INFINITY))
+  for (const index of prunedByUsage) {
+    if (survivors >= GNOSIS_MIN_PRUNE_SURVIVORS) {
+      break
+    }
+    keep[index] = true
+    survivors += 1
+  }
+
+  return routes.filter((_, index) => keep[index])
+}
+
 /** Builds + quotes the candidate set for one hop limit, returning the ranked successful quotes. */
 async function quoteRankedAtHops(args: {
   provider: JsonRpcProvider
@@ -532,15 +653,19 @@ async function quoteRankedAtHops(args: {
 }): Promise<QuotedRoute[]> {
   const { provider, tokenIn, tokenOut, poolEdges, amount, tradeType, maxHops } = args
   const { preferredRoutes, getFallbackRoutes } = buildCandidateRouteSets({ tokenIn, tokenOut, poolEdges, maxHops })
-  const preferredRanked = preferredRoutes.length
-    ? await quoteCandidateRoutes({ provider, routes: preferredRoutes, amount, tradeType })
+  const byKey = buildPoolStateByKey(poolEdges)
+  const prune = (routes: CandidateRoute[]): CandidateRoute[] =>
+    pruneShallowCandidateRoutes({ routes, amount, tradeType, byKey })
+  const prunedPreferred = prune(preferredRoutes)
+  const preferredRanked = prunedPreferred.length
+    ? await quoteCandidateRoutes({ provider, routes: prunedPreferred, amount, tradeType })
     : []
   if (preferredRanked.length) {
     return preferredRanked
   }
   // No preferred route quoted (none cleared the TVL floor, or none quoted): fall back to the full
   // pool graph. getFallbackRoutes is memoized and returns [] when identical to the preferred set.
-  const fallbackRoutes = getFallbackRoutes()
+  const fallbackRoutes = prune(getFallbackRoutes())
   return fallbackRoutes.length
     ? await quoteCandidateRoutes({ provider, routes: fallbackRoutes, amount, tradeType })
     : []
@@ -636,6 +761,29 @@ async function computeBestSplit(args: {
 }
 
 /**
+ * Metadata-independent split probe: true when the trade would consume at least
+ * GNOSIS_SPLIT_PROBE_DEPTH_FRACTION of the thinnest pool's in-range depth on the best route.
+ * Backstops the impact-estimate gate, whose fail-open 0 would otherwise silently skip the split
+ * grid for exactly the large trades that most need it (see resolveQuoteLegs).
+ */
+function shouldProbeSplitByDepth(args: {
+  best: QuotedRoute
+  tradeType: TradingApi.TradeType
+  byKey: Map<string, PoolState>
+}): boolean {
+  if (args.tradeType === TradingApi.TradeType.EXACT_OUTPUT) {
+    return false // computeBestSplit only splits exact-input trades; don't waste the walk
+  }
+  const usage = maxRouteDepthUsage({
+    route: args.best.route,
+    amount: args.best.amountIn,
+    tradeType: args.tradeType,
+    byKey: args.byKey,
+  })
+  return usage !== undefined && usage >= GNOSIS_SPLIT_PROBE_DEPTH_FRACTION
+}
+
+/**
  * Decides the legs to finalize and emit: the best split when it clears the accept gate, else the
  * single best route as a one-leg list. Split-fill is skipped for USD quotes; EXACT_OUTPUT and the
  * no-disjoint-alternative cases short-circuit inside computeBestSplit.
@@ -648,15 +796,22 @@ async function resolveQuoteLegs(args: {
   amount: BigNumber
   tradeType: TradingApi.TradeType
   params: TradingApi.QuoteRequest & { isUSDQuote?: boolean }
+  poolStateByKey: Map<string, PoolState>
 }): Promise<QuotedRoute[]> {
-  const { provider, ranked, best, bestImpactPct, amount, tradeType, params } = args
+  const { provider, ranked, best, bestImpactPct, amount, tradeType, params, poolStateByKey } = args
   const singleLeg = [best]
   if (!GNOSIS_SPLIT_ENABLED || params.isUSDQuote) {
     return singleLeg
   }
   // A split can never recover more output than the best route's price impact, so when that impact is
   // at or below the minimum-improvement floor it cannot clear the accept gate — skip the grid quote.
-  if (bestImpactPct <= GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS / 100) {
+  // But that estimate fails open to 0 when token metadata or pool state is missing, so on its own it
+  // would starve exactly the large trades that most need splitting; the depth probe (which needs no
+  // metadata) still forces the grid when the trade is big relative to the thinnest pool.
+  if (
+    bestImpactPct <= GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS / 100 &&
+    !shouldProbeSplitByDepth({ best, tradeType, byKey: poolStateByKey })
+  ) {
     return singleLeg
   }
 
@@ -2067,7 +2222,16 @@ async function fetchGnosisQuoteInner(
 
   // Either the accepted split's legs or the single best route as a one-leg list (the latter is
   // byte-identical to the pre-split single-route quote).
-  const legs = await resolveQuoteLegs({ provider, ranked, best, bestImpactPct: bestImpact, amount, tradeType, params })
+  const legs = await resolveQuoteLegs({
+    provider,
+    ranked,
+    best,
+    bestImpactPct: bestImpact,
+    amount,
+    tradeType,
+    params,
+    poolStateByKey,
+  })
 
   const allTokenAddresses = [...new Set(legs.flatMap((leg) => leg.route.tokens))]
   const totalAmountIn = legs.reduce((sum, leg) => sum.add(leg.amountIn), BigNumber.from(0))
