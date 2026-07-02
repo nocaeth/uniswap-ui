@@ -39,6 +39,7 @@ import {
   GNOSIS_MAX_SLIPPAGE_PERCENT,
   isGnosisQuotePriceImpactViable,
   prefetchGnosisTokenMetas,
+  pruneShallowCandidateRoutes,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/fetchGnosisQuote'
 import { discoverGnosisPoolGraphEdges } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolDiscovery'
 import { getGnosisProvider } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/provider'
@@ -628,5 +629,279 @@ describe('fetchGnosisQuote single-pass hop search', () => {
     })
 
     await expect(fetchGnosisQuote(quoteParams({ tokenIn, tokenOut }))).rejects.toThrow(/price impact/)
+  })
+})
+
+describe('depth-aware split probe and candidate pruning', () => {
+  const multicallInterface = new Interface(MULTICALL3_ABI)
+  const quoterInterface = new Interface(QUOTER_V2_ABI)
+  const poolStateInterface = new Interface(V3_POOL_STATE_ABI)
+  const erc20MetaInterface = new Interface(ERC20_METADATA_ABI)
+
+  const SQRT_PRICE_ONE = BigNumber.from(2).pow(96) // spot price 1.0 for every synthetic pool
+  const DEEP_LIQUIDITY = BigNumber.from('1000000000000000000000') // raw token1 depth 1000e18 at 1.0 spot
+  const UNCONNECTED = '0xAAAA44272dc658575Ba38f43C438447dDED45358'
+
+  let poolSalt = 0x100
+  function syntheticEdge(args: {
+    tokenA: string
+    tokenB: string
+    fee: FeeAmount
+    liquidity?: BigNumber
+  }): GnosisPoolGraphEdge {
+    poolSalt += 1
+    return {
+      tokenA: args.tokenA,
+      tokenB: args.tokenB,
+      fee: args.fee,
+      liquidity: (args.liquidity ?? DEEP_LIQUIDITY).toString(),
+      initialized: true,
+      poolAddress: `0x${poolSalt.toString(16).padStart(40, '0')}`,
+      sqrtPriceX96: SQRT_PRICE_ONE,
+      tick: 0,
+    }
+  }
+
+  /** Token sequence of a packed V3 path: token(20 bytes) | fee(3) | token(20) | … */
+  function decodePathTokens(path: string): string[] {
+    const hex = path.toLowerCase().replace(/^0x/, '')
+    const tokens: string[] = []
+    for (let i = 0; i + 40 <= hex.length; i += 46) {
+      tokens.push(`0x${hex.slice(i, i + 40)}`)
+    }
+    return tokens
+  }
+
+  const pathKey = (tokens: readonly string[]): string => tokens.map((token) => token.toLowerCase()).join(':')
+  const isMetaSelector = (selector: string): boolean =>
+    selector === erc20MetaInterface.getSighash('decimals') || selector === erc20MetaInterface.getSighash('symbol')
+
+  /**
+   * Same Multicall3-only dispatch as the single-pass harness, plus `failFirstMetadataOnlyMulticall`:
+   * when set, the first aggregate3 consisting purely of symbol/decimals reads — which is exactly the
+   * prefetchGnosisTokenMetas call — rejects wholesale, leaving the impact estimator blind (fail-open
+   * 0) while the later mixed finalizeRoutes multicall still resolves metadata.
+   */
+  function makeDepthProvider(args: {
+    quotes: Record<string, (amountIn: BigNumber) => BigNumber>
+    failFirstMetadataOnlyMulticall?: boolean
+  }): { quoterMulticalls: number[] } {
+    const { quotes } = args
+    let failMetadataOnce = args.failFirstMetadataOnlyMulticall ?? false
+    const quoterMulticalls: number[] = []
+    const call = vi.fn(async (tx: { to: string; data: string }): Promise<string> => {
+      if (tx.to.toLowerCase() !== GNOSIS_MULTICALL3_ADDRESS.toLowerCase()) {
+        throw new Error(`Unexpected non-multicall eth_call to ${tx.to}`)
+      }
+      const [calls] = multicallInterface.decodeFunctionData('aggregate3', tx.data) as [
+        { target: string; callData: string }[],
+      ]
+      if (failMetadataOnce && calls.every(({ callData }) => isMetaSelector(callData.slice(0, 10)))) {
+        failMetadataOnce = false
+        throw new Error('rpc hiccup during metadata prefetch')
+      }
+      let quoterCalls = 0
+      const results = calls.map(({ target, callData }) => {
+        const selector = callData.slice(0, 10)
+        if (target.toLowerCase() === GNOSIS_QUOTER_ADDRESS.toLowerCase()) {
+          quoterCalls += 1
+          if (selector !== quoterInterface.getSighash('quoteExactInput')) {
+            return { success: false, returnData: '0x' }
+          }
+          const [path, amountIn] = quoterInterface.decodeFunctionData('quoteExactInput', callData)
+          const quote = quotes[pathKey(decodePathTokens(path))]
+          if (!quote) {
+            return { success: false, returnData: '0x' }
+          }
+          return {
+            success: true,
+            returnData: quoterInterface.encodeFunctionResult('quoteExactInput', [
+              quote(BigNumber.from(amountIn)),
+              [],
+              [],
+              BigNumber.from(90_000),
+            ]),
+          }
+        }
+        if (selector === poolStateInterface.getSighash('slot0')) {
+          return {
+            success: true,
+            returnData: poolStateInterface.encodeFunctionResult('slot0', [SQRT_PRICE_ONE, 0, 0, 1, 1, 0, true]),
+          }
+        }
+        if (selector === poolStateInterface.getSighash('liquidity')) {
+          return {
+            success: true,
+            returnData: poolStateInterface.encodeFunctionResult('liquidity', [DEEP_LIQUIDITY]),
+          }
+        }
+        if (selector === erc20MetaInterface.getSighash('decimals')) {
+          return { success: true, returnData: erc20MetaInterface.encodeFunctionResult('decimals', [18]) }
+        }
+        if (selector === erc20MetaInterface.getSighash('symbol')) {
+          return { success: true, returnData: erc20MetaInterface.encodeFunctionResult('symbol', ['TKN']) }
+        }
+        return { success: false, returnData: '0x' }
+      })
+      if (quoterCalls > 0) {
+        quoterMulticalls.push(quoterCalls)
+      }
+      return multicallInterface.encodeFunctionResult('aggregate3', [results])
+    })
+
+    const provider = {
+      _isProvider: true,
+      call,
+      getBlockNumber: vi.fn().mockResolvedValue(123),
+      getGasPrice: vi.fn().mockResolvedValue(BigNumber.from(10)),
+    }
+    vi.mocked(getGnosisProvider).mockReturnValue(provider as unknown as ReturnType<typeof getGnosisProvider>)
+    return { quoterMulticalls }
+  }
+
+  function quoteParams(args: { tokenIn: string; tokenOut: string; amount: BigNumber }): TradingApi.QuoteRequest {
+    return {
+      type: TradingApi.TradeType.EXACT_INPUT,
+      amount: args.amount.toString(),
+      tokenInChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      tokenOutChainId: UniverseChainId.Gnosis as unknown as TradingApi.ChainId,
+      tokenIn: args.tokenIn,
+      tokenOut: args.tokenOut,
+      swapper: UNCONNECTED,
+    }
+  }
+
+  beforeEach(() => {
+    clearGnosisTokenMetaCache()
+  })
+
+  it('probes and accepts a split on a big trade even when the impact estimate is blind', async () => {
+    const tokenIn = '0x9000000000000000000000000000000000000009'
+    const tokenOut = '0xa00000000000000000000000000000000000000a'
+    // Two pool-disjoint direct pools (same pair, different fee tiers) so a split is available.
+    vi.mocked(discoverGnosisPoolGraphEdges).mockResolvedValue([
+      syntheticEdge({ tokenA: tokenIn, tokenB: tokenOut, fee: FeeAmount.LOW }),
+      syntheticEdge({ tokenA: tokenIn, tokenB: tokenOut, fee: FeeAmount.MEDIUM }),
+    ])
+    // 400e18 in against 1000e18 raw depth = 40% of the thinnest pool — over the 25% probe floor.
+    const amount = BigNumber.from('400000000000000000000')
+    // Concave synthetic quote f(a) = a - a²/4000e18: f(400) = 360, but 2·f(200) = 380, so an even
+    // split beats the single best route by ~5.6% — far above the 3bps accept gate.
+    const curvature = BigNumber.from('4000000000000000000000')
+    const concaveQuote = (amountIn: BigNumber): BigNumber => amountIn.sub(amountIn.mul(amountIn).div(curvature))
+    const { quoterMulticalls } = makeDepthProvider({
+      quotes: { [pathKey([tokenIn, tokenOut])]: concaveQuote },
+      // The metadata prefetch fails → tokenIn/tokenOut stay unknown → estimateRouteImpactPct
+      // fails open to 0 ≤ 3bps, which used to skip the split grid entirely.
+      failFirstMetadataOnlyMulticall: true,
+    })
+
+    const response = await fetchGnosisQuote(quoteParams({ tokenIn, tokenOut, amount }))
+
+    if (response.routing !== TradingApi.Routing.CLASSIC) {
+      throw new Error('Expected classic quote')
+    }
+    // 200/200 across the two fee tiers: 2·f(200e18) = 380e18 > f(400e18) = 360e18.
+    expect(response.quote.route).toHaveLength(2)
+    expect(response.quote.output?.amount).toBe('380000000000000000000')
+    // Exactly one extra quoter round-trip for the whole split grid.
+    expect(quoterMulticalls).toHaveLength(2)
+  })
+
+  it('does not probe the split grid for a small trade (no extra quoter round-trip)', async () => {
+    const tokenIn = '0xb00000000000000000000000000000000000000b'
+    const tokenOut = '0xc00000000000000000000000000000000000000c'
+    vi.mocked(discoverGnosisPoolGraphEdges).mockResolvedValue([
+      syntheticEdge({ tokenA: tokenIn, tokenB: tokenOut, fee: FeeAmount.LOW }),
+      syntheticEdge({ tokenA: tokenIn, tokenB: tokenOut, fee: FeeAmount.MEDIUM }),
+    ])
+    // 100e18 in against 1000e18 raw depth = 10% — under the probe floor; metadata resolves fine and
+    // the 1:1 quote has ~0 impact, so neither gate wants the grid.
+    const amount = BigNumber.from('100000000000000000000')
+    const { quoterMulticalls } = makeDepthProvider({
+      quotes: { [pathKey([tokenIn, tokenOut])]: (amountIn) => amountIn },
+    })
+
+    const response = await fetchGnosisQuote(quoteParams({ tokenIn, tokenOut, amount }))
+
+    if (response.routing !== TradingApi.Routing.CLASSIC) {
+      throw new Error('Expected classic quote')
+    }
+    expect(response.quote.route).toHaveLength(1)
+    expect(quoterMulticalls).toHaveLength(1) // candidate ranking only — no grid probe
+  })
+
+  describe('pruneShallowCandidateRoutes', () => {
+    const A = '0xd00000000000000000000000000000000000000d'
+    const B = '0xe00000000000000000000000000000000000000e'
+    const HUB_1 = '0x1e00000000000000000000000000000000000001'
+    const HUB_2 = '0x1e00000000000000000000000000000000000002'
+    const HUB_3 = '0x1e00000000000000000000000000000000000003'
+    const HUB_4 = '0x1e00000000000000000000000000000000000004'
+    const amount = BigNumber.from('100000000000000000000') // 100e18
+
+    const poolState = (liquidity: BigNumber): { sqrtPriceX96: BigNumber; tick: number; liquidity: BigNumber } => ({
+      sqrtPriceX96: SQRT_PRICE_ONE,
+      tick: 0,
+      liquidity,
+    })
+    const keyOf = (tokenA: string, tokenB: string, fee: FeeAmount): string => getRoutePoolKey({ tokenA, tokenB, fee })
+    const hubRoute = (hub: string): { tokens: string[]; fees: FeeAmount[] } => ({
+      tokens: [A, hub, B],
+      fees: [FeeAmount.MEDIUM, FeeAmount.MEDIUM],
+    })
+    const hubKeys = (hub: string): string[] => [keyOf(A, hub, FeeAmount.MEDIUM), keyOf(hub, B, FeeAmount.MEDIUM)]
+
+    it('drops dust-depth routes, keeps order, and never touches sets of three or fewer', () => {
+      const direct = { tokens: [A, B], fees: [FeeAmount.LOW] }
+      const routes = [direct, hubRoute(HUB_1), hubRoute(HUB_2), hubRoute(HUB_3), hubRoute(HUB_4)]
+      const dust = BigNumber.from('1000000000000000') // depth 1e15 → usage 1e5 ≫ 1/0.01
+      const byKey = new Map([
+        [keyOf(A, B, FeeAmount.LOW), poolState(DEEP_LIQUIDITY)],
+        ...hubKeys(HUB_1).map((key) => [key, poolState(dust)] as const),
+        ...hubKeys(HUB_2).map((key) => [key, poolState(DEEP_LIQUIDITY)] as const),
+        ...hubKeys(HUB_3).map((key) => [key, poolState(dust)] as const),
+        ...hubKeys(HUB_4).map((key) => [key, poolState(DEEP_LIQUIDITY)] as const),
+      ])
+
+      const pruned = pruneShallowCandidateRoutes({ routes, amount, tradeType: TradingApi.TradeType.EXACT_INPUT, byKey })
+      expect(pruned).toEqual([direct, hubRoute(HUB_2), hubRoute(HUB_4)])
+
+      // At or below the survivor floor the set is returned untouched, dust or not.
+      const smallSet = [hubRoute(HUB_1), hubRoute(HUB_3)]
+      expect(
+        pruneShallowCandidateRoutes({ routes: smallSet, amount, tradeType: TradingApi.TradeType.EXACT_INPUT, byKey }),
+      ).toEqual(smallSet)
+    })
+
+    it('backfills the least-shallow pruned routes up to the survivor floor', () => {
+      const direct = { tokens: [A, B], fees: [FeeAmount.LOW] }
+      const routes = [direct, hubRoute(HUB_1), hubRoute(HUB_2), hubRoute(HUB_3)]
+      const byKey = new Map([
+        [keyOf(A, B, FeeAmount.LOW), poolState(DEEP_LIQUIDITY)],
+        // Three dust routes with distinct depths: only the direct route survives the filter, so the
+        // two least-shallow dust routes (HUB_3 then HUB_2) are backfilled, in original order.
+        ...hubKeys(HUB_1).map((key) => [key, poolState(BigNumber.from('1000000000000000'))] as const),
+        ...hubKeys(HUB_2).map((key) => [key, poolState(BigNumber.from('2000000000000000'))] as const),
+        ...hubKeys(HUB_3).map((key) => [key, poolState(BigNumber.from('3000000000000000'))] as const),
+      ])
+
+      const pruned = pruneShallowCandidateRoutes({ routes, amount, tradeType: TradingApi.TradeType.EXACT_INPUT, byKey })
+      expect(pruned).toEqual([direct, hubRoute(HUB_2), hubRoute(HUB_3)])
+    })
+
+    it('keeps routes whose depth is unknown (missing pool state)', () => {
+      const direct = { tokens: [A, B], fees: [FeeAmount.LOW] }
+      const unknown = hubRoute(HUB_1) // no byKey entries for its pools
+      const routes = [direct, unknown, hubRoute(HUB_2), hubRoute(HUB_3)]
+      const byKey = new Map([
+        [keyOf(A, B, FeeAmount.LOW), poolState(DEEP_LIQUIDITY)],
+        ...hubKeys(HUB_2).map((key) => [key, poolState(DEEP_LIQUIDITY)] as const),
+        ...hubKeys(HUB_3).map((key) => [key, poolState(BigNumber.from('1000000000000000'))] as const),
+      ])
+
+      const pruned = pruneShallowCandidateRoutes({ routes, amount, tradeType: TradingApi.TradeType.EXACT_INPUT, byKey })
+      expect(pruned).toEqual([direct, unknown, hubRoute(HUB_2)])
+    })
   })
 })

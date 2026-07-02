@@ -608,10 +608,6 @@ function getEdgeNormalizedDepth(args: {
   decimalsByAddress: ReadonlyMap<string, number>
 }): number | undefined {
   const { edge, decimalsByAddress } = args
-  if (!edge.sqrtPriceX96 || edge.sqrtPriceX96.lte(0)) {
-    return undefined
-  }
-
   const tokenA = normalizeGnosisRouteTokenAddress(edge.tokenA)
   const tokenB = normalizeGnosisRouteTokenAddress(edge.tokenB)
   if (!tokenA || !tokenB || tokenA === tokenB) {
@@ -624,13 +620,35 @@ function getEdgeNormalizedDepth(args: {
     return undefined
   }
 
-  const liquidity = Number(edge.liquidity.toString())
-  const sqrtPrice = Number(edge.sqrtPriceX96.toString())
-  if (!Number.isFinite(liquidity) || !Number.isFinite(sqrtPrice) || liquidity <= 0 || sqrtPrice <= 0) {
+  const rawDepth = getPoolRawToken1Depth({ liquidity: edge.liquidity, sqrtPriceX96: edge.sqrtPriceX96 })
+  if (rawDepth === undefined) {
     return undefined
   }
 
-  const depth = (liquidity * sqrtPrice) / 2 ** 96 / 10 ** token1Decimals
+  const depth = rawDepth / 10 ** token1Decimals
+  return Number.isFinite(depth) ? depth : undefined
+}
+
+/**
+ * In-range token1-side depth of a pool in RAW token1 units: L * sqrtPriceX96 / 2^96 (the
+ * decimals-unscaled core of getEdgeNormalizedDepth). Within a single pool this is directly
+ * comparable to raw token1 amounts without any token metadata — the decimals cancel in the
+ * ratio — which is what the quoter's depth-relative trade sizing relies on. Cross-pool
+ * comparisons still need the decimals-scaled normalized depth.
+ */
+export function getPoolRawToken1Depth(args: { liquidity: BigNumber; sqrtPriceX96?: BigNumber }): number | undefined {
+  const { liquidity, sqrtPriceX96 } = args
+  if (!sqrtPriceX96 || sqrtPriceX96.lte(0)) {
+    return undefined
+  }
+
+  const liquidityFloat = Number(liquidity.toString())
+  const sqrtPrice = Number(sqrtPriceX96.toString())
+  if (!Number.isFinite(liquidityFloat) || !Number.isFinite(sqrtPrice) || liquidityFloat <= 0 || sqrtPrice <= 0) {
+    return undefined
+  }
+
+  const depth = (liquidityFloat * sqrtPrice) / 2 ** 96
   return Number.isFinite(depth) ? depth : undefined
 }
 
