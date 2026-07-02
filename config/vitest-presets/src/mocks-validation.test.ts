@@ -45,16 +45,6 @@ describe('Mock validations', () => {
   })
 
   describe('WalletConnect mocks', () => {
-    it('should have @reown/walletkit mocked', async () => {
-      const walletKit = await import('@reown/walletkit')
-      // WalletKit.init is mocked to return the expected object directly
-      const instance = (walletKit.WalletKit.init as any)()
-
-      expect(instance.on).toBeDefined()
-      expect(vi.isMockFunction(instance.on)).toBe(true)
-      expect(instance.getActiveSessions()).toEqual([])
-    })
-
     it('should have @walletconnect/core mocked', async () => {
       const walletConnectCore = await import('@walletconnect/core')
       const core = new walletConnectCore.Core()

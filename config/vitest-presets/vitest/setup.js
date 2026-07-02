@@ -1,8 +1,7 @@
-// Sets up global.chrome in vitest environment
-import { vi } from 'vitest'
-
 // required polyfill for rtk-query baseQueryFn
 import 'cross-fetch/polyfill'
+// Sets up global.chrome in vitest environment
+import { vi } from 'vitest'
 
 // Setup chrome storage mock using mem-storage-area
 const storage = require('mem-storage-area')
@@ -80,17 +79,6 @@ vi.mock('react-native-device-info', () => ({
 }))
 
 // Mock WalletConnect v2 packages
-vi.mock('@reown/walletkit', () => ({
-  WalletKit: {
-    init: () => ({
-      on: vi.fn(),
-      getActiveSessions: () => [],
-      getPendingSessionProposals: () => [],
-      getPendingSessionRequests: () => [],
-    }),
-  },
-}))
-
 vi.mock('@walletconnect/core', () => ({
   Core: vi.fn().mockImplementation(() => ({
     crypto: { getClientId: vi.fn() },
