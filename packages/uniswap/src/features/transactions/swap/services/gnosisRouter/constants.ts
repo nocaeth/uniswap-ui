@@ -88,13 +88,12 @@ export const GNOSIS_FEE_TIERS: FeeAmount[] = [FeeAmount.LOWEST, FeeAmount.LOW, F
 // quoted in a single eth_call, but we still cap to bound calldata size and decode work.
 export const GNOSIS_MAX_CANDIDATE_ROUTES = 96
 
-// Firm quotes try these hop limits in order, stopping at the first whose best route is viable
-// (non-absurd price impact). The deep v3 graph is a near-linear chain
-// (WETH–wstETH–sDAI–EURe–USDC.e–WXDAI), so cluster-crossing pairs need up to 5 hops; common pairs
-// resolve at 3 and never pay for the longer passes. Indicative (keystroke) quotes use only the first.
-export const GNOSIS_ROUTE_HOP_TIERS = [3, 4, 5] as const
-// Hard clamp on hops in candidate generation; must cover the largest tier above.
-export const GNOSIS_MAX_ROUTE_HOPS: number = Math.max(...GNOSIS_ROUTE_HOP_TIERS)
+// Hop ceiling for candidate generation and quoting. Every candidate route up to this length is
+// quoted in ONE Multicall3 eth_call, so firm and indicative quotes both run a single pass at the
+// ceiling and pick the best actual output — no escalating hop tiers. The deep v3 graph is a
+// near-linear chain (WETH–wstETH–sDAI–EURe–USDC.e–WXDAI), so cluster-crossing pairs need up to
+// 5 hops; a shorter first pass would let a thin short route shadow a deep longer one.
+export const GNOSIS_MAX_ROUTE_HOPS = 5
 // Per token-pair, expand only the N deepest-liquidity pools (fee tiers) into candidate routes. Bounds
 // the candidate count as the hop limit grows so deep long routes survive the GNOSIS_MAX_CANDIDATE_ROUTES cap.
 export const GNOSIS_MAX_POOLS_PER_PAIR = 2
@@ -102,6 +101,13 @@ export const GNOSIS_MAX_POOLS_PER_PAIR = 2
 // Preferred routing pass ignores dust pools. If that produces no usable quote,
 // swaps fall back to the full initialized-pool graph.
 export const GNOSIS_MIN_CANDIDATE_POOL_TVL_USD = 1_000
+
+// A non-hub token qualifies as a routing intermediate (soft hub) when it has at least two pools to
+// distinct counterpart tokens, each with confirmed TVL at or above this floor — one pool in, one
+// pool out is the minimum to be useful as a stepping-stone. Tokens without TVL metadata never
+// qualify (fail-closed): the curated GNOSIS_BASE_TOKENS already cover the no-metadata world, and
+// widening the search on unknown data would explode candidate generation.
+export const GNOSIS_MIN_INTERMEDIATE_POOL_TVL_USD = 10_000
 
 // Multicall3 is deployed at the same canonical address on Gnosis as everywhere else.
 export const GNOSIS_MULTICALL3_ADDRESS = '0xcA11bde05977b3631167028862bE2a173976CA11'
@@ -171,3 +177,15 @@ export const GNOSIS_SPLIT_GRID_STEPS = 10
 // Minimum output improvement (bps) over the single best route before a split is used. Gnosis gas
 // is negligible, so this token-gain floor is the whole accept gate (no net-of-gas term).
 export const GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS = 3
+// Depth-based split probe: also run the split grid whenever the trade would consume at least this
+// fraction of the thinnest pool's in-range depth on the best route. The cheap impact estimate
+// fails open to 0 when metadata/pool state is missing, which would otherwise silently skip the
+// grid for exactly the large trades that most need splitting; the depth ratio needs no token
+// metadata (raw units cancel), so it backstops that blind spot. Probing costs one extra Multicall3
+// round-trip. The accept gate (GNOSIS_MIN_SPLIT_IMPROVEMENT_BPS) still decides on real quotes.
+export const GNOSIS_SPLIT_PROBE_DEPTH_FRACTION = 0.25
+// Candidate routes whose thinnest pool holds less than this fraction of the trade size in-range
+// cannot win on output; they are dropped before quoting so they don't waste candidate-cap slots
+// and quoter calldata. Fail-open: routes with unknown depth are never pruned, and pruning never
+// leaves fewer than a minimum survivor count (see pruneShallowCandidateRoutes).
+export const GNOSIS_MIN_ROUTE_DEPTH_INPUT_FRACTION = 0.01

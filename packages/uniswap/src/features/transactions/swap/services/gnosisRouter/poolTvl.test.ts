@@ -14,6 +14,7 @@ import {
   annotateGnosisPoolGraphEdgesWithTvl,
   clearGnosisPoolTvlCache,
   fetchGnosisPoolTvlUSDByAddress,
+  fetchGnosisTopV3Pools,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolTvl'
 import type { GnosisPoolGraphEdge } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
 
@@ -130,5 +131,75 @@ describe('Gnosis pool TVL', () => {
     expect(first.has(POOL_A)).toBe(false)
     expect(second.has(POOL_A)).toBe(false)
     expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Gnosis top pools', () => {
+  beforeEach(() => {
+    clearGnosisPoolTvlCache()
+    mockFetch.mockReset()
+  })
+
+  function topPool(address: string, tvlUSD: number): Record<string, unknown> {
+    return {
+      address,
+      feeTier: 500,
+      totalLiquidity: { value: tvlUSD },
+      token0: { address: TOKEN_A, symbol: 'T0', decimals: 18 },
+      token1: { address: TOKEN_B, symbol: 'T1', decimals: 6 },
+    }
+  }
+
+  it('fetches the full pool set once, caches it, and skips malformed entries', async () => {
+    mockFetch.mockResolvedValueOnce(
+      graphQlResponse({
+        data: {
+          topV3Pools: [topPool(POOL_A, 50_000), { address: POOL_B, feeTier: 3000 /* no tokens */ }, null],
+        },
+      }),
+    )
+
+    const pools = await fetchGnosisTopV3Pools()
+    const again = await fetchGnosisTopV3Pools()
+
+    expect(pools).toEqual([
+      {
+        address: POOL_A,
+        fee: 500,
+        tvlUSD: 50_000,
+        token0: { address: TOKEN_A, symbol: 'T0', decimals: 18 },
+        token1: { address: TOKEN_B, symbol: 'T1', decimals: 6 },
+      },
+    ])
+    expect(again).toEqual(pools)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://analytics.example/v1/graphql',
+      expect.objectContaining({ method: 'POST', body: expect.stringContaining('topV3Pools') }),
+    )
+  })
+
+  it('seeds the per-pool TVL cache so annotation needs no second fetch', async () => {
+    mockFetch.mockResolvedValueOnce(graphQlResponse({ data: { topV3Pools: [topPool(POOL_A, 50_000)] } }))
+
+    await fetchGnosisTopV3Pools()
+    const edges = await annotateGnosisPoolGraphEdgesWithTvl([
+      { tokenA: TOKEN_A, tokenB: TOKEN_B, fee: 500, liquidity: '100', initialized: true, poolAddress: POOL_A },
+    ])
+
+    expect(edges[0]).toEqual(expect.objectContaining({ poolAddress: POOL_A, tvlUSD: 50_000 }))
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns undefined and negative-caches when the fetch fails or the store is empty', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('adapter unavailable'))
+    expect(await fetchGnosisTopV3Pools()).toBeUndefined()
+    expect(await fetchGnosisTopV3Pools()).toBeUndefined()
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+
+    clearGnosisPoolTvlCache()
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce(graphQlResponse({ data: { topV3Pools: [] } }))
+    expect(await fetchGnosisTopV3Pools()).toBeUndefined()
   })
 })

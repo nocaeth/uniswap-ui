@@ -62,6 +62,7 @@ function buildRoutes(args: {
   maxRoutes?: number
   maxHops?: number
   routingHubs?: readonly string[]
+  decimalsByAddress?: ReadonlyMap<string, number>
 }): CandidateRoute[] {
   return buildGnosisRouteCandidatesFromPoolEdges({
     tokenIn: args.tokenIn ?? TOKEN_A,
@@ -70,6 +71,7 @@ function buildRoutes(args: {
     maxRoutes: args.maxRoutes,
     maxHops: args.maxHops,
     routingHubs: args.routingHubs,
+    decimalsByAddress: args.decimalsByAddress,
   })
 }
 
@@ -148,7 +150,7 @@ describe('Gnosis route candidates', () => {
     })
   })
 
-  it('finds a deep 4-hop route only when the hop limit is raised above the default 3', () => {
+  it('finds a deep 4-hop route by default (single-pass hop ceiling), but not under a lower explicit cap', () => {
     const chain = [
       poolEdge(TOKEN_A, GNOSIS_USDCE, { fee: FeeAmount.LOW }),
       poolEdge(GNOSIS_USDCE, GNOSIS_SDAI, { fee: FeeAmount.LOWEST }),
@@ -160,8 +162,8 @@ describe('Gnosis route candidates', () => {
       fees: [FeeAmount.LOW, FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM],
     }
 
-    expect(buildRoutes({ poolEdges: chain })).toEqual([]) // default cap of 3 cannot reach it
-    expect(buildRoutes({ poolEdges: chain, maxHops: 4 })).toContainEqual(fourHop)
+    expect(buildRoutes({ poolEdges: chain })).toContainEqual(fourHop) // default = GNOSIS_MAX_ROUTE_HOPS
+    expect(buildRoutes({ poolEdges: chain, maxHops: 3 })).toEqual([]) // explicit lower cap cannot reach it
   })
 
   it('expands only the two deepest fee tiers per pair (fan-out cap)', () => {
@@ -244,6 +246,75 @@ describe('Gnosis route candidates', () => {
     })
 
     expect(routes).toEqual([{ tokens: [TOKEN_A, GNOSIS_USDCE, TOKEN_B], fees: [FeeAmount.MEDIUM, FeeAmount.MEDIUM] }])
+  })
+
+  it('folds pool fees into the spot ranking (cheaper fee beats deeper liquidity at equal spot)', () => {
+    // Both pools sit at the same spot price (Q96), so pre-fee spot penalties tie. The fee-discounted
+    // penalty must prefer the LOWEST-fee pool even though the HIGH-fee pool has far more raw liquidity
+    // (which would win the later liquidity tie-breaker).
+    const routes = buildRoutes({
+      maxRoutes: 1,
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOWEST, liquidity: '10', sqrtPriceX96: Q96 }),
+        poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.HIGH, liquidity: '1000', sqrtPriceX96: Q96 }),
+      ],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, TOKEN_B], fees: [FeeAmount.LOWEST] }])
+  })
+
+  it('keeps longer routes represented when the candidate cap binds (stratified cap)', () => {
+    const poolEdges = [
+      poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.LOW }),
+      poolEdge(TOKEN_A, TOKEN_B, { fee: FeeAmount.MEDIUM }),
+      poolEdge(TOKEN_A, GNOSIS_USDCE),
+      poolEdge(GNOSIS_USDCE, TOKEN_B),
+      poolEdge(TOKEN_A, GNOSIS_SDAI),
+      poolEdge(GNOSIS_SDAI, TOKEN_B),
+      poolEdge(GNOSIS_USDCE, GNOSIS_SDAI),
+    ]
+    // 6 candidates exist (2 direct, 2 two-hop, 2 three-hop); a plain hops-first slice of 3 would
+    // return [1-hop, 1-hop, 2-hop] and silently drop every 3-hop route.
+    const routes = buildRoutes({ poolEdges, maxRoutes: 3, maxHops: 3 })
+
+    expect(routes).toHaveLength(3)
+    expect(routes.filter((route) => route.fees.length === 1)).toHaveLength(1)
+    expect(routes.filter((route) => route.fees.length === 2)).toHaveLength(1)
+    expect(routes.filter((route) => route.fees.length === 3)).toHaveLength(1)
+
+    // Deterministic: input edge order must not change the selection.
+    const reversed = buildRoutes({ poolEdges: [...poolEdges].reverse(), maxRoutes: 3, maxHops: 3 })
+    expect(reversed).toEqual(routes)
+  })
+
+  it('ranks same-hop routes by value-normalized depth when decimals are known, raw L otherwise', () => {
+    const HUB_D18 = '0x4000000000000000000000000000000000000004'
+    const HUB_D6 = '0x5000000000000000000000000000000000000005'
+    // Both hubs sort above TOKEN_A/TOKEN_B, so each pool's token1 is the hub and the hub's decimals
+    // scale the depth. Raw L massively favors the 18-decimals hub; actual depth favors the
+    // 6-decimals hub (1e18/1e18 = 1 token vs 1e7/1e6 = 10 tokens).
+    const poolEdges = [
+      poolEdge(TOKEN_A, HUB_D18, { liquidity: '1000000000000000000', sqrtPriceX96: Q96 }),
+      poolEdge(HUB_D18, TOKEN_B, { liquidity: '1000000000000000000', sqrtPriceX96: Q96 }),
+      poolEdge(TOKEN_A, HUB_D6, { liquidity: '10000000', sqrtPriceX96: Q96 }),
+      poolEdge(HUB_D6, TOKEN_B, { liquidity: '10000000', sqrtPriceX96: Q96 }),
+    ]
+    const routingHubs = [HUB_D18, HUB_D6]
+    const decimalsByAddress = new Map([
+      [lower(TOKEN_A), 18],
+      [lower(TOKEN_B), 18],
+      [lower(HUB_D18), 18],
+      [lower(HUB_D6), 6],
+    ])
+
+    expect(buildRoutes({ poolEdges, maxRoutes: 1, routingHubs, decimalsByAddress })).toEqual([
+      { tokens: [TOKEN_A, HUB_D6, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] },
+    ])
+
+    // Regression guard: without decimals metadata the raw-L ordering is unchanged.
+    expect(buildRoutes({ poolEdges, maxRoutes: 1, routingHubs })).toEqual([
+      { tokens: [TOKEN_A, HUB_D18, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] },
+    ])
   })
 
   it('ranks routes with a finite spot penalty before routes lacking sqrtPriceX96 (mixed-penalty determinism)', () => {
@@ -343,6 +414,59 @@ describe('Gnosis route candidates', () => {
         tokens: [GNOSIS_WETH, GNOSIS_WSTETH, TOKEN_B],
         fees: [FeeAmount.LOW, FeeAmount.LOW],
       },
+    ])
+  })
+})
+
+describe('soft hub intermediates', () => {
+  // TOKEN_C is not a curated hub; routingHubs is empty so eligibility comes from TVL alone.
+  it('routes through a non-hub token with two distinct qualifying pools', () => {
+    const routes = buildRoutes({
+      routingHubs: [],
+      poolEdges: [poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000 }), poolEdge(TOKEN_C, TOKEN_B, { tvlUSD: 12_000 })],
+    })
+
+    expect(routes).toEqual([{ tokens: [TOKEN_A, TOKEN_C, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] }])
+  })
+
+  it('does not qualify a token with only one qualifying counterpart', () => {
+    const routes = buildRoutes({
+      routingHubs: [],
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000 }),
+        poolEdge(TOKEN_C, TOKEN_B, { tvlUSD: 5_000 }), // below the $10k floor
+      ],
+    })
+
+    expect(routes).toEqual([])
+  })
+
+  it('does not qualify on two fee tiers against the same counterpart', () => {
+    const routes = buildRoutes({
+      routingHubs: [],
+      poolEdges: [
+        poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000, fee: FeeAmount.LOW }),
+        poolEdge(TOKEN_A, TOKEN_C, { tvlUSD: 15_000, fee: FeeAmount.MEDIUM }),
+        poolEdge(TOKEN_C, TOKEN_B, { tvlUSD: 5_000 }),
+      ],
+    })
+
+    expect(routes).toEqual([])
+  })
+
+  it('never qualifies intermediates without TVL metadata (curated hubs only)', () => {
+    const withoutMetadata = buildRoutes({
+      routingHubs: [],
+      poolEdges: [poolEdge(TOKEN_A, TOKEN_C), poolEdge(TOKEN_C, TOKEN_B)],
+    })
+    const curatedHubStillWorks = buildRoutes({
+      routingHubs: [GNOSIS_USDCE],
+      poolEdges: [poolEdge(TOKEN_A, GNOSIS_USDCE), poolEdge(GNOSIS_USDCE, TOKEN_B)],
+    })
+
+    expect(withoutMetadata).toEqual([])
+    expect(curatedHubStillWorks).toEqual([
+      { tokens: [TOKEN_A, GNOSIS_USDCE, TOKEN_B], fees: [FeeAmount.LOW, FeeAmount.LOW] },
     ])
   })
 })

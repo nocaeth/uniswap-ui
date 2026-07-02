@@ -17,6 +17,10 @@ import {
   GNOSIS_V3_FACTORY_ADDRESS,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/constants'
 import {
+  fetchGnosisTopV3Pools,
+  type GnosisTopPool,
+} from 'uniswap/src/features/transactions/swap/services/gnosisRouter/poolTvl'
+import {
   normalizeGnosisRouteTokenAddress,
   type GnosisPoolGraphEdge,
 } from 'uniswap/src/features/transactions/swap/services/gnosisRouter/routeCandidates'
@@ -43,6 +47,7 @@ export interface GnosisPoolDiscoveryCandidate {
 
 interface ExistingGnosisPool extends GnosisPoolDiscoveryCandidate {
   poolAddress: string
+  tvlUSD?: number
 }
 
 interface PoolStateRead {
@@ -140,11 +145,120 @@ export async function discoverGnosisPoolGraphEdges({
     return cached.edges
   }
 
-  const candidates = buildGnosisPoolDiscoveryCandidates({ tokenIn, tokenOut, routingHubs: normalizedHubs, feeTiers })
-  const existingPools = await readExistingPools({ provider, candidates })
+  const adapterPools = await fetchGnosisTopV3Pools()
+  const existingPools = adapterPools?.length
+    ? await collectAdapterBackedPools({
+        provider,
+        adapterPools,
+        tokenIn,
+        tokenOut,
+        routingHubs: normalizedHubs,
+        feeTiers,
+      })
+    : // Adapter unavailable/unconfigured/empty: fall back to probing the factory for the full
+      // {tokenIn, tokenOut, hubs} pair matrix, exactly as before the adapter path existed.
+      await readExistingPools({
+        provider,
+        candidates: buildGnosisPoolDiscoveryCandidates({ tokenIn, tokenOut, routingHubs: normalizedHubs, feeTiers }),
+      })
   const edges = await readPoolGraphEdges({ provider, pools: existingPools })
   poolDiscoveryCache.set(cacheKey, { edges, ts: now })
   return edges
+}
+
+/**
+ * Pool set for the adapter-backed discovery path: every pool the analytics adapter has indexed
+ * (the complete graph, TVL attached — no factory probing for it), unioned with a factory probe of
+ * just the tokenIn/tokenOut pairs against {each other + hubs}. The union probe exists because the
+ * adapter indexes with a small lag: a brand-new pool on the quoted endpoints would otherwise be
+ * invisible until backfill catches up, regressing quotes that factory discovery used to find. The
+ * probe is a fraction of the old full pair matrix (endpoints only, not hub×hub), so the adapter
+ * path still replaces the bulk of the per-quote factory calls.
+ */
+async function collectAdapterBackedPools({
+  provider,
+  adapterPools,
+  tokenIn,
+  tokenOut,
+  routingHubs,
+  feeTiers,
+}: {
+  provider: JsonRpcProvider
+  adapterPools: readonly GnosisTopPool[]
+  tokenIn: string
+  tokenOut: string
+  routingHubs: readonly string[]
+  feeTiers: readonly FeeAmount[]
+}): Promise<ExistingGnosisPool[]> {
+  const feeTierSet = new Set<number>(feeTiers)
+  const poolsByAddress = new Map<string, ExistingGnosisPool>()
+
+  for (const pool of adapterPools) {
+    const tokenA = normalizeGnosisRouteTokenAddress(pool.token0.address)
+    const tokenB = normalizeGnosisRouteTokenAddress(pool.token1.address)
+    if (!tokenA || !tokenB || tokenA === tokenB || !feeTierSet.has(pool.fee)) {
+      continue
+    }
+    poolsByAddress.set(pool.address.toLowerCase(), {
+      tokenA,
+      tokenB,
+      fee: pool.fee as FeeAmount,
+      poolAddress: pool.address,
+      tvlUSD: pool.tvlUSD,
+    })
+  }
+
+  const probedPools = await readExistingPools({
+    provider,
+    candidates: buildEndpointDiscoveryCandidates({ tokenIn, tokenOut, routingHubs, feeTiers }),
+  })
+  for (const pool of probedPools) {
+    const key = pool.poolAddress.toLowerCase()
+    if (!poolsByAddress.has(key)) {
+      poolsByAddress.set(key, pool)
+    }
+  }
+
+  return [...poolsByAddress.values()]
+}
+
+/** Pair candidates touching tokenIn/tokenOut only (endpoints × {endpoints + hubs}), not hub×hub. */
+function buildEndpointDiscoveryCandidates({
+  tokenIn,
+  tokenOut,
+  routingHubs,
+  feeTiers,
+}: {
+  tokenIn: string
+  tokenOut: string
+  routingHubs: readonly string[]
+  feeTiers: readonly FeeAmount[]
+}): GnosisPoolDiscoveryCandidate[] {
+  const endpointTokens = normalizeUniqueTokens(expandGnosisSharedStateTokens([tokenIn, tokenOut]))
+  const counterpartTokens = normalizeUniqueTokens(expandGnosisSharedStateTokens([tokenIn, tokenOut, ...routingHubs]))
+  const candidates: GnosisPoolDiscoveryCandidate[] = []
+  const seenPairs = new Set<string>()
+
+  for (const endpointToken of endpointTokens) {
+    for (const counterpartToken of counterpartTokens) {
+      if (!endpointToken || !counterpartToken || endpointToken === counterpartToken) {
+        continue
+      }
+      const pairKey =
+        endpointToken < counterpartToken
+          ? `${endpointToken}:${counterpartToken}`
+          : `${counterpartToken}:${endpointToken}`
+      if (seenPairs.has(pairKey)) {
+        continue
+      }
+      seenPairs.add(pairKey)
+      for (const fee of feeTiers) {
+        candidates.push({ tokenA: endpointToken, tokenB: counterpartToken, fee })
+      }
+    }
+  }
+
+  return candidates
 }
 
 async function readExistingPools({
@@ -246,8 +360,13 @@ async function readPoolGraphEdges({
       liquidity,
       initialized: sqrtPriceX96.gt(0),
       poolAddress: pool.poolAddress,
+      tvlUSD: pool.tvlUSD,
       sqrtPriceX96,
       tick: read?.tick,
     }
   })
+}
+
+export function clearGnosisPoolDiscoveryCache(): void {
+  poolDiscoveryCache.clear()
 }
